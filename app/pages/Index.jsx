@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { HeroBanner } from '@/components/HeroBanner';
 import { VideoCarousel } from '@/components/VideoCarousel';
-import { useAppStore } from './store/appStore';
-import videosData from './data/videos.json';
-import { getVideoWithPlaceholders } from './utils/updateVideoData';
+import { VideoDetails } from '@/pages/VideoDetails';
+import { MyList } from '@/pages/MyList';
+import { Search } from '@/pages/Search';
+import { useAppStore } from '../store/appStore';
+import videosData from '@/data/videos.json';
+import { getVideoWithPlaceholders } from '@/utils/updateVideoData';
 
-export default function HomePage() {
+const Index = () => {
   const { 
     currentPage, 
     watchlist, 
@@ -36,22 +39,27 @@ export default function HomePage() {
     { title: 'Feel Good Movies', videos: videos.filter(v => v.genre.includes('Comedy') || v.genre.includes('Romance')) },
   ];
 
+  const handleNavigation = (page) => {
+    setCurrentPage(page);
+    setCurrentVideoId(null);
+  };
+
   const handleSearch = (query) => {
     setSearchQuery(query);
-    // In Next.js, we'll use router.push for navigation
-    window.location.href = `/search?q=${encodeURIComponent(query)}`;
+    setCurrentPage('/search');
   };
 
   const handlePlayVideo = (videoId) => {
     // In a real app, this would open a video player
     console.log('Playing video:', videoId);
     // For now, just navigate to video details
-    window.location.href = `/video/${videoId}`;
+    setCurrentVideoId(videoId);
+    setCurrentPage('/video');
   };
 
   const handleViewDetails = (videoId) => {
     setCurrentVideoId(videoId);
-    window.location.href = `/video/${videoId}`;
+    setCurrentPage('/video');
   };
 
   const handleWatchlistToggle = (videoId) => {
@@ -62,11 +70,46 @@ export default function HomePage() {
     }
   };
 
+  // Render different pages based on current route
+  if (currentPage === '/video' && currentVideoId) {
+    return (
+      <VideoDetails
+        videoId={currentVideoId}
+        onBack={() => setCurrentPage('/')}
+        onPlay={handlePlayVideo}
+      />
+    );
+  }
+
+  if (currentPage === '/my-list') {
+    return (
+      <MyList
+        onBack={() => setCurrentPage('/')}
+        onPlay={handlePlayVideo}
+        onViewDetails={handleViewDetails}
+      />
+    );
+  }
+
+  if (currentPage === '/search') {
+    return (
+      <Search
+        onBack={() => setCurrentPage('/')}
+        onPlay={handlePlayVideo}
+        onViewDetails={handleViewDetails}
+        initialQuery={searchQuery}
+      />
+    );
+  }
+
   // Home page
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <Header onSearch={handleSearch} />
+      <Header 
+        onSearch={handleSearch}
+        onNavigate={handleNavigation}
+      />
 
       {/* Hero Banner */}
       <HeroBanner
@@ -97,4 +140,6 @@ export default function HomePage() {
       <div className="h-20" />
     </div>
   );
-}
+};
+
+export default Index;
