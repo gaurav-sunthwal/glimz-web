@@ -11,7 +11,7 @@ export default function OtpVerificationPage() {
   const mobileNumber = searchParams.get('mobileNumber');
   const userType = searchParams.get('userType');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (otp === '12345') {
       // Hardcoded OTP verification
@@ -38,7 +38,7 @@ export default function OtpVerificationPage() {
             className="w-full p-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 text-center tracking-widest"
             maxLength={5}
           />
-          <p className=' text-red'>{error}</p>
+          <p className=' text-red '>{error}</p>
           <button
             type="submit"
             className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition duration-300 "

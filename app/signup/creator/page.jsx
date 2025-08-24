@@ -1,10 +1,10 @@
 "use client"
 
-import React, { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 
-const CreatorSignup = () => {
+function CreatorSignupComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mobileNumber = searchParams.get('mobileNumber');
@@ -101,6 +101,12 @@ const CreatorSignup = () => {
       </div>
     </div>
   );
-};
+}
 
-export default CreatorSignup;
+export default function CreatorSignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreatorSignupComponent />
+    </Suspense>
+  );
+}

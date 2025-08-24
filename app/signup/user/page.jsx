@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Cookies from 'js-cookie';
 
-export default function UserSignupPage() {
+function UserSignupComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mobileNumber = searchParams.get('mobileNumber');
@@ -14,11 +14,11 @@ export default function UserSignupPage() {
     email: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     const finalUserData = { ...formData, mobileNumber, userType: 'user' };
 
@@ -60,5 +60,13 @@ export default function UserSignupPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function UserSignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <UserSignupComponent />
+    </Suspense>
   );
 }

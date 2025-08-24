@@ -1,13 +1,13 @@
 "use client"
 
-import React, { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 
-const MobileEntry = () => {
+export default function CreatorMobileEntryPage() {
   const [mobileNumber, setMobileNumber] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const userType = searchParams.get('userType'); // 'creator' or 'user'
+  // const searchParams = useSearchParams();
+  const {userType} = useParams()
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,6 +39,4 @@ const MobileEntry = () => {
       </div>
     </div>
   );
-};
-
-export default MobileEntry;
+}
