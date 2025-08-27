@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Suspense } from 'react'
+import { Suspense } from "react";
+import TabsNevbar from "../components/TabsNevbar";
 const inter = Inter({ subsets: ["latin"] });
 
 import type { Viewport } from "next";
@@ -27,7 +28,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <Suspense>{children}</Suspense>
+        <Suspense>
+          <TabsNevbar />
+          {children}
+        </Suspense>
       </body>
     </html>
   );

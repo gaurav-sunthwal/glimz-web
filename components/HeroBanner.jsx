@@ -17,7 +17,7 @@ export const HeroBanner = ({ video, onPlay, onMoreInfo }) => {
   };
 
   return (
-    <section className="relative h-screen w-full overflow-hidden">
+    <section className="relative h-[80vh] md:h-screen w-full overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         {!imageLoaded && (
