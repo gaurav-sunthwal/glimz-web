@@ -1,515 +1,671 @@
-import React, { useState, useEffect } from "react";
-import {
-  Heart,
-  Bookmark,
-  MessageCircle,
-  Share,
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
-  MoreVertical,
-  Home,
-  Search,
-  List,
-  ShoppingBag,
-  User,
-  Send,
-  X,
-} from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Share, Heart, Bookmark, MessageCircle, Send, ChevronRight, Play, Bell, Star, DollarSign, CheckCircle, X } from 'lucide-react';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger, DrawerClose } from '@/components/ui/drawer';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-// Custom components styled like shadcn
-const Button = ({ children, variant = "default", size = "default", className = "", onClick, disabled, ...props }) => {
-  const baseStyles = "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none";
-  const variants = {
-    default: "bg-primary text-primary-foreground hover:bg-primary/90",
-    ghost: "hover:bg-accent hover:text-accent-foreground"
-  };
-  const sizes = {
-    default: "h-10 py-2 px-4",
-    icon: "h-10 w-10"
-  };
+// Mock data - in a real app this would come from your API/store
+const mockCreators = [
+  {
+    id: 'creator1',
+    name: 'Sarah Mitchell',
+    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b5b6b8c1?w=150',
+    verified: true,
+    followers: '125K',
+    category: 'Comedy',
+  },
+  {
+    id: 'creator2',
+    name: 'Alex Rivera',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+    verified: true,
+    followers: '89K',
+    category: 'Music',
+  },
+  {
+    id: 'creator3',
+    name: 'Maya Chen',
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
+    verified: true,
+    followers: '156K',
+    category: 'Lifestyle',
+  },
+];
+
+const mockVideos = [
+  {
+    id: '1',
+    title: 'Amazing Street Performance',
+    description: 'Watch this incredible street performer captivate the crowd with their talent.',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    duration: '2:30',
+    likes: 1250,
+    genre: ['Music'],
+  },
+  {
+    id: '2',
+    title: 'Comedy Gold Moment',
+    description: 'This hilarious moment will have you laughing out loud!',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    duration: '1:45',
+    likes: 892,
+    genre: ['Comedy'],
+  },
+  {
+    id: '3',
+    title: 'Travel Adventure',
+    description: 'Join me on this incredible journey to discover hidden gems.',
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    duration: '3:15',
+    likes: 2100,
+    genre: ['Travel'],
+  },
+];
+
+const generateMockComments = (videoId) => [
+  {
+    id: `${videoId}-1`,
+    user: 'MusicLover23',
+    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50',
+    text: 'Amazing performance! 🎵',
+    timestamp: Date.now() - 300000, // 5 minutes ago
+    likes: 12,
+  },
+  {
+    id: `${videoId}-2`,
+    user: 'ComedyFan',
+    avatar: 'https://images.unsplash.com/photo-1494790108755-2616b5b6b8c1?w=50',
+    text: 'This is hilarious 😂',
+    timestamp: Date.now() - 600000, // 10 minutes ago
+    likes: 8,
+  },
+  {
+    id: `${videoId}-3`,
+    user: 'CreativeVibes',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50',
+    text: 'So talented!',
+    timestamp: Date.now() - 900000, // 15 minutes ago
+    likes: 15,
+  },
+  {
+    id: `${videoId}-4`,
+    user: 'TechGuru',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50',
+    text: 'Love the creativity here! Keep it up 👏',
+    timestamp: Date.now() - 1800000, // 30 minutes ago
+    likes: 23,
+  },
+];
+
+const formatTimeAgo = (timestamp) => {
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
   
-  return (
-    <button
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      onClick={onClick}
-      disabled={disabled}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return 'Just now';
 };
 
-const Input = ({ className = "", ...props }) => (
-  <input
-    className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-    {...props}
-  />
-);
+// Transform video data with creators
+const contentData = mockVideos.map((video, index) => ({
+  ...video,
+  creator: mockCreators[index % mockCreators.length],
+  isPremium: Math.random() > 0.6,
+  saves: Math.floor(video.likes * 0.15),
+  tags: [video.genre[0], Math.random() > 0.6 ? 'Premium' : 'Free'],
+}));
 
-const Avatar = ({ children, className = "" }) => (
-  <div className={`relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full ${className}`}>
-    {children}
-  </div>
-);
+const CommentDrawer = ({ videoId, videoTitle, isOpen, onClose }) => {
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentLikes, setCommentLikes] = useState({});
 
-const AvatarFallback = ({ children, className = "" }) => (
-  <div className={`flex h-full w-full items-center justify-center rounded-full bg-muted ${className}`}>
-    {children}
-  </div>
-);
-
-const Card = ({ children, className = "" }) => (
-  <div className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}>
-    {children}
-  </div>
-);
-
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 pt-0 ${className}`}>
-    {children}
-  </div>
-);
-
-const ExplorePage = () => {
-  const [currentVideo, setCurrentVideo] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [isMuted, setIsMuted] = useState(true);
-  const [likedVideos, setLikedVideos] = useState(new Set());
-  const [bookmarkedVideos, setBookmarkedVideos] = useState(new Set());
-  const [showComments, setShowComments] = useState({});
-  const [newComment, setNewComment] = useState("");
-  const [currentCommentIndex, setCurrentCommentIndex] = useState(0);
-
-  // Mock video data with comments
-  const videos = [
-    {
-      id: 1,
-      title: "Beyond the Stars",
-      description:
-        "Journey into the unknown as humanity takes its first steps beyond our solar system...",
-      rating: "53.25",
-      creator: "Sarah Mitchell",
-      category: "Sci-Fi",
-      duration: "2h 15m",
-      views: "1.0K",
-      likes: 94,
-      bookmarks: 28,
-      thumbnail:
-        "https://images.unsplash.com/photo-1446776877081-d282a0f896e2?w=400&h=700&fit=crop&crop=center",
-      isVerified: true,
-      comments: [
-        { id: 1, user: "John Doe", text: "This is absolutely amazing! 🚀", avatar: "JD", time: "2m ago" },
-        { id: 2, user: "Alice Smith", text: "The visuals are breathtaking! 😍", avatar: "AS", time: "5m ago" },
-        { id: 3, user: "Mike Johnson", text: "Can't wait for the sequel!", avatar: "MJ", time: "8m ago" },
-        { id: 4, user: "Emma Wilson", text: "Mind-blowing storytelling 🔥", avatar: "EW", time: "12m ago" },
-        { id: 5, user: "David Brown", text: "This deserves an Oscar!", avatar: "DB", time: "15m ago" },
-      ]
-    },
-    {
-      id: 2,
-      title: "Ocean's Mystery",
-      description:
-        "Deep beneath the waves lies a secret that could change everything we know about marine life...",
-      rating: "47.8",
-      creator: "David Ocean",
-      category: "Documentary",
-      duration: "1h 45m",
-      views: "2.5K views",
-      likes: 156,
-      bookmarks: 42,
-      thumbnail:
-        "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=700&fit=crop&crop=center",
-      isVerified: false,
-      comments: [
-        { id: 1, user: "Marine Lover", text: "The underwater shots are incredible! 🌊", avatar: "ML", time: "1m ago" },
-        { id: 2, user: "Nature Doc", text: "Educational and beautiful", avatar: "ND", time: "4m ago" },
-        { id: 3, user: "Ocean Explorer", text: "Makes me want to dive deep!", avatar: "OE", time: "7m ago" },
-        { id: 4, user: "Blue Planet", text: "Nature's mysteries unveiled 🐠", avatar: "BP", time: "10m ago" },
-      ]
-    },
-    {
-      id: 3,
-      title: "Neon Dreams",
-      description:
-        "In a cyberpunk future, a hacker discovers a conspiracy that threatens the digital world...",
-      rating: "61.2",
-      creator: "Alex Cyber",
-      category: "Action",
-      duration: "2h 8m",
-      views: "5.2K views",
-      likes: 287,
-      bookmarks: 89,
-      thumbnail:
-        "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=700&fit=crop&crop=center",
-      isVerified: true,
-      comments: [
-        { id: 1, user: "Cyber Punk", text: "The neon aesthetics are perfect! ⚡", avatar: "CP", time: "3m ago" },
-        { id: 2, user: "Tech Geek", text: "Love the cyberpunk vibes!", avatar: "TG", time: "6m ago" },
-        { id: 3, user: "Future Fan", text: "This is the future we deserve 🔮", avatar: "FF", time: "9m ago" },
-        { id: 4, user: "Matrix Lover", text: "Getting Matrix vibes!", avatar: "ML", time: "13m ago" },
-      ]
-    },
-  ];
-
-  // Auto-cycle through comments every 5 seconds
   useEffect(() => {
+    if (isOpen) {
+      setComments(generateMockComments(videoId));
+    }
+  }, [isOpen, videoId]);
+
+  const handleAddComment = () => {
+    if (!newComment.trim()) return;
+    
+    const comment = {
+      id: `${videoId}-${Date.now()}`,
+      user: 'You',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50',
+      text: newComment,
+      timestamp: Date.now(),
+      likes: 0,
+    };
+    
+    setComments(prev => [comment, ...prev]);
+    setNewComment('');
+  };
+
+  const handleLikeComment = (commentId) => {
+    setCommentLikes(prev => ({
+      ...prev,
+      [commentId]: !prev[commentId]
+    }));
+    
+    setComments(prev => prev.map(comment => 
+      comment.id === commentId 
+        ? { ...comment, likes: commentLikes[commentId] ? comment.likes - 1 : comment.likes + 1 }
+        : comment
+    ));
+  };
+
+  return (
+    <Drawer open={isOpen} onOpenChange={onClose}>
+      <DrawerContent className="h-[80vh] bg-black text-white border-gray-800">
+        <DrawerHeader className="border-b border-gray-800 pb-4">
+          <div className="flex items-center justify-between">
+            <DrawerTitle className="text-lg font-semibold">Comments</DrawerTitle>
+            <DrawerClose asChild>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-gray-800">
+                <X size={20} />
+              </Button>
+            </DrawerClose>
+          </div>
+          <p className="text-gray-400 text-sm">{videoTitle}</p>
+        </DrawerHeader>
+        
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {comments.map((comment) => (
+            <div key={comment.id} className="flex gap-3">
+              <img 
+                src={comment.avatar} 
+                alt={comment.user}
+                className="w-8 h-8 rounded-full flex-shrink-0"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm">{comment.user}</span>
+                  <span className="text-gray-400 text-xs">{formatTimeAgo(comment.timestamp)}</span>
+                </div>
+                <p className="text-white text-sm mb-2 leading-relaxed">{comment.text}</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => handleLikeComment(comment.id)}
+                    className="flex items-center gap-1 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <Heart 
+                      size={16} 
+                      className={commentLikes[comment.id] ? "text-red-500 fill-current" : "text-gray-400"}
+                    />
+                    <span className="text-xs">{comment.likes}</span>
+                  </button>
+                  <button className="text-gray-400 hover:text-white text-xs transition-colors">
+                    Reply
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {comments.length === 0 && (
+            <div className="text-center text-gray-400 py-8">
+              <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+              <p>No comments yet. Be the first to comment!</p>
+            </div>
+          )}
+        </div>
+        
+        <div className="border-t border-gray-800 p-4">
+          <div className="flex gap-3 items-end">
+            <img 
+              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50" 
+              alt="Your avatar"
+              className="w-8 h-8 rounded-full flex-shrink-0"
+            />
+            <div className="flex-1 flex gap-2">
+              <Input
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-blue-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+              />
+              <Button 
+                onClick={handleAddComment}
+                disabled={!newComment.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4"
+              >
+                <Send size={16} />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+};
+function AutoRollingComments({ videoId, isActive }) {
+  const [visibleComments, setVisibleComments] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const comments = generateMockComments(videoId);
+
+  useEffect(() => {
+    if (!isActive) return;
+
     const interval = setInterval(() => {
-      setCurrentCommentIndex(prev => (prev + 1) % 3);
-    }, 5000);
+      const comment = comments[currentIndex % comments.length];
+      const newComment = {
+        ...comment,
+        id: `${comment.id}-${Date.now()}`,
+      };
+
+      setVisibleComments(prev => {
+        const updated = [...prev, newComment];
+        return updated.length > 2 ? updated.slice(-2) : updated;
+      });
+
+      // Auto remove after 4 seconds
+      setTimeout(() => {
+        setVisibleComments(prev => prev.filter(c => c.id !== newComment.id));
+      }, 4000);
+
+      setCurrentIndex(prev => prev + 1);
+    }, 2500);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [comments, currentIndex, isActive]);
 
-  const handleLike = (videoId) => {
-    setLikedVideos((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(videoId)) {
-        newSet.delete(videoId);
-      } else {
-        newSet.add(videoId);
-      }
-      return newSet;
-    });
-  };
+  return (
+    <div className="absolute bottom-[25%] left-4 right-20 space-y-2 z-10">
+      {visibleComments.map((comment) => (
+        <div
+          key={comment.id}
+          className="bg-black/75 backdrop-blur-sm rounded-lg p-3 max-w-xs border border-white/15 shadow-lg animate-fade-in-up"
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <img
+              src={comment.avatar}
+              alt={comment.user}
+              className="w-4 h-4 rounded-full"
+            />
+            <div className="flex items-center justify-between flex-1">
+              <span className="text-blue-400 text-xs font-semibold">
+                {comment.user}
+              </span>
+              <div className="flex items-center gap-1">
+                <Heart size={10} className="text-red-500" />
+                <span className="text-white/70 text-xs">{comment.likes}</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-white text-sm leading-tight">{comment.text}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-  const handleBookmark = (videoId) => {
-    setBookmarkedVideos((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(videoId)) {
-        newSet.delete(videoId);
-      } else {
-        newSet.add(videoId);
-      }
-      return newSet;
-    });
-  };
+const VideoCard = ({ 
+  item, 
+  index, 
+  currentIndex, 
+  onUnlockContent, 
+  onAddToWatchlist, 
+  onShare, 
+  onLike,
+  isInWatchlist, 
+  isLiked,
+  isActive 
+}) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showPlayIcon, setShowPlayIcon] = useState(true);
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [showSwipeIndicator, setShowSwipeIndicator] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const videoRef = useRef(null);
 
-  const handleScroll = (e) => {
-    const scrollPosition = e.target.scrollTop;
-    const videoHeight = window.innerHeight;
-    const newCurrentVideo = Math.round(scrollPosition / videoHeight);
-    setCurrentVideo(newCurrentVideo);
-  };
+  useEffect(() => {
+    if (isActive && videoRef.current) {
+      setIsPlaying(true);
+      setShowPlayIcon(false);
+      videoRef.current.play().catch(console.error);
+    } else if (videoRef.current) {
+      setIsPlaying(false);
+      setShowPlayIcon(true);
+      videoRef.current.pause();
+    }
+  }, [isActive]);
 
-  const toggleComments = (videoId) => {
-    setShowComments(prev => ({
-      ...prev,
-      [videoId]: !prev[videoId]
-    }));
-  };
+  useEffect(() => {
+    if (videoProgress >= 0.75 && isActive) {
+      setShowSwipeIndicator(true);
+      const timeout = setTimeout(() => setShowSwipeIndicator(false), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [videoProgress, isActive]);
 
-  const addComment = (videoId) => {
-    if (newComment.trim()) {
-      // In a real app, you'd add this to your state/database
-      console.log(`Adding comment to video ${videoId}: ${newComment}`);
-      setNewComment("");
+  const handleVideoTimeUpdate = () => {
+    if (videoRef.current) {
+      const progress = videoRef.current.currentTime / videoRef.current.duration;
+      setVideoProgress(progress);
     }
   };
 
-  const currentVideoData = videos[currentVideo] || videos[0];
-  const visibleComments = currentVideoData.comments.slice(0, 3);
-  const currentComment = visibleComments[currentCommentIndex];
+  const handlePlayToggle = () => {
+    setShowPlayIcon(false);
+    onUnlockContent();
+  };
 
   return (
-    <div className="grid grid-cols-1 md:w-[50%] md:p-3 h-[100vh] mx-auto">
-      <div className="bg-black text-white h-[100vh] relative">
-        {/* Main Content */}
-        <div
-          className="h-screen overflow-y-auto snap-y snap-mandatory scrollbar-hide"
-          onScroll={handleScroll}
-        >
-          {videos.map((video, index) => (
-            <div
-              key={video.id}
-              className="relative h-screen w-full snap-start flex items-center justify-center"
-              style={{
-                backgroundImage: `url(${video.thumbnail})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              {/* Dark overlay */}
-              <div className="absolute inset-0 bg-black/60" />
+    <div className="relative w-full h-screen overflow-hidden bg-black group">
+      {/* Video Background */}
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover"
+        src={item.videoUrl}
+        loop
+        muted
+        playsInline
+        onTimeUpdate={handleVideoTimeUpdate}
+        onEnded={() => setVideoProgress(0)}
+      />
+      
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 z-10" />
 
-              {/* Video Content */}
-              <div className="relative z-10 w-full h-full flex flex-col">
-                {/* Top Content */}
-                <div className="absolute top-6 left-6 right-20">
-                  <h1 className="text-2xl font-bold text-white mb-3">
-                    {video.title}
-                  </h1>
-                  <p className="text-white/90 text-sm leading-relaxed mb-4 max-w-80">
-                    {video.description}
-                  </p>
-
-                  {/* Rating Badge */}
-                  <div className="inline-flex items-center bg-gradient-to-r from-purple-500 to-pink-500 px-3 py-1.5 rounded-full">
-                    <span className="text-white font-medium text-sm">
-                      ⭐ {video.rating}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Floating Comments - Show current comment */}
-                {currentVideo === index && currentComment && (
-                  <div className="absolute top-[45%] left-6 right-24 z-20">
-                    <Card className="bg-black/50 backdrop-blur-sm border-white/20 animate-in fade-in-0 slide-in-from-bottom-3 duration-500">
-                      <CardContent className="p-3">
-                        <div className="flex items-start space-x-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
-                              {currentComment.avatar}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="text-white font-medium text-sm">
-                                {currentComment.user}
-                              </span>
-                              <span className="text-white/50 text-xs">
-                                {currentComment.time}
-                              </span>
-                            </div>
-                            <p className="text-white text-sm">
-                              {currentComment.text}
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
-
-                {/* Swipe for Full Video Button */}
-                <div className="absolute top-[30%] right-1">
-                  <Button className="flex items-center bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-3 rounded-l-[10px] text-white font-medium hover:from-purple-600 hover:to-pink-600">
-                    <span className="mr-2">Swipe for Full Video</span>
-                    <Play className="w-4 h-4" fill="white" />
-                  </Button>
-                </div>
-
-                {/* Right Side Actions */}
-                <div className="absolute right-0 bottom-[20%] flex flex-col items-center space-y-1">
-                  {/* Like */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleLike(video.id)}
-                    className="flex flex-col items-center space-y-2 h-auto p-3"
-                  >
-                    <Heart
-                      className={`w-7 h-7 ${
-                        likedVideos.has(video.id)
-                          ? "text-red-500 fill-red-500"
-                          : "text-white"
-                      }`}
-                    />
-                    <span className="text-white text-xs font-medium">
-                      {video.likes + (likedVideos.has(video.id) ? 1 : 0)}
-                    </span>
-                  </Button>
-
-                  {/* Bookmark */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleBookmark(video.id)}
-                    className="flex flex-col items-center space-y-1 h-auto p-3"
-                  >
-                    <Bookmark
-                      className={`w-7 h-7 ${
-                        bookmarkedVideos.has(video.id)
-                          ? "text-yellow-500 fill-yellow-500"
-                          : "text-white"
-                      }`}
-                    />
-                    <span className="text-white text-xs font-medium">
-                      {video.bookmarks +
-                        (bookmarkedVideos.has(video.id) ? 1 : 0)}
-                    </span>
-                  </Button>
-
-                  {/* Chat */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toggleComments(video.id)}
-                    className="flex flex-col items-center space-y-2 h-auto p-3"
-                  >
-                    <MessageCircle className="w-7 h-7 text-white" />
-                    <span className="text-white text-xs font-medium">
-                      {video.comments.length}
-                    </span>
-                  </Button>
-
-                  {/* Share */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="flex flex-col items-center space-y-2 h-auto p-3"
-                  >
-                    <Share className="w-7 h-7 text-white" />
-                    <span className="text-white text-xs font-medium">
-                      Share
-                    </span>
-                  </Button>
-                </div>
-
-                {/* Bottom Creator Info */}
-                <div className="absolute bottom-[150px] left-6 right-24">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Avatar className="w-12 h-12">
-                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold text-lg">
-                        {video.creator.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <span className="text-white font-semibold">
-                          {video.creator}
-                        </span>
-                        {video.isVerified && (
-                          <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs">✓</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-white/70 w-full">
-                        <span className="bg-purple-600 px-2 py-0.5 rounded text-xs">
-                          {video.category}
-                        </span>
-                        <span>{video.duration}</span>
-                        <span>{video.views}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-white/90 text-sm">
-                    Amazing performance! 🔥
-                  </p>
-                </div>
-
-                {/* Play/Pause Control */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setIsPlaying(!isPlaying)}
-                    className={`p-4 rounded-full transition-opacity h-auto ${
-                      isPlaying ? "opacity-0" : "opacity-100"
-                    }`}
-                  >
-                    {isPlaying ? (
-                      <Pause className="w-16 h-16 text-white" />
-                    ) : (
-                      <Play
-                        className="w-16 h-16 text-white ml-2"
-                        fill="white"
-                      />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Comments Modal */}
-              {showComments[video.id] && (
-                <div className="absolute inset-0 bg-black/80 z-50 flex items-end">
-                  <Card className="w-full h-[70%] bg-gray-900 rounded-t-xl border-gray-700">
-                    <CardContent className="p-0 h-full flex flex-col">
-                      {/* Comments Header */}
-                      <div className="flex items-center justify-between p-4 border-b border-gray-700">
-                        <h3 className="text-white font-semibold">
-                          {video.comments.length} Comments
-                        </h3>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleComments(video.id)}
-                          className="text-white hover:bg-gray-800"
-                        >
-                          <X className="w-5 h-5" />
-                        </Button>
-                      </div>
-
-                      {/* Comments List */}
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {video.comments.map((comment) => (
-                          <div key={comment.id} className="flex items-start space-x-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
-                                {comment.avatar}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-white font-medium text-sm">
-                                  {comment.user}
-                                </span>
-                                <span className="text-gray-400 text-xs">
-                                  {comment.time}
-                                </span>
-                              </div>
-                              <p className="text-gray-300 text-sm">
-                                {comment.text}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Add Comment */}
-                      <div className="p-4 border-t border-gray-700">
-                        <div className="flex items-center space-x-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs">
-                              You
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 flex space-x-2">
-                            <Input
-                              placeholder="Add a comment..."
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') {
-                                  addComment(video.id);
-                                }
-                              }}
-                            />
-                            <Button
-                              onClick={() => addComment(video.id)}
-                              disabled={!newComment.trim()}
-                              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                            >
-                              <Send className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
+      {/* Top Content */}
+      <div className="absolute top-6 left-4 right-4 flex justify-between items-start z-20">
+        <div className="flex-1 mr-4">
+          <h2 className="text-white text-xl font-bold mb-2 drop-shadow-lg line-clamp-2">
+            {item.title}
+          </h2>
+          <p className="text-white/90 text-sm mb-3 drop-shadow-md line-clamp-2">
+            {item.description}
+          </p>
+          <div className="flex gap-4">
+            <div className="flex items-center gap-1 bg-black/70 px-3 py-1 rounded-full">
+              <DollarSign size={14} className="text-blue-400" />
+              <span className="text-blue-400 text-xs font-semibold">
+                {item.isPremium ? '4.99' : 'Free'}
+              </span>
             </div>
-          ))}
+            <div className="flex items-center gap-1 bg-black/70 px-3 py-1 rounded-full">
+              <Star size={14} className="text-yellow-400" />
+              <span className="text-yellow-400 text-xs font-semibold">4.2</span>
+            </div>
+          </div>
         </div>
+        <button className="relative p-2">
+          <Bell size={20} className="text-white" />
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border border-black rounded-full" />
+        </button>
+      </div>
 
-        <style jsx>{`
-          .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-          .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-          }
-        `}</style>
+      {/* Main Play Button Overlay */}
+      {showPlayIcon && (
+        <button 
+          onClick={handlePlayToggle}
+          className="absolute inset-0 flex items-center justify-center z-30 bg-black/30 transition-opacity duration-300"
+        >
+          <div className="w-20 h-20 bg-white/90 rounded-full flex items-center justify-center shadow-2xl hover:scale-105 transition-transform">
+            <Play size={32} className="text-black ml-1" />
+          </div>
+        </button>
+      )}
+
+      {/* Rolling Comments */}
+      <AutoRollingComments 
+        videoId={item.id}
+        isActive={isActive}
+      />
+
+      {/* Bottom Content */}
+      <div className="absolute bottom-[8%] left-4 right-24 z-20">
+        {/* Creator Info */}
+        <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+          <div className="flex items-center">
+            <img 
+              src={item.creator.avatar} 
+              alt={item.creator.name}
+              className="w-14 h-14 rounded-full border-2 border-blue-400 mr-4"
+            />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-white font-semibold">{item.creator.name}</h3>
+                {item.creator.verified && (
+                  <CheckCircle size={16} className="text-blue-400" />
+                )}
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded-full border border-blue-400">
+                  {item.genre[0]}
+                </span>
+                <span className="text-white/80 text-xs">{item.duration}</span>
+                <span className="text-white/80 text-xs">{item.likes}K views</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="absolute right-4 bottom-[10%] flex flex-col items-center gap-2 z-30">
+        <button 
+          onClick={onLike}
+          className="flex flex-col items-center gap-1 p-2 hover:scale-110 transition-transform"
+        >
+          <Heart 
+            size={28} 
+            className={isLiked ? "text-red-500 fill-current" : "text-white"}
+          />
+          <span className="text-white text-xs font-medium drop-shadow-lg">
+            {item.likes + (isLiked ? 1 : 0)}K
+          </span>
+        </button>
+
+        <button 
+          onClick={() => setShowComments(true)}
+          className="flex flex-col items-center gap-1 p-2 hover:scale-110 transition-transform"
+        >
+          <MessageCircle size={28} className="text-white" />
+          <span className="text-white text-xs font-medium drop-shadow-lg">
+            {generateMockComments(item.id).length}
+          </span>
+        </button>
+
+        <button 
+          onClick={onAddToWatchlist}
+          className="flex flex-col items-center gap-1 p-2 hover:scale-110 transition-transform"
+        >
+          <Bookmark 
+            size={28} 
+            className={isInWatchlist ? "text-blue-400 fill-current" : "text-white"}
+          />
+          <span className="text-white text-xs font-medium drop-shadow-lg">
+            {item.saves}
+          </span>
+        </button>
+        
+        <button 
+          onClick={() => onShare('chat')}
+          className="flex flex-col items-center gap-1 p-2 hover:scale-110 transition-transform"
+        >
+          <Send size={28} className="text-white" />
+          <span className="text-white text-xs font-medium drop-shadow-lg">
+            Chat
+          </span>
+        </button>
+        
+        <button 
+          onClick={() => onShare('external')}
+          className="flex flex-col items-center gap-1 p-2 hover:scale-110 transition-transform"
+        >
+          <Share size={28} className="text-white" />
+          <span className="text-white text-xs font-medium drop-shadow-lg">
+            Share
+          </span>
+        </button>
+      </div>
+
+      {/* Comments Drawer */}
+      <CommentDrawer 
+        videoId={item.id}
+        videoTitle={item.title}
+        isOpen={showComments}
+        onClose={() => setShowComments(false)}
+      />
+
+      {/* Swipe Indicator */}
+      {  (
+        <div className="absolute right-4 top-[35%] transform -translate-y-1/2 z-40 animate-pulse">
+          <div className="flex bg-white/90 rounded-full p-3 shadow-lg animate-bounce-x">
+            <span className="text-black text-sm font-semibold mr-2">Swipe Up</span>
+            <ChevronRight size={24} className="text-black" />
+
+          </div>
+        </div>
+      )}
+
+      {/* Progress Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30 z-30">
+        <div 
+          className="h-full bg-blue-400 transition-all duration-300 ease-out"
+          style={{ width: `${videoProgress * 100}%` }}
+        />
       </div>
     </div>
   );
 };
 
-export default ExplorePage;
+export default function VideoFeed() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [watchlist, setWatchlist] = useState([]);
+  const [likedVideos, setLikedVideos] = useState([]);
+  const containerRef = useRef(null);
+
+  const handleScroll = useCallback(() => {
+    if (containerRef.current) {
+      const scrollTop = containerRef.current.scrollTop;
+      const windowHeight = window.innerHeight;
+      const newIndex = Math.round(scrollTop / windowHeight);
+      if (newIndex !== currentIndex) {
+        setCurrentIndex(newIndex);
+      }
+    }
+  }, [currentIndex]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
+
+  const handleUnlockContent = (item) => {
+    console.log('Unlock content:', item.title);
+    // Navigate to video details page
+  };
+
+  const handleAddToWatchlist = (itemId) => {
+    setWatchlist(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleLike = (itemId) => {
+    setLikedVideos(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleShare = async (item, type) => {
+    if (type === 'chat') {
+      console.log('Share in chat:', item.title);
+    } else {
+      try {
+        await navigator.share({
+          title: item.title,
+          text: `Check out "${item.title}" by ${item.creator.name}!`,
+          url: window.location.href,
+        });
+      } catch (error) {
+        // Fallback for browsers that don't support Web Share API
+        navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      }
+    }
+  };
+
+  return (
+    <div className="w-full h-screen bg-black overflow-hidden">
+      <div 
+        ref={containerRef}
+        className="h-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {contentData.map((item, index) => (
+          <div key={item.id} className="snap-start">
+            <VideoCard
+              item={item}
+              index={index}
+              currentIndex={currentIndex}
+              onUnlockContent={() => handleUnlockContent(item)}
+              onAddToWatchlist={() => handleAddToWatchlist(item.id)}
+              onShare={(type) => handleShare(item, type)}
+              onLike={() => handleLike(item.id)}
+              isInWatchlist={watchlist.includes(item.id)}
+              isLiked={likedVideos.includes(item.id)}
+              isActive={currentIndex === index}
+            />
+          </div>
+        ))}
+      </div>
+      
+      <style jsx>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .line-clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.3s ease-out forwards;
+        }
+        .animate-bounce-x {
+          animation: bounceX 1s ease-in-out infinite;
+        }
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes bounceX {
+          0%, 100% {
+            transform: translateX(0);
+          }
+          50% {
+            transform: translateX(10px);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
