@@ -1,23 +1,34 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Search, Menu, Heart, X, Home, Compass, Bookmark, ShoppingCart, MessageCircle, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Cookies from 'js-cookie';
-import ProfileButton from '@/components/ui/ProfileButton';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import TabsNevbar from "./TabsNevbar"
+import { useState, useEffect } from "react";
+import {
+  Search,
+  Menu,
+  Heart,
+  X,
+  Home,
+  Compass,
+  Bookmark,
+  ShoppingCart,
+  MessageCircle,
+  User,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import Cookies from "js-cookie";
+import ProfileButton from "@/components/ui/ProfileButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import TabsNevbar from "./TabsNevbar";
 export const Header = ({ onSearch }) => {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState("home");
 
   useEffect(() => {
-    const userSession = Cookies.get('userSession');
+    const userSession = Cookies.get("userSession");
     if (userSession) {
       setIsLoggedIn(true);
     }
@@ -35,12 +46,12 @@ export const Header = ({ onSearch }) => {
     router.push(path);
     setIsMobileMenuOpen(false);
     // Set active tab based on path
-    if (path === '/') setActiveTab('home');
-    else if (path === '/explore' ) setActiveTab('explore');
-    else if (path === '/my-list') setActiveTab('wishlist');
-    else if (path === '/orders') setActiveTab('orders');
-    else if (path === '/chat') setActiveTab('chat');
-    else if (path === '/profile') setActiveTab('profile');
+    if (path === "/") setActiveTab("home");
+    else if (path === "/explore") setActiveTab("explore");
+    else if (path === "/my-list") setActiveTab("wishlist");
+    else if (path === "/orders") setActiveTab("orders");
+    else if (path === "/chat") setActiveTab("chat");
+    else if (path === "/profile") setActiveTab("profile");
   };
 
   const toggleMobileSearch = () => {
@@ -58,19 +69,19 @@ export const Header = ({ onSearch }) => {
   };
 
   const navItems = [
-    { label: 'Home', href: '/' },
-    { label: 'TV', href: '/tv' },
-    { label: 'Movies', href: '/movies' },
-    { label: 'My List', href: '/my-list' },
+    { label: "Home", href: "/" },
+    { label: "TV", href: "/tv" },
+    { label: "Movies", href: "/movies" },
+    { label: "My List", href: "/my-list" },
   ];
 
   const mobileTabItems = [
-    { id: 'home', label: 'Home', href: '/', icon: Home },
-    { id: 'explore', label: 'Explore', href: '/explore', icon: Compass },
-    { id: 'wishlist', label: 'Wishlist', href: '/my-list', icon: Bookmark },
-    { id: 'orders', label: 'Orders', href: '/orders', icon: ShoppingCart },
-    { id: 'chat', label: 'Chat', href: '/chat', icon: MessageCircle },
-    { id: 'profile', label: 'Profile', href: '/profile', icon: User },
+    { id: "home", label: "Home", href: "/", icon: Home },
+    { id: "explore", label: "Explore", href: "/explore", icon: Compass },
+    { id: "wishlist", label: "Wishlist", href: "/my-list", icon: Bookmark },
+    { id: "orders", label: "Orders", href: "/orders", icon: ShoppingCart },
+    { id: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
+    { id: "profile", label: "Profile", href: "/profile", icon: User },
   ];
 
   return (
@@ -81,7 +92,7 @@ export const Header = ({ onSearch }) => {
             {/* Logo */}
             <div className="flex items-center space-x-4 sm:space-x-6 lg:space-x-8">
               <button
-                onClick={() => handleNavigation('/')}
+                onClick={() => handleNavigation("/")}
                 className="text-xl sm:text-2xl font-bold text-white hover:text-glimz-primary transition-colors"
               >
                 <span className="bg-gradient-to-r from-glimz-primary to-glimz-secondary bg-clip-text text-transparent">
@@ -141,15 +152,24 @@ export const Header = ({ onSearch }) => {
 
               {/* Auth Button */}
               {isLoggedIn ? (
-                <ProfileButton />
+                <div className="hidden md:block lg:block items-center">
+                  <ProfileButton />
+                </div>
               ) : (
-                <Button 
-                  onClick={() => handleNavigation('/signup')}
-                  className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
-                >
-                  <span className="hidden sm:inline">Sign Up</span>
-                  <span className="sm:hidden">Sign</span>
-                </Button>
+                <>
+                  <Button
+                    onClick={() => handleNavigation("/signup")}
+                    className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
+                  >
+                    <span className="">Sign In</span>
+                  </Button>
+                  <Button
+                    onClick={() => handleNavigation("/signup")}
+                    className="btn-glimz-secondary  hover:btn-glimz-primary text-sm px-3 sm:px-4 py-2"
+                  >
+                    <span className="">Sign Up</span>
+                  </Button>
+                </>
               )}
 
               {/* Tablet Menu Button - Only for tablets (sm to lg) */}
@@ -205,7 +225,7 @@ export const Header = ({ onSearch }) => {
               {/* Tablet My List Button */}
               <Button
                 variant="ghost"
-                onClick={() => handleNavigation('/my-list')}
+                onClick={() => handleNavigation("/my-list")}
                 className="w-full btn-glimz-ghost justify-start"
               >
                 <Heart className="h-4 w-4 mr-2" />
@@ -217,7 +237,7 @@ export const Header = ({ onSearch }) => {
       </header>
 
       {/* Mobile Bottom Tab Bar - Only for phones (below sm breakpoint) */}
-      <TabsNevbar/>
+      <TabsNevbar />
     </>
   );
 };
