@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import HomePage from "./pages/HomePage";
-import { useIsMobile } from "./hooks/use-mobile";
+import { useIsMobile } from "./hooks/use-Mobile";
 import ExplorePage from "./pages/ExplorePage";
 
 export default function Page() {
