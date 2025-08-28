@@ -8,7 +8,6 @@ import { VideoDetails } from '../pages/VideoDetails';
 import { MyList } from '../pages/MyList';
 import { Search } from '../pages/Search';
 import { useAppStore } from '../store/appStore';
-import { useIsMobile } from '../hooks/use-Mobile';
 import videosData from '@/data/videos.json'
 import { getVideoWithPlaceholders } from '../utils/updateVideoData';
 
