@@ -87,11 +87,11 @@ export const VideoCarousel = ({
         </div>
 
         {/* Gradient Fade Effects */}
-        <div className="absolute top-0 left-0 w-8 sm:w-16 h-full bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
+        {/* <div className="absolute top-0 left-0 w-8 sm:w-16 h-full bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
         <div className="absolute top-0 right-0 w-8 sm:w-16 h-full bg-gradient-to-l from-background to-transparent pointer-events-none z-10" />
-        
+         */}
         {/* Mobile Navigation Dots */}
-        <div className="sm:hidden flex justify-center mt-4 space-x-2">
+        {/* <div className="sm:hidden flex justify-center mt-4 space-x-2">
           {Array.from({ length: Math.ceil(videos.length / 2) }).map((_, index) => (
             <button
               key={index}
@@ -107,7 +107,7 @@ export const VideoCarousel = ({
               className="w-2 h-2 rounded-full bg-white/30 hover:bg-white/60 transition-colors"
             />
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );

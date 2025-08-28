@@ -16,9 +16,9 @@ export const VideoCard = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const sizeClasses = {
-    small: 'w-48 h-72',
-    medium: 'w-64 h-96',
-    large: 'w-80 h-[480px]'
+    small: 'w-48 h-28',
+    medium: 'w-64 h-36',
+    large: 'w-80 h-44'
   };
 
   const handleImageLoad = () => {
@@ -27,112 +27,122 @@ export const VideoCard = ({
 
   return (
     <div 
-      className={`video-card group relative ${sizeClasses[size]} flex-shrink-0`}
+      className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onViewDetails?.(video.id)}
     >
-      {/* Thumbnail */}
-      <div className="relative w-full h-full overflow-hidden rounded-card">
+      {/* Thumbnail Container */}
+      <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-900">
+        {/* Loading Skeleton */}
         {!imageLoaded && (
-          <div className="absolute inset-0 bg-background-secondary animate-pulse rounded-card" />
+          <div className="absolute inset-0 bg-gray-800 animate-pulse rounded-lg" />
         )}
+        
+        {/* Thumbnail Image */}
         <img
           src={video.thumbnail}
           alt={video.title}
-          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-110 ${
+          className={`w-full h-full object-cover transition-all duration-300 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
+          } ${isHovered ? 'scale-105' : 'scale-100'}`}
           onLoad={handleImageLoad}
           loading="lazy"
         />
         
-        {/* Gradient Overlay */}
-        <div className="video-card-overlay" />
+        {/* Dark Overlay */}
+        <div className="absolute inset-0 bg-black/30" />
         
-        {/* Hover Content */}
-        <div className={`absolute inset-0 p-4 flex flex-col justify-between transition-opacity duration-300 ${
+        {/* Duration Badge */}
+        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+          {video.duration}
+        </div>
+        
+        {/* Live Badge (if applicable) */}
+        {video.isLive && (
+          <div className="absolute top-2 left-2 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            LIVE
+          </div>
+        )}
+        
+        {/* Play Button Overlay */}
+        <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
           isHovered ? 'opacity-100' : 'opacity-0'
         }`}>
-          {/* Top Controls */}
-          <div className="flex justify-between items-start">
-            <div className="flex flex-wrap gap-1">
-              {video.genre.slice(0, 2).map((genre) => (
-                <span key={genre} className="genre-tag">
-                  {genre}
-                </span>
-              ))}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToList?.(video.id);
-              }}
-              className={`p-2 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 ${
-                isInWatchlist ? 'text-red-400' : 'text-white hover:text-red-400'
-              }`}
-            >
-              <Heart className={`h-4 w-4 ${isInWatchlist ? 'fill-current' : ''}`} />
-            </Button>
-          </div>
-
-          {/* Center Play Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                onPlay?.(video.id);
-              }}
-              className="btn-glimz-primary p-4 rounded-full shadow-glow"
-            >
-              <Play className="h-6 w-6 fill-current" />
-            </Button>
-          </div>
-
-          {/* Bottom Info */}
-          <div className="space-y-2">
-            <h3 className="text-white font-semibold text-lg leading-tight line-clamp-2">
-              {video.title}
-            </h3>
-            <p className="text-white/80 text-sm line-clamp-2">
-              {video.shortDescription}
-            </p>
-            
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-3 text-white/60">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {video.duration}
-                </span>
-                <span>{video.releaseYear}</span>
-                <span className="px-1.5 py-0.5 bg-white/20 rounded text-white/80">
-                  {video.rating}
-                </span>
-              </div>
-              
-              <div className="like-badge">
-                <ThumbsUp className="h-3 w-3" />
-                {video.likes}%
-              </div>
-            </div>
-          </div>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPlay?.(video.id);
+            }}
+            className="bg-white/20 backdrop-blur-sm border border-white/30 text-white hover:bg-white/30 p-3 rounded-full transition-all duration-200"
+          >
+            <Play className="h-5 w-5 fill-current" />
+          </Button>
         </div>
-
-        {/* Static Info (visible when not hovered) */}
-        <div className={`absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent transition-opacity duration-300 ${
-          isHovered ? 'opacity-0' : 'opacity-100'
-        }`}>
-          <h3 className="text-white font-medium text-base leading-tight line-clamp-2">
+        
+        {/* Bottom Content */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3">
+          {/* Title */}
+          <h3 className="text-white font-medium text-sm leading-tight line-clamp-2 mb-1">
             {video.title}
           </h3>
-          <div className="flex items-center gap-2 mt-1 text-xs text-white/60">
-            <span>{video.releaseYear}</span>
-            <span>•</span>
-            <span>{video.rating}</span>
+          
+          {/* Metadata */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-white/80">
+              {video.releaseYear && <span>{video.releaseYear}</span>}
+              {video.rating && (
+                <>
+                  <span>•</span>
+                  <span className="px-1 py-0.5 bg-white/20 rounded text-white/90 text-[10px]">
+                    {video.rating}
+                  </span>
+                </>
+              )}
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex items-center gap-1">
+              {video.likes && (
+                <div className="flex items-center gap-1 text-white/70 text-xs">
+                  <ThumbsUp className="h-3 w-3" />
+                  <span>{video.likes}%</span>
+                </div>
+              )}
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToList?.(video.id);
+                }}
+                className={`p-1 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 ${
+                  isInWatchlist ? 'text-red-400' : 'text-white hover:text-red-400'
+                } transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+              >
+                <Heart className={`h-3 w-3 ${isInWatchlist ? 'fill-current' : ''}`} />
+              </Button>
+            </div>
           </div>
         </div>
+        
+        {/* Genre Tags (on hover) */}
+        {video.genre && (
+          <div className={`absolute top-2 left-2 flex flex-wrap gap-1 transition-opacity duration-200 ${
+            isHovered ? 'opacity-100' : 'opacity-0'
+          }`}>
+            {video.genre.slice(0, 2).map((genre) => (
+              <span 
+                key={genre} 
+                className="bg-black/50 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-full border border-white/20"
+              >
+                {genre}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
