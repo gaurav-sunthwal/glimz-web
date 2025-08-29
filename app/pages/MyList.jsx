@@ -78,7 +78,7 @@ export const MyList = ({ onBack, onPlay, onViewDetails }) => {
           </div>
         ) : (
           // Video Grid
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          <div className="">
             {watchlistVideos.map((video) => (
               <div key={video.id} className="relative group">
                 <VideoCard
@@ -87,7 +87,7 @@ export const MyList = ({ onBack, onPlay, onViewDetails }) => {
                   onAddToList={handleRemoveFromList}
                   onViewDetails={onViewDetails}
                   isInWatchlist={true}
-                  size="small"
+                  size={medium}
                 />
                 
                 {/* Remove Button */}

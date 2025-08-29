@@ -81,6 +81,7 @@ export const VideoCarousel = ({
                 onViewDetails={onViewDetails}
                 isInWatchlist={watchlist.includes(video.id)}
                 size={size}
+                isPaid={video.isPaid}
               />
             </div>
           ))}

@@ -12,7 +12,8 @@
     "releaseYear": 2024,
     "rating": "PG-13",
     "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-    "featured": true
+    "featured": true,
+    "isPaid": "4.99"
   },
   {
     "id": "the-last-light",
@@ -26,6 +27,7 @@
     "duration": "1h 48m",
     "releaseYear": 2024,
     "rating": "R",
+    "isPaid": "6.99",
     "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
   },
   {
@@ -40,6 +42,7 @@
     "duration": "2h 3m",
     "releaseYear": 2023,
     "rating": "PG-13",
+    "isPaid": "2.59",
     "videoUrl": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
   },
   {

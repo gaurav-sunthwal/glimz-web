@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Heart, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { VideoCard } from '@/components/VideoCard';
-import { useAppStore } from '../store/appStore';
-import videosData from '@/data/videos.json';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Heart, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { VideoCard } from "@/components/VideoCard";
+import { useAppStore } from "../store/appStore";
+import videosData from "@/data/videos.json";
 
 export default function MyListPage() {
   const router = useRouter();
@@ -14,7 +14,7 @@ export default function MyListPage() {
   const [watchlistVideos, setWatchlistVideos] = useState([]);
 
   useEffect(() => {
-    const videos = videosData.filter(video => watchlist.includes(video.id));
+    const videos = videosData.filter((video) => watchlist.includes(video.id));
     setWatchlistVideos(videos);
   }, [watchlist]);
 
@@ -23,11 +23,11 @@ export default function MyListPage() {
   };
 
   const handleClearAll = () => {
-    watchlistVideos.forEach(video => removeFromWatchlist(video.id));
+    watchlistVideos.forEach((video) => removeFromWatchlist(video.id));
   };
 
   const handleBack = () => {
-    router.push('/');
+    router.push("/");
   };
 
   const handlePlayVideo = (videoId) => {
@@ -57,7 +57,9 @@ export default function MyListPage() {
                 My List
               </h1>
               <p className="text-foreground-muted mt-2">
-                {watchlistVideos.length} {watchlistVideos.length === 1 ? 'video' : 'videos'} in your watchlist
+                {watchlistVideos.length}{" "}
+                {watchlistVideos.length === 1 ? "video" : "videos"} in your
+                watchlist
               </p>
             </div>
           </div>
@@ -83,8 +85,8 @@ export default function MyListPage() {
             </div>
             <h2 className="text-2xl font-semibold mb-4">Your list is empty</h2>
             <p className="text-foreground-muted mb-8 max-w-md">
-              Add movies and shows to your list by clicking the heart icon when browsing. 
-              Your saved content will appear here for easy access.
+              Add movies and shows to your list by clicking the heart icon when
+              browsing. Your saved content will appear here for easy access.
             </p>
             <Button onClick={handleBack} className="btn-glimz-primary">
               Browse Movies & Shows
@@ -92,7 +94,7 @@ export default function MyListPage() {
           </div>
         ) : (
           // Video Grid
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+          <div className="flex flex-wrap gap-4">
             {watchlistVideos.map((video) => (
               <div key={video.id} className="relative group">
                 <VideoCard
@@ -101,9 +103,9 @@ export default function MyListPage() {
                   onAddToList={handleRemoveFromList}
                   onViewDetails={handleViewDetails}
                   isInWatchlist={true}
-                  size="small"
+                  size="medium"
                 />
-                
+
                 {/* Remove Button */}
                 <Button
                   onClick={() => handleRemoveFromList(video.id)}

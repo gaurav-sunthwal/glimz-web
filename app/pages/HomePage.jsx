@@ -31,7 +31,7 @@ const HomePage = () => {
 
   // Organize videos by genre
   const genreCategories = [
-    { title: 'Trending Now', videos: videos.slice(0, 8) },
+    { title: 'Trending Now', videos: videos.slice(0, 8)  },
     { title: 'AI Picks for You', videos: videos.filter(v => v.likes >= 90) },
     { title: 'Sci-Fi Adventures', videos: videos.filter(v => v.genre.includes('Sci-Fi')) },
     { title: 'Drama Collection', videos: videos.filter(v => v.genre.includes('Drama')) },
@@ -133,6 +133,7 @@ const HomePage = () => {
               onViewDetails={handleViewDetails}
               watchlist={watchlist}
               size="medium"
+        
             />
           )
         ))}

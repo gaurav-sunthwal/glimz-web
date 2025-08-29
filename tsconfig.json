@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/page.jsx", "app/pages/MyList.jsx", "app/video/[id]/page.jsx", "app/my-list/page.jsx", "app/search/page.jsx", "app/signup/creator/page.jsx", "app/signup/page.jsx", "app/signup/user/page.jsx", "app/signup/otp/page.jsx", "app/signup/mobile/[userType]/page.jsx", "app/pages/ExplorePage.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/page.jsx", "app/pages/MyList.jsx", "app/video/[id]/page.jsx", "app/my-list/page.jsx", "app/search/page.jsx", "app/signup/creator/page.jsx", "app/signup/page.jsx", "app/signup/user/page.jsx", "app/signup/otp/page.jsx", "app/signup/mobile/[userType]/page.jsx", "app/pages/ExplorePage.jsx", "components/VideoCard.jsx"],
   "exclude": ["node_modules"]
 }
