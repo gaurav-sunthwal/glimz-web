@@ -190,7 +190,7 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
               </p>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            <div className="flex flex-wrap gap-6">
               {searchResults.map((video) => (
                 <VideoCard
                   key={video.id}
@@ -199,7 +199,7 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
                   onAddToList={handleWatchlistToggle}
                   onViewDetails={onViewDetails}
                   isInWatchlist={watchlist.includes(video.id)}
-                  size="small"
+                  size="large"
                 />
               ))}
             </div>

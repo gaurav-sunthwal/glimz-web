@@ -12,8 +12,6 @@ import {
   DollarSign,
   CheckCircle,
   X,
-  Maximize,
-  Minimize,
   Pause,
 } from "lucide-react";
 import {
@@ -188,14 +186,14 @@ const CommentDrawer = ({ videoId, videoTitle, isOpen, onClose }) => {
         comment.id === commentId
           ? {
               ...comment,
-              likes: commentLikes[commentId]
-                ? comment.likes - 1
-                : comment.likes + 1,
-            }
-          : comment
-      )
-    );
-  };
+            likes: commentLikes[commentId]
+              ? comment.likes - 1
+              : comment.likes + 1,
+          }
+        : comment
+    )
+  );
+};
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose}>
@@ -332,7 +330,7 @@ function AutoRollingComments({ videoId, isActive }) {
   }, [comments, currentIndex, isActive]);
 
   return (
-    <div className="absolute bottom-[25%] left-4 right-20 space-y-2 z-10">
+    <div className="absolute bottom-[30%] left-4 right-20 space-y-2 z-10">
       {visibleComments.map((comment) => (
         <div
           key={comment.id}
@@ -547,7 +545,7 @@ const VideoCard = ({
       <AutoRollingComments videoId={item.id} isActive={isActive} />
 
       {/* Bottom Content */}
-      <div className="absolute bottom-[8%] left-4 right-24 z-20 pointer-events-none">
+      <div className="absolute bottom-[9%] left-4 right-24 z-20 pointer-events-none">
         {/* Creator Info */}
         <div className="bg-black/80 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
           <div className="flex items-center">
@@ -580,7 +578,7 @@ const VideoCard = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="absolute right-4 bottom-[10%] flex flex-col items-center gap-2 z-30">
+      <div className="absolute right-4 bottom-[10%] flex flex-col items-center gap-2 z-30  w-[10%]">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -670,7 +668,7 @@ const VideoCard = ({
       >
         <div className="flex bg-white/90 rounded-full p-3 shadow-lg animate-bounce-x">
           <span className="text-black text-sm font-semibold mr-2">
-            View Video
+            Swipe to Video
           </span>
           <ChevronRight size={24} className="text-black" />
         </div>
@@ -691,64 +689,25 @@ export default function VideoFeed() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [watchlist, setWatchlist] = useState([]);
   const [likedVideos, setLikedVideos] = useState([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(true);
   const containerRef = useRef(null);
 
-  // Fullscreen functionality
-  const toggleFullscreen = async () => {
+  // Function to enter fullscreen
+  const enterFullscreen = async () => {
     try {
-      if (!isFullscreen) {
-        // Enter fullscreen
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if (document.documentElement.webkitRequestFullscreen) {
-          await document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) {
-          await document.documentElement.msRequestFullscreen();
-        }
-      } else {
-        // Exit fullscreen
-        if (document.exitFullscreen) {
-          await document.exitFullscreen();
-        } else if (document.webkitExitFullscreen) {
-          await document.webkitExitFullscreen();
-        } else if (document.msExitFullscreen) {
-          await document.msExitFullscreen();
-        }
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        await document.documentElement.webkitRequestFullscreen();
+      } else if (document.documentElement.msRequestFullscreen) {
+        await document.documentElement.msRequestFullscreen();
       }
+      setShowFullscreenPrompt(false);
     } catch (error) {
-      console.log("Fullscreen operation failed:", error);
+      console.log("Fullscreen failed:", error);
+      setShowFullscreenPrompt(false);
     }
   };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(
-        !!(
-          document.fullscreenElement ||
-          document.webkitFullscreenElement ||
-          document.msFullscreenElement
-        )
-      );
-    };
-
-    // Listen for fullscreen changes
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-    document.addEventListener("msfullscreenchange", handleFullscreenChange);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      document.removeEventListener(
-        "webkitfullscreenchange",
-        handleFullscreenChange
-      );
-      document.removeEventListener(
-        "msfullscreenchange",
-        handleFullscreenChange
-      );
-    };
-  }, []);
 
   const handleScroll = useCallback(() => {
     if (containerRef.current) {
@@ -818,14 +777,38 @@ export default function VideoFeed() {
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-black overflow-hidden">
-      {/* Fullscreen Toggle Button */}
-      <button
-        onClick={toggleFullscreen}
-        className="fixed top-[100px] right-4 z-50 bg-black/70 backdrop-blur-sm text-white p-3 rounded-full hover:bg-black/90 transition-all duration-200 shadow-lg border border-white/20"
-        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-      >
-        {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-      </button>
+      {/* Fullscreen Prompt Overlay */}
+      {showFullscreenPrompt && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-gray-900 rounded-2xl p-8 max-w-md mx-4 text-center border border-gray-700 shadow-2xl">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Play size={28} className="text-white ml-1" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Best Experience
+              </h2>
+              <p className="text-gray-400 leading-relaxed">
+                For the best video experience, we recommend viewing in fullscreen mode
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={enterFullscreen}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-colors duration-200 shadow-lg"
+              >
+                Enter Fullscreen
+              </button>
+              <button
+                onClick={() => setShowFullscreenPrompt(false)}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-6 rounded-xl transition-colors duration-200"
+              >
+                Continue Without Fullscreen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         ref={containerRef}

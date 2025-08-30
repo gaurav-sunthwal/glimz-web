@@ -121,7 +121,7 @@ const HomePage = () => {
       />
 
       {/* Content Sections */}
-      <div className="relative z-10 -mt-32">
+      <div className="relative z-10 ">
         {genreCategories.map((category) => (
           category.videos.length > 0 && (
             <VideoCarousel
