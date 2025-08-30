@@ -86,7 +86,7 @@ export const Header = ({ onSearch }) => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
+      <header className=" sticky top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
         <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo */}
@@ -161,14 +161,9 @@ export const Header = ({ onSearch }) => {
                     onClick={() => handleNavigation("/signup")}
                     className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
                   >
-                    <span className="">Sign In</span>
+                    <span className="">Get Started</span>
                   </Button>
-                  <Button
-                    onClick={() => handleNavigation("/signup")}
-                    className="btn-glimz-secondary  hover:btn-glimz-primary text-sm px-3 sm:px-4 py-2"
-                  >
-                    <span className="">Sign Up</span>
-                  </Button>
+                
                 </>
               )}
 

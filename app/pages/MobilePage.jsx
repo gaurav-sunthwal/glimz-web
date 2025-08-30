@@ -11,7 +11,7 @@ export default function MobilePage() {
       "You are on Premium Cricket offer - 4K Mobile/TV payment plan. Next payment on Nov 20, 2025. Download the StreamMax Mobile App to start watching.",
     starIcon: "GLimz",
     downloadButtonText: "Download the App",
-    manageAccountText: "Manage Account",
+
     bgImg: "https://picsum.photos/1920/1080?random=2&blur=2",
   };
 
@@ -47,10 +47,6 @@ export default function MobilePage() {
         <div className="w-full max-w-sm space-y-4">
           <button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold py-4 px-6 rounded-2xl shadow-2xl hover:from-blue-600 hover:to-purple-700 transform hover:scale-105 transition-all duration-300 text-lg backdrop-blur-sm">
             {welcomeContent.downloadButtonText}
-          </button>
-
-          <button className="w-full bg-white/10 border-2 border-white/30 text-white font-semibold py-4 px-6 rounded-2xl backdrop-blur-md hover:bg-white/20 hover:border-white/50 transition-all duration-300 text-lg">
-            {welcomeContent.manageAccountText}
           </button>
         </div>
       </div>
