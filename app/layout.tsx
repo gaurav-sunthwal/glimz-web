@@ -1,11 +1,10 @@
-import type { Metadata } from "next";
+// app/layout.tsx  (Server Component ✅)
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Suspense } from "react";
-import TabsNevbar from "../components/TabsNevbar";
-const inter = Inter({ subsets: ["latin"] });
+import ClientWrapper from "./ClientWrapper";
 
-import type { Viewport } from "next";
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Glimz - AI-Powered Streaming Platform",
@@ -28,10 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <Suspense>
-          <TabsNevbar />
-          {children}
-        </Suspense>
+        <ClientWrapper>{children}</ClientWrapper>
       </body>
     </html>
   );

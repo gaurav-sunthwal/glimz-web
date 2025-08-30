@@ -17,7 +17,7 @@ export const VideoCard = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const sizeClasses = {
-    small: "w-48 h-28",
+    small: "w-60 h-38",
     medium: "w-80 h-48",
     large: "w-96 h-56",
   };
