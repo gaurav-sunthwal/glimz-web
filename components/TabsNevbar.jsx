@@ -39,7 +39,7 @@ const TabsNavBar = () => {
         setActiveTab("profile");
       }
     }
-  }, [pathname]);
+  }, [pathname, tabItems]);
 
   const handleNavigation = (tab) => {
     setActiveTab(tab.id);

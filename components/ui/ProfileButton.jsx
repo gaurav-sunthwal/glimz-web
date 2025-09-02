@@ -1,28 +1,64 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
-import Cookies from 'js-cookie';
-import { FaUserCircle, FaYoutube, FaSignOutAlt, FaUsers, FaClock, FaTag, FaEnvelope, FaPhone } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { FaUserCircle, FaSignOutAlt, FaUsers, FaEnvelope, FaPhone } from 'react-icons/fa';
+import { secureApi } from '@/app/lib/secureApi';
 
-const ProfileButton = () => {
+const ProfileButton = ({ onAuthChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const isCheckingRef = useRef(false);
+
+  const checkAuthStatus = async () => {
+    if (isCheckingRef.current) return;
+    try {
+      isCheckingRef.current = true;
+      setLoading(true);
+      const response = await secureApi.getUserDetails();
+      if (response.status && response.ViewerDetail) {
+        setUserData({
+          ...response.ViewerDetail,
+          userType: response.ViewerDetail.is_creator ? 'creator' : 'user'
+        });
+        if (onAuthChange) onAuthChange(true);
+      } else {
+        setUserData(null);
+        if (onAuthChange) onAuthChange(false);
+      }
+    } catch (error) {
+      setUserData(null);
+      if (onAuthChange) onAuthChange(false);
+    } finally {
+      setLoading(false);
+      isCheckingRef.current = false;
+    }
+  };
 
   useEffect(() => {
-    const sessionCookie = Cookies.get('userSession');
-    if (sessionCookie) {
-      try {
-        setUserData(JSON.parse(sessionCookie));
-      } catch (error) {
-        console.error("Failed to parse user session cookie:", error);
-        Cookies.remove('userSession');
-      }
-    }
+    // Run once on mount only
+    checkAuthStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleLogout = () => {
-    Cookies.remove('userSession');
-    window.location.reload();
+  const handleLogout = async () => {
+    try {
+      await secureApi.logout();
+      setUserData(null);
+      setIsOpen(false);
+      if (onAuthChange) onAuthChange(false);
+      window.dispatchEvent(new Event('auth-changed'));
+      router.push('/');
+      router.refresh();
+    } catch (error) {
+      setUserData(null);
+      setIsOpen(false);
+      if (onAuthChange) onAuthChange(false);
+      router.push('/');
+      router.refresh();
+    }
   };
 
   // Close dropdown when clicking outside
@@ -36,6 +72,16 @@ const ProfileButton = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
+
+  if (loading) {
+    return (
+      <div className="relative">
+        <button className="group relative p-2 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 shadow-lg">
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative profile-dropdown">
@@ -56,7 +102,7 @@ const ProfileButton = () => {
           />
           
           {/* Dropdown */}
-          <div className="absolute  -right-[100px] mt-4 w-80 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700 z-50 overflow-hidden backdrop-blur-sm">
+          <div className="absolute -right-[100px] mt-4 w-80 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700 z-50 overflow-hidden backdrop-blur-sm">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20"></div>
             
             {userData ? (
@@ -69,10 +115,13 @@ const ProfileButton = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-bold text-white truncate">
-                        {userData.name || userData.youtubeChannelName}
+                        {userData.first_name} {userData.last_name}
                       </h3>
                       <p className="text-xs text-purple-300 uppercase tracking-wider font-medium">
                         {userData.userType === 'creator' ? 'Content Creator' : 'User'}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        @{userData.username}
                       </p>
                     </div>
                   </div>
@@ -84,67 +133,53 @@ const ProfileButton = () => {
                     <FaEnvelope className="w-4 h-4 text-blue-400 flex-shrink-0" />
                     <span className="text-sm truncate">{userData.email}</span>
                   </div>
-                  {userData.mobileNumber && (
+                  {userData.mobile_no && (
                     <div className="flex items-center space-x-3 text-gray-300">
                       <FaPhone className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span className="text-sm">{userData.mobileNumber}</span>
+                      <span className="text-sm">{userData.mobile_no}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Creator Specific Info */}
-                {userData.userType === 'creator' && (
+                {/* Profile Image */}
+                {userData.profile_image && (
                   <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
-                    <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
-                      <FaYoutube className="w-4 h-4 text-red-500 mr-2" />
-                      Channel Details
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 gap-3 text-sm">
-                      {userData.genre && (
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center text-gray-400">
-                            <FaTag className="w-3 h-3 mr-2 text-yellow-400" />
-                            Genre
-                          </span>
-                          <span className="text-white font-medium">{userData.genre}</span>
-                        </div>
-                      )}
-                      
-                      {userData.subscribers && (
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center text-gray-400">
-                            <FaUsers className="w-3 h-3 mr-2 text-blue-400" />
-                            Subscribers
-                          </span>
-                          <span className="text-white font-medium">{userData.subscribers}</span>
-                        </div>
-                      )}
-                      
-                      {userData.contentLength && (
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center text-gray-400">
-                            <FaClock className="w-3 h-3 mr-2 text-purple-400" />
-                            Content Length
-                          </span>
-                          <span className="text-white font-medium">{userData.contentLength}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center justify-center">
+                      <img 
+                        src={userData.profile_image} 
+                        alt="Profile" 
+                        className="w-20 h-20 rounded-full object-cover border-2 border-purple-500"
+                      />
                     </div>
-
-                    {userData.youtubeChannelLink && (
-                      <a
-                        href={userData.youtubeChannelLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 flex items-center justify-center w-full px-4 py-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white text-sm font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-                      >
-                        <FaYoutube className="w-4 h-4 mr-2" />
-                        View Channel
-                      </a>
-                    )}
                   </div>
                 )}
+
+                {/* Account Info */}
+                <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
+                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                    <FaUsers className="w-4 h-4 text-blue-400 mr-2" />
+                    Account Details
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 gap-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">User ID</span>
+                      <span className="text-white font-medium">{userData.user_id}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">UUID</span>
+                      <span className="text-white font-medium text-xs">{userData.uuid?.substring(0, 8)}...</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-400">Member Since</span>
+                      <span className="text-white font-medium">
+                        {new Date(userData.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Logout Section */}
                 <div className="px-6 py-4 border-t border-gray-700/50">

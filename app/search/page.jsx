@@ -34,7 +34,7 @@ function SearchComponent() {
       setLocalQuery(initialQuery);
       handleSearch(initialQuery);
     }
-  }, [initialQuery]);
+  }, [initialQuery, handleSearch]);
 
   const handleSearch = (query) => {
     if (!query.trim()) {
@@ -181,7 +181,7 @@ function SearchComponent() {
             </div>
             <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-4">No results found</h2>
             <p className="text-foreground-muted mb-6 sm:mb-8 max-w-md text-sm sm:text-base">
-              We couldn't find anything matching "{localQuery}". Try adjusting your search or browse our popular genres.
+              We couldn&apos;t find anything matching &quot;{localQuery}&quot;. Try adjusting your search or browse our popular genres.
             </p>
             <div className="flex flex-wrap gap-2 sm:gap-3 justify-center">
               {genres.slice(0, 4).map((genre) => (
@@ -200,14 +200,14 @@ function SearchComponent() {
           <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
               <h2 className="text-xl sm:text-2xl font-bold">
-                Search Results for "{localQuery}"
+                Search Results for &quot;{localQuery}&quot;
               </h2>
               <p className="text-foreground-muted text-sm sm:text-base">
                 {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} found
               </p>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-6">
+            <div className=" flex flex-wrap justify-start gap-5">
               {searchResults.map((video) => (
                 <VideoCard
                   key={video.id}
@@ -216,7 +216,7 @@ function SearchComponent() {
                   onAddToList={handleWatchlistToggle}
                   onViewDetails={handleViewDetails}
                   isInWatchlist={watchlist.includes(video.id)}
-                  size="small"
+                  size="large"
                 />
               ))}
             </div>
