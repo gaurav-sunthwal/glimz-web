@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Play, Info, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 export const HeroBanner = ({ video, onPlay, onMoreInfo }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-
+  const router = useRouter();
   useEffect(() => {
     setImageLoaded(false);
   }, [video.id]);
@@ -69,7 +70,7 @@ export const HeroBanner = ({ video, onPlay, onMoreInfo }) => {
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <Button
-              onClick={() => onPlay?.(video.id)}
+              onClick={() => router.push(`/video/${video.id}`)}
               className="btn-glimz-primary text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 shadow-glow w-full sm:w-auto"
             >
               <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2 fill-current" />

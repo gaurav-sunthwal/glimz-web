@@ -153,7 +153,6 @@ export const VideoDetails = ({ videoId, onBack, onPlay }) => {
                 console.log('View details for:', videoId);
               }}
               watchlist={watchlist}
-              size="medium"
             />
           </div>
         </section>

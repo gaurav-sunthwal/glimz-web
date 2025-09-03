@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Play, Heart, Clock, ThumbsUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export const VideoCard = ({
   video,
@@ -17,13 +18,17 @@ export const VideoCard = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const sizeClasses = {
-    small: "w-60 h-38",
-    medium: "w-80 h-50",
+    small: "w-96 h-56",
+    medium: "w-96 h-56",
     large: "w-96 h-56",
   };
 
   const handleImageLoad = () => {
     setImageLoaded(true);
+  };
+  const router = useRouter();
+  const handleViewDetails = (videoId) => {
+    router.push(`/video/${videoId}`);
   };
 
   return (
@@ -31,7 +36,7 @@ export const VideoCard = ({
       className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-20`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onViewDetails?.(video.id)}
+      onClick={() =>handleViewDetails(video.id)}
     >
       {/* Main Card Container */}
       <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-xl transition-shadow duration-300">

@@ -29,13 +29,6 @@ function SearchComponent() {
 
   const [localQuery, setLocalQuery] = useState(initialQuery);
 
-  useEffect(() => {
-    if (initialQuery) {
-      setLocalQuery(initialQuery);
-      handleSearch(initialQuery);
-    }
-  }, [initialQuery, handleSearch]);
-
   const handleSearch = (query) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -58,6 +51,13 @@ function SearchComponent() {
       setIsSearching(false);
     }, 300);
   };
+
+  useEffect(() => {
+    if (initialQuery) {
+      setLocalQuery(initialQuery);
+      handleSearch(initialQuery);
+    }
+  }, [initialQuery]);
 
   const handleInputChange = (value) => {
     setLocalQuery(value);

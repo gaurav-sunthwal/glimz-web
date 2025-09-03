@@ -170,7 +170,7 @@ export default function VideoDetailsPage() {
               onAddToList={handleAddToList}
               onViewDetails={handleViewDetails}
               watchlist={watchlist}
-              size="medium"
+              size="large"
             />
           </div>
         </section>
