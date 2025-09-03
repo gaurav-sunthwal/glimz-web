@@ -5,11 +5,11 @@ import { Header } from '@/components/Header';
 import { HeroBanner } from '@/components/HeroBanner';
 import { VideoCarousel } from '@/components/VideoCarousel';
 import { VideoDetails } from '../pages/VideoDetails';
-import { MyList } from '../pages/MyList';
 import { Search } from '../pages/Search';
 import { useAppStore } from '../store/appStore';
 import videosData from '@/data/videos.json'
 import { getVideoWithPlaceholders } from '../utils/updateVideoData';
+import { useIsMobile } from '../hooks/use-Mobile';
 
 const HomePage = () => {
   const { 
@@ -22,7 +22,7 @@ const HomePage = () => {
   
   const [currentVideoId, setCurrentVideoId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-
+  const isMobile =  useIsMobile();
   // Get videos with consistent placeholder images
   const videos = getVideoWithPlaceholders();
   
@@ -81,15 +81,7 @@ const HomePage = () => {
     );
   }
 
-  if (currentPage === '/my-list') {
-    return (
-      <MyList
-        onBack={() => setCurrentPage('/')}
-        onPlay={handlePlayVideo}
-        onViewDetails={handleViewDetails}
-      />
-    );
-  }
+ 
 
   if (currentPage === '/search') {
     return (
@@ -121,7 +113,7 @@ const HomePage = () => {
       />
 
       {/* Content Sections */}
-      <div className="relative z-10 -mt-32">
+      <div className="relative z-10 ">
         {genreCategories.map((category) => (
           category.videos.length > 0 && (
             <VideoCarousel
@@ -132,7 +124,7 @@ const HomePage = () => {
               onAddToList={handleWatchlistToggle}
               onViewDetails={handleViewDetails}
               watchlist={watchlist}
-              size="medium"
+              size=  {isMobile ? "medium" : "large"}
         
             />
           )

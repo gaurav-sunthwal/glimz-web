@@ -1,35 +1,33 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { ArrowLeft, Search as SearchIcon, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { VideoCard } from '@/components/VideoCard';
-import videosData from '@/data/videos.json';
-import { useAppStore } from '../store/appStore';
+import { useState, useEffect } from "react";
+import { ArrowLeft, Search as SearchIcon, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { VideoCard } from "@/components/VideoCard";
+import videosData from "@/data/videos.json";
+import { useAppStore } from "../store/appStore";
 
-export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => {
-  const { 
-    searchQuery, 
-    searchResults, 
-    isSearching, 
+export const Search = ({
+  onBack,
+  onPlay,
+  onViewDetails,
+  initialQuery = "",
+}) => {
+  const {
+    searchQuery,
+    searchResults,
+    isSearching,
     watchlist,
     addToWatchlist,
     removeFromWatchlist,
-    setSearchQuery, 
-    setSearchResults, 
+    setSearchQuery,
+    setSearchResults,
     setIsSearching,
-    clearSearch 
+    clearSearch,
   } = useAppStore();
 
   const [localQuery, setLocalQuery] = useState(initialQuery || searchQuery);
-
-  useEffect(() => {
-    if (initialQuery) {
-      setLocalQuery(initialQuery);
-      handleSearch(initialQuery);
-    }
-  }, [initialQuery]);
 
   const handleSearch = (query) => {
     if (!query.trim()) {
@@ -43,16 +41,24 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
 
     // Simulate API delay
     setTimeout(() => {
-      const filtered = videosData.filter(video => 
-        video.title.toLowerCase().includes(query.toLowerCase()) ||
-        video.description.toLowerCase().includes(query.toLowerCase()) ||
-        video.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
+      const filtered = videosData.filter(
+        (video) =>
+          video.title.toLowerCase().includes(query.toLowerCase()) ||
+          video.description.toLowerCase().includes(query.toLowerCase()) ||
+          video.genre.some((g) => g.toLowerCase().includes(query.toLowerCase()))
       );
-      
+
       setSearchResults(filtered);
       setIsSearching(false);
     }, 300);
   };
+
+  useEffect(() => {
+    if (initialQuery) {
+      setLocalQuery(initialQuery);
+      handleSearch(initialQuery);
+    }
+  }, [initialQuery]);
 
   const handleInputChange = (value) => {
     setLocalQuery(value);
@@ -65,7 +71,7 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
   };
 
   const handleClearSearch = () => {
-    setLocalQuery('');
+    setLocalQuery("");
     clearSearch();
   };
 
@@ -77,7 +83,16 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
     }
   };
 
-  const genres = ['Action', 'Drama', 'Comedy', 'Sci-Fi', 'Thriller', 'Romance', 'Fantasy', 'Horror'];
+  const genres = [
+    "Action",
+    "Drama",
+    "Comedy",
+    "Sci-Fi",
+    "Thriller",
+    "Romance",
+    "Fantasy",
+    "Horror",
+  ];
 
   return (
     <div className="min-h-screen bg-background text-white pt-20">
@@ -91,7 +106,7 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
           >
             <ArrowLeft className="h-6 w-6" />
           </Button>
-          
+
           {/* Search Input */}
           <div className="flex-1 relative max-w-2xl">
             <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-foreground-muted" />
@@ -137,10 +152,16 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
             <div>
               <h2 className="text-2xl font-bold mb-6">Popular Searches</h2>
               <div className="flex flex-wrap gap-3">
-                {['Action Movies', 'Sci-Fi Series', 'Comedy Shows', 'Drama Films', 'Thriller Movies'].map((term) => (
+                {[
+                  "Action Movies",
+                  "Sci-Fi Series",
+                  "Comedy Shows",
+                  "Drama Films",
+                  "Thriller Movies",
+                ].map((term) => (
                   <Button
                     key={term}
-                    onClick={() => handleInputChange(term.split(' ')[0])}
+                    onClick={() => handleInputChange(term.split(" ")[0])}
                     variant="outline"
                     className="btn-glimz-ghost border-white/20 hover:border-glimz-primary"
                   >
@@ -154,7 +175,9 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
           // Loading State
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-16 h-16 border-4 border-glimz-primary border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-foreground-muted">Searching for "{localQuery}"...</p>
+            <p className="text-foreground-muted">
+              Searching for "{localQuery}"...
+            </p>
           </div>
         ) : searchResults.length === 0 ? (
           // No Results State
@@ -164,7 +187,8 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
             </div>
             <h2 className="text-2xl font-semibold mb-4">No results found</h2>
             <p className="text-foreground-muted mb-8 max-w-md">
-              We couldn't find anything matching "{localQuery}". Try adjusting your search or browse our popular genres.
+              We couldn&apos;t find anything matching &quot;{localQuery}&quot;. Try adjusting
+              your search or browse our popular genres.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
               {genres.slice(0, 4).map((genre) => (
@@ -183,14 +207,15 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">
-                Search Results for "{localQuery}"
+                Search Results for &quot;{localQuery}&quot;
               </h2>
               <p className="text-foreground-muted">
-                {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} found
+                {searchResults.length}{" "}
+                {searchResults.length === 1 ? "result" : "results"} found
               </p>
             </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+
+            <div className="flex flex-wrap gap-6">
               {searchResults.map((video) => (
                 <VideoCard
                   key={video.id}
@@ -199,7 +224,7 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
                   onAddToList={handleWatchlistToggle}
                   onViewDetails={onViewDetails}
                   isInWatchlist={watchlist.includes(video.id)}
-                  size="small"
+                  size=""
                 />
               ))}
             </div>

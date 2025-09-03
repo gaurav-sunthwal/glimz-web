@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Play, Heart, Clock, ThumbsUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 export const VideoCard = ({
   video,
@@ -17,24 +18,28 @@ export const VideoCard = ({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const sizeClasses = {
-    small: "w-48 h-28",
-    medium: "w-80 h-48",
+    small: "w-96 h-56",
+    medium: "w-96 h-56",
     large: "w-96 h-56",
   };
 
   const handleImageLoad = () => {
     setImageLoaded(true);
   };
+  const router = useRouter();
+  const handleViewDetails = (videoId) => {
+    router.push(`/video/${videoId}`);
+  };
 
   return (
     <div
-      className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-all duration-300 hover:scale-205 hover:z-20`}
+      className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-20`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() => onViewDetails?.(video.id)}
+      onClick={() =>handleViewDetails(video.id)}
     >
       {/* Main Card Container */}
-      <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-2xl transition-shadow duration-300">
+      <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-xl transition-shadow duration-300">
         {/* Loading Skeleton */}
         {!imageLoaded && (
           <div className="absolute inset-0 bg-gray-800 animate-pulse rounded-lg" />
@@ -105,7 +110,7 @@ export const VideoCard = ({
         {/* Content Overlay - Fixed Height */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent p-4">
           {/* Title */}
-          <div className=" flex justify-between py-2">
+          <div className="flex justify-between py-2">
             <h3 className="text-white font-semibold text-sm leading-tight line-clamp-2 mb-2">
               {video.title}
             </h3>
@@ -191,15 +196,6 @@ export const VideoCard = ({
             )}
           </div>
         </div>
-
-        {/* Hover Border Effect */}
-        <div
-          className={`absolute inset-0 rounded-lg border-2 transition-all duration-300 pointer-events-none ${
-            isHovered
-              ? "border-white/30 shadow-lg shadow-white/10"
-              : "border-transparent"
-          }`}
-        />
       </div>
     </div>
   );

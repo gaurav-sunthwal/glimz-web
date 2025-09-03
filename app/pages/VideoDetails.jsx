@@ -135,7 +135,7 @@ export const VideoDetails = ({ videoId, onBack, onPlay }) => {
       {/* Recommended Videos */}
       {recommendedVideos.length > 0 && (
         <section className="py-16">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="container mx-auto px-1 sm:px-2 lg:px-3">
             <h2 className="text-3xl font-bold mb-8">More Like This</h2>
             <VideoCarousel
               title=""
@@ -153,7 +153,6 @@ export const VideoDetails = ({ videoId, onBack, onPlay }) => {
                 console.log('View details for:', videoId);
               }}
               watchlist={watchlist}
-              size="medium"
             />
           </div>
         </section>

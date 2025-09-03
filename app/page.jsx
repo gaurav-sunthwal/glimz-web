@@ -2,17 +2,22 @@
 import React, { useEffect } from "react";
 import HomePage from "./pages/HomePage";
 import ExplorePage from "./pages/ExplorePage";
+import { useIsMobile } from "./hooks/use-Mobile";
+import MobilePage from "./pages/MobilePage.jsx";
 
 export default function Page() {
- 
+  const isMobile = useIsMobile();
   return (
     <>
-      <div className="block md:hidden">
-        <ExplorePage />
-      </div>
-      <div className="hidden md:block">
-        <HomePage />
-      </div>
+      {isMobile ? (
+        <div className="">
+          <MobilePage/>
+        </div>
+      ) : (
+        <div className="">
+          <HomePage />
+        </div>
+      )}
     </>
   );
 }

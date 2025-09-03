@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { VideoCard } from "@/components/VideoCard";
 import { useAppStore } from "../store/appStore";
 import videosData from "@/data/videos.json";
+import { useIsMobile } from "../hooks/use-Mobile";
 
 export default function MyListPage() {
   const router = useRouter();
   const { watchlist, removeFromWatchlist } = useAppStore();
   const [watchlistVideos, setWatchlistVideos] = useState([]);
-
+  const isMobile = useIsMobile()
   useEffect(() => {
     const videos = videosData.filter((video) => watchlist.includes(video.id));
     setWatchlistVideos(videos);
@@ -103,7 +104,7 @@ export default function MyListPage() {
                   onAddToList={handleRemoveFromList}
                   onViewDetails={handleViewDetails}
                   isInWatchlist={true}
-                  size="medium"
+                  size={isMobile ? "medium" : "large"}
                 />
 
                 {/* Remove Button */}

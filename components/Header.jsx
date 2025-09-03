@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Search,
   Menu,
@@ -14,30 +14,97 @@ import {
   User,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import ProfileButton from "@/components/ui/ProfileButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TabsNevbar from "./TabsNevbar";
-export const Header = ({ onSearch }) => {
+import { secureApi } from "@/app/lib/secureApi";
+
+
+export const Header = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
+  const lastCheckRef = useRef(0);
+  const isCheckingRef = useRef(false);
+
+  const setIsLoggedInIfChanged = (next) => {
+    setIsLoggedIn((prev) => (prev === next ? prev : next));
+  };
+
+  const checkAuthStatus = async () => {
+    try {
+      if (isCheckingRef.current) return;
+
+      // Basic cookie check first
+      const authToken = document.cookie.includes('auth_token=');
+      const hasUuid = document.cookie.includes('uuid=');
+
+      // Cooldown: if recently verified and cookies still present, skip re-check
+      const now = Date.now();
+      if (isLoggedIn && authToken && hasUuid && now - lastCheckRef.current < 30000) {
+        return;
+      }
+
+      // If no cookies, immediately mark logged out without hitting API
+      if (!authToken || !hasUuid) {
+        setIsLoggedInIfChanged(false);
+        lastCheckRef.current = now;
+        return;
+      }
+
+      isCheckingRef.current = true;
+      // Confirm with server only when needed
+      const response = await secureApi.getUserDetails();
+      if (response.status && response.ViewerDetail) {
+        setIsLoggedInIfChanged(true);
+      } else {
+        setIsLoggedInIfChanged(false);
+      }
+      lastCheckRef.current = Date.now();
+    } catch (error) {
+      // If API fails but cookies exist, keep current state to avoid loops
+    } finally {
+      isCheckingRef.current = false;
+    }
+  };
 
   useEffect(() => {
-    const userSession = Cookies.get("userSession");
-    if (userSession) {
-      setIsLoggedIn(true);
-    }
+    checkAuthStatus();
+  }, []);
+
+  // Check auth status when the page becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkAuthStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Listen for explicit auth change events only
+  useEffect(() => {
+    const handleAuthEvent = () => {
+      checkAuthStatus();
+    };
+
+    window.addEventListener('auth-changed', handleAuthEvent);
+    return () => {
+      window.removeEventListener('auth-changed', handleAuthEvent);
+    };
   }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim() && onSearch) {
-      onSearch(searchQuery.trim());
+    if (searchQuery.trim()) {
+      // Navigate to search page with query
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setIsMobileSearchOpen(false); // Close mobile search after search
     }
   };
@@ -75,18 +142,11 @@ export const Header = ({ onSearch }) => {
     { label: "My List", href: "/my-list" },
   ];
 
-  const mobileTabItems = [
-    { id: "home", label: "Home", href: "/", icon: Home },
-    { id: "explore", label: "Explore", href: "/explore", icon: Compass },
-    { id: "wishlist", label: "Wishlist", href: "/my-list", icon: Bookmark },
-    { id: "orders", label: "Orders", href: "/orders", icon: ShoppingCart },
-    { id: "chat", label: "Chat", href: "/chat", icon: MessageCircle },
-    { id: "profile", label: "Profile", href: "/profile", icon: User },
-  ];
+
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
+      <header className=" sticky top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
         <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo */}
@@ -101,12 +161,16 @@ export const Header = ({ onSearch }) => {
               </button>
 
               {/* Desktop Navigation */}
-              <nav className="hidden lg:flex space-x-6">
+              <nav className="hidden lg:flex items-center space-x-6">
                 {navItems.map((item) => (
                   <button
                     key={item.href}
                     onClick={() => handleNavigation(item.href)}
-                    className="btn-glimz-ghost text-sm font-medium"
+                    className={`text-sm font-medium transition-colors ${
+                      activeTab === item.id
+                        ? "text-glimz-primary"
+                        : "text-white/70 hover:text-white"
+                    }`}
                   >
                     {item.label}
                   </button>
@@ -114,8 +178,8 @@ export const Header = ({ onSearch }) => {
               </nav>
             </div>
 
-            {/* Search and Actions */}
-            <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4">
+            {/* Right Side */}
+            <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4">
               {/* Desktop Search */}
               <form onSubmit={handleSearch} className="hidden sm:block">
                 <div className="relative">
@@ -130,7 +194,7 @@ export const Header = ({ onSearch }) => {
                 </div>
               </form>
 
-              {/* Mobile Search Button */}
+              {/* Search Button - Mobile Only */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -152,22 +216,41 @@ export const Header = ({ onSearch }) => {
 
               {/* Auth Button */}
               {isLoggedIn ? (
-                <div className="hidden md:block lg:block items-center">
-                  <ProfileButton />
+                <div className="hidden md:flex lg:flex items-center space-x-2">
+                  <ProfileButton/>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        await secureApi.logout();
+                        setIsLoggedIn(false);
+                        router.push('/');
+                        window.dispatchEvent(new Event('auth-changed'));
+                      } catch (error) {
+                        setIsLoggedIn(false);
+                        router.push('/');
+                        window.dispatchEvent(new Event('auth-changed'));
+                      }
+                    }}
+                    variant="ghost"
+                    className="btn-glimz-ghost text-sm px-3 py-2"
+                  >
+                    Logout
+                  </Button>
                 </div>
               ) : (
                 <>
                   <Button
-                    onClick={() => handleNavigation("/signup")}
-                    className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
+                    onClick={() => handleNavigation("/login")}
+                    variant="ghost"
+                    className="btn-glimz-ghost text-sm px-3 sm:px-4 py-2 mr-2"
                   >
-                    <span className="">Sign In</span>
+                    <span className="">Login</span>
                   </Button>
                   <Button
                     onClick={() => handleNavigation("/signup")}
-                    className="btn-glimz-secondary  hover:btn-glimz-primary text-sm px-3 sm:px-4 py-2"
+                    className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
                   >
-                    <span className="">Sign Up</span>
+                    <span className="">Get Started</span>
                   </Button>
                 </>
               )}
@@ -231,6 +314,28 @@ export const Header = ({ onSearch }) => {
                 <Heart className="h-4 w-4 mr-2" />
                 My List
               </Button>
+
+              {/* Tablet Logout Button */}
+              {isLoggedIn && (
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      await secureApi.logout();
+                      setIsLoggedIn(false);
+                      router.push('/');
+                      window.dispatchEvent(new Event('auth-changed'));
+                    } catch (error) {
+                      setIsLoggedIn(false);
+                      router.push('/');
+                      window.dispatchEvent(new Event('auth-changed'));
+                    }
+                  }}
+                  className="w-full btn-glimz-ghost justify-start text-red-400 hover:text-red-300"
+                >
+                  Logout
+                </Button>
+              )}
             </div>
           )}
         </div>
