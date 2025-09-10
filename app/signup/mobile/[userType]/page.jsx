@@ -18,12 +18,11 @@ export default function CreatorMobileEntryPage() {
 
     try {
       // Send OTP using secure API
-      const isCreator = userType === 'creator' ? 1 : 0;
-      const response = await secureApi.sendOTP(mobileNumber, isCreator);
+      const response = await secureApi.sendOTP(mobileNumber);
       console.log("otp and the res" + response)
       if (response.status) {
         // OTP sent successfully, redirect to OTP verification
-        router.push(`/signup/otp?mobileNumber=${mobileNumber}&userType=${userType}`);
+        router.push(`/signup/otp?mobileNumber=${mobileNumber}`);
       } else {
         setError(response.message || 'Failed to send OTP');
       }

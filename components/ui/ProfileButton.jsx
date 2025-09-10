@@ -18,17 +18,29 @@ const ProfileButton = ({ onAuthChange }) => {
       isCheckingRef.current = true;
       setLoading(true);
       const response = await secureApi.getUserDetails();
+      
       if (response.status && response.ViewerDetail) {
+        // User has completed profile setup
         setUserData({
           ...response.ViewerDetail,
-          userType: response.ViewerDetail.is_creator ? 'creator' : 'user'
+          userType: response.isCreator ? 'creator' : 'user'
         });
         if (onAuthChange) onAuthChange(true);
+      } else if (response.needsProfileSetup) {
+        // User needs to complete profile setup
+        console.log("User needs to complete profile setup");
+        setUserData(null);
+        if (onAuthChange) onAuthChange(false);
+        // Redirect to profile setup and preselect type if provided
+        const preferred = response.preferredType ? `?userType=${encodeURIComponent(response.preferredType)}` : '';
+        window.location.href = `/signup/details${preferred}`;
       } else {
+        // User not authenticated
         setUserData(null);
         if (onAuthChange) onAuthChange(false);
       }
     } catch (error) {
+      console.error("Error checking auth status:", error);
       setUserData(null);
       if (onAuthChange) onAuthChange(false);
     } finally {

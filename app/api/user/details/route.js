@@ -10,13 +10,17 @@ export async function GET() {
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
+    // Debug: Log cookies for troubleshooting
+    console.log("Fetched cookies:", { uuid, auth_token });
+
     // Check if UUID exists
     if (!uuid) {
+      console.warn("No UUID found in cookies");
       return NextResponse.json(
         {
           status: false,
           error: "Authentication required",
-          message: "No UUID found in cookies",
+          message: "Viewer is not Registered",
         },
         { status: 401 }
       );
@@ -24,61 +28,129 @@ export async function GET() {
 
     // Check if auth token exists
     if (!auth_token) {
+      console.warn("No authentication token found in cookies");
       return NextResponse.json(
         {
           status: false,
           error: "Authentication required",
-          message: "No authentication token found",
+          message: "Viewer is not Registered",
         },
         { status: 401 }
       );
     }
 
-    // Make API request to get viewer details
-    const response = await fetch(`${API_BASE_URL}/viewer/getDetail`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "uuid": uuid,
-        "auth_token": auth_token,
-      },
+    // Try to get user details - first try viewer endpoint, then creator endpoint
+    let response;
+    let data;
+
+    // First try viewer endpoint
+    console.log("Making request to external API for viewer details", {
+      url: `${API_BASE_URL}/viewer/getDetail`,
+      uuid: uuid,
     });
 
-    // Handle non-OK responses
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        {
-          status: false,
-          error: "API request failed",
-          message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+    try {
+      response = await fetch(`${API_BASE_URL}/viewer/getDetail`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "uuid": uuid,
+          "auth_token": auth_token,
         },
-        { status: response.status }
-      );
-    }
-
-    // Parse response data
-    const data = await response.json();
-
-    // Check if the API returned a successful status
-    if (data.status) {
-      return NextResponse.json({
-        status: true,
-        ViewerDetail: data.ViewerDetail,
       });
-    } else {
-      return NextResponse.json(
-        {
-          status: false,
-          error: "API error",
-          message: data.message || "Failed to fetch viewer details",
-        },
-        { status: 400 }
-      );
+
+      console.log("Viewer API response status:", response.status);
+
+      if (response.ok) {
+        data = await response.json();
+        console.log("Viewer API response data:", data);
+
+        // Only treat as success if actual details are present
+        if (data && data.status && data.ViewerDetail) {
+          return NextResponse.json({
+            status: true,
+            ViewerDetail: data.ViewerDetail,
+            isCreator: false,
+          });
+        }
+
+        // If API says not registered (no details), instruct client to complete viewer profile
+        const messageText = (data?.message || "").toLowerCase();
+        if (data?.status && !data?.ViewerDetail && messageText.includes('not registered')) {
+          return NextResponse.json({
+            status: false,
+            needsProfileSetup: true,
+            preferredType: 'user',
+          }, { status: 404 });
+        }
+        // Otherwise fall through to try creator endpoint
+      }
+    } catch (error) {
+      console.log("Viewer endpoint failed, trying creator endpoint...", error);
     }
+
+    // If viewer endpoint failed, try creator endpoint
+    console.log("Making request to external API for creator details", {
+      url: `${API_BASE_URL}/creator/getDetail`,
+      uuid: uuid,
+    });
+
+    try {
+      response = await fetch(`${API_BASE_URL}/creator/getDetail`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "uuid": uuid,
+          "auth_token": auth_token,
+        },
+      });
+
+      console.log("Creator API response status:", response.status);
+
+      if (response.ok) {
+        data = await response.json();
+        console.log("Creator API response data:", data);
+
+        // Only treat as success if actual details are present
+        if (data && data.status && (data.CreatorDetail || data.ViewerDetail)) {
+          return NextResponse.json({
+            status: true,
+            ViewerDetail: data.CreatorDetail || data.ViewerDetail,
+            isCreator: true,
+          });
+        }
+
+        // If API says creator not registered (no details), instruct client to complete creator profile
+        const messageText = (data?.message || "").toLowerCase();
+        if (data?.status && !data?.CreatorDetail && !data?.ViewerDetail && messageText.includes('not registered')) {
+          return NextResponse.json({
+            status: false,
+            needsProfileSetup: true,
+            preferredType: 'creator',
+          }, { status: 404 });
+        }
+        // Otherwise fall through to needsProfileSetup
+      }
+    } catch (error) {
+      console.log("Creator endpoint also failed", error);
+    }
+
+    // If both endpoints failed, check if user needs to complete profile
+    // This happens when is_creator is null (user hasn't completed signup)
+    console.log("Both endpoints failed, user may need to complete profile");
+    return NextResponse.json(
+      {
+        status: false,
+        error: "Profile incomplete",
+        message: "User needs to complete profile setup",
+        needsProfileSetup: true,
+      },
+      { status: 404 }
+    );
+
   } catch (error) {
     // Log the actual error for debugging
-    console.error("Error in GET /api/viewer/details:", error);
+    console.error("Error in GET /api/user/details:", error);
 
     // Return a generic error response
     return NextResponse.json(

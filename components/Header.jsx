@@ -13,13 +13,13 @@ import {
   MessageCircle,
   User,
 } from "lucide-react";
+import Logo from "./Logo";
 import { useRouter } from "next/navigation";
 import ProfileButton from "@/components/ui/ProfileButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import TabsNevbar from "./TabsNevbar";
 import { secureApi } from "@/app/lib/secureApi";
-
 
 export const Header = () => {
   const router = useRouter();
@@ -40,12 +40,17 @@ export const Header = () => {
       if (isCheckingRef.current) return;
 
       // Basic cookie check first
-      const authToken = document.cookie.includes('auth_token=');
-      const hasUuid = document.cookie.includes('uuid=');
+      const authToken = document.cookie.includes("auth_token=");
+      const hasUuid = document.cookie.includes("uuid=");
 
       // Cooldown: if recently verified and cookies still present, skip re-check
       const now = Date.now();
-      if (isLoggedIn && authToken && hasUuid && now - lastCheckRef.current < 30000) {
+      if (
+        isLoggedIn &&
+        authToken &&
+        hasUuid &&
+        now - lastCheckRef.current < 30000
+      ) {
         return;
       }
 
@@ -61,6 +66,10 @@ export const Header = () => {
       const response = await secureApi.getUserDetails();
       if (response.status && response.ViewerDetail) {
         setIsLoggedInIfChanged(true);
+      } else if (response.needsProfileSetup) {
+        // User needs to complete profile setup, redirect them
+        window.location.href = "/signup/details";
+        setIsLoggedInIfChanged(false);
       } else {
         setIsLoggedInIfChanged(false);
       }
@@ -84,8 +93,9 @@ export const Header = () => {
       }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
   // Listen for explicit auth change events only
@@ -94,9 +104,9 @@ export const Header = () => {
       checkAuthStatus();
     };
 
-    window.addEventListener('auth-changed', handleAuthEvent);
+    window.addEventListener("auth-changed", handleAuthEvent);
     return () => {
-      window.removeEventListener('auth-changed', handleAuthEvent);
+      window.removeEventListener("auth-changed", handleAuthEvent);
     };
   }, []);
 
@@ -142,8 +152,6 @@ export const Header = () => {
     { label: "My List", href: "/my-list" },
   ];
 
-
-
   return (
     <>
       <header className=" sticky top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
@@ -151,14 +159,18 @@ export const Header = () => {
           <div className="flex items-center justify-between h-14 sm:h-16">
             {/* Logo */}
             <div className="flex items-center space-x-4 sm:space-x-6 lg:space-x-8">
-              <button
+              {/* <button
                 onClick={() => handleNavigation("/")}
                 className="text-xl sm:text-2xl font-bold text-white hover:text-glimz-primary transition-colors"
               >
                 <span className="bg-gradient-to-r from-glimz-primary to-glimz-secondary bg-clip-text text-transparent">
                   glimz
                 </span>
-              </button>
+              </button> */}
+
+              <div className="flex items-center">
+                <Logo className="h-8 w-8 sm:h-10 sm:w-10 mr-2 drop-shadow-lg" />
+              </div>
 
               {/* Desktop Navigation */}
               <nav className="hidden lg:flex items-center space-x-6">
@@ -217,18 +229,18 @@ export const Header = () => {
               {/* Auth Button */}
               {isLoggedIn ? (
                 <div className="hidden md:flex lg:flex items-center space-x-2">
-                  <ProfileButton/>
+                  <ProfileButton />
                   <Button
                     onClick={async () => {
                       try {
                         await secureApi.logout();
                         setIsLoggedIn(false);
-                        router.push('/');
-                        window.dispatchEvent(new Event('auth-changed'));
+                        router.push("/");
+                        window.dispatchEvent(new Event("auth-changed"));
                       } catch (error) {
                         setIsLoggedIn(false);
-                        router.push('/');
-                        window.dispatchEvent(new Event('auth-changed'));
+                        router.push("/");
+                        window.dispatchEvent(new Event("auth-changed"));
                       }
                     }}
                     variant="ghost"
@@ -323,12 +335,12 @@ export const Header = () => {
                     try {
                       await secureApi.logout();
                       setIsLoggedIn(false);
-                      router.push('/');
-                      window.dispatchEvent(new Event('auth-changed'));
+                      router.push("/");
+                      window.dispatchEvent(new Event("auth-changed"));
                     } catch (error) {
                       setIsLoggedIn(false);
-                      router.push('/');
-                      window.dispatchEvent(new Event('auth-changed'));
+                      router.push("/");
+                      window.dispatchEvent(new Event("auth-changed"));
                     }
                   }}
                   className="w-full btn-glimz-ghost justify-start text-red-400 hover:text-red-300"

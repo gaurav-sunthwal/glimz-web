@@ -20,8 +20,8 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Send OTP using secure API (isCreator = 0 for regular users)
-      const response = await secureApi.sendOTP(mobileNumber, 0);
+      // Send OTP using secure API
+      const response = await secureApi.sendOTP(mobileNumber);
       
       if (response.status) {
         // OTP sent successfully, move to OTP step

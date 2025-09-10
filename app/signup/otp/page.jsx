@@ -12,7 +12,6 @@ export default function OtpVerificationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mobileNumber = searchParams.get('mobileNumber');
-  const userType = searchParams.get('userType');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,13 +20,23 @@ export default function OtpVerificationPage() {
 
     try {
       const response = await secureApi.verifyOTP(mobileNumber, otp);
-      
-      if (response.status) {
-        // OTP verified successfully, redirect to the appropriate details page
-        const destination = userType === 'creator' ? '/signup/creator' : '/signup/user';
-        router.push(`${destination}?mobileNumber=${mobileNumber}`);
+      console.log("verify otp response:", response);
+      if (response && response.status) {
+        // If backend returns user with is_creator flag, decide routing
+        const isCreator = response.user?.is_creator;
+        if (isCreator === null || typeof isCreator === 'undefined') {
+          // Not registered yet → go to details
+          router.push(`/signup/details?mobileNumber=${mobileNumber}`);
+        } else {
+          // Registered and logged in → go home and refresh header
+          window.dispatchEvent(new Event('auth-changed'));
+          router.push('/');
+          setTimeout(() => {
+            window.location.reload();
+          }, 50);
+        }
       } else {
-        setError(response.message || 'Invalid OTP');
+        setError(response?.message || 'Invalid OTP');
       }
     } catch (error) {
       setError('Network error. Please try again.');

@@ -6,12 +6,8 @@ import Link from 'next/link';
 export default function SignupPage() {
   const router = useRouter();
 
-  const handleCreatorSignup = () => {
-    router.push('/signup/mobile/creator');
-  };
-
-  const handleUserSignup = () => {
-    router.push('/signup/mobile/user');
+  const handleSignup = () => {
+    router.push('/signup/mobile/user'); // Use any userType since it will be handled in the unified page
   };
 
   return (
@@ -19,16 +15,10 @@ export default function SignupPage() {
       <h1 className="text-4xl font-bold mb-8">Join Glimz</h1>
       <div className="flex w-full max-w-sm flex-col gap-4">
         <button 
-          onClick={handleCreatorSignup}
+          onClick={handleSignup}
           className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
         >
-          Signup as a Creator
-        </button>
-        <button 
-          onClick={handleUserSignup}
-          className="w-full bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
-        >
-          Signup as a User
+          Get Started
         </button>
         
         <div className="text-center mt-6">

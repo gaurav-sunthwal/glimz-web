@@ -1,88 +1,209 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
-const API_BASE_URL = 'http://api.glimznow.com/api';
+const API_BASE_URL = "http://api.glimznow.com/api";
+
+// GET handler: method not supported
+export async function GET() {
+  return NextResponse.json(
+    { error: "Method not supported. Please use POST to create a user." },
+    { status: 405 }
+  );
+}
 
 export async function POST(request) {
   try {
-    const { firstName, lastName, email, username } = await request.json();
-    console.log('User creation request:', { firstName, lastName, email, username });
-    
-    // Read cookies from request headers
-    const cookieHeader = request.headers.get('cookie');
-    console.log('Cookie header:', cookieHeader);
-    
-    let authToken = null;
-    let uuid = null;
-    
-    if (cookieHeader) {
-      const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
-      
-      authToken = cookies['auth_token'];
-      uuid = cookies['uuid'];
-    }
-
-    console.log('Cookies found:', { 
-      hasAuthToken: !!authToken, 
-      hasUuid: !!uuid,
-      authTokenLength: authToken?.length,
-      uuid: uuid 
-    });
-
-    if (!authToken || !uuid) {
-      console.log('Authentication failed - missing cookies');
+    // Parse request body
+    let requestData;
+    try {
+      requestData = await request.json();
+    } catch (parseError) {
       return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    if (!firstName || !lastName || !email || !username) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: "Invalid JSON in request body", parseError: parseError.message },
         { status: 400 }
       );
     }
 
-    console.log('Calling external API with headers:', { authToken: authToken.substring(0, 20) + '...', uuid });
-    // Call the external API with proper headers
-    const response = await fetch(`${API_BASE_URL}/viewer/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'auth_token': authToken,
-        'uuid': uuid
-      },
-      body: JSON.stringify({
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        username: username
-      })
-    });
+    const {
+      firstName,
+      lastName,
+      email,
+      username,
+      userType = "user",
+      youtubeChannelName,
+      youtubeChannelLink,
+      subscribers,
+      contentLength,
+    } = requestData || {};
 
-    const data = await response.json();
-    console.log('External API response:', data);
-    
-    if (data.status) {
+    // Validate required fields
+    if (!firstName || !lastName || !email || !username) {
+      return NextResponse.json(
+        {
+          error:
+            "All fields are required (firstName, lastName, email, username)",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Read cookies
+    let authToken = null;
+    let uuid = null;
+    try {
+      const cookieStore = cookies();
+      const authTokenCookie = cookieStore.get("auth_token");
+      const uuidCookie = cookieStore.get("uuid");
+      authToken = authTokenCookie ? authTokenCookie.value : null;
+      uuid = uuidCookie ? uuidCookie.value : null;
+    } catch (cookieError) {
+      return NextResponse.json(
+        { error: "Failed to read cookies", details: cookieError.message },
+        { status: 500 }
+      );
+    }
+
+    if (!authToken || !uuid) {
+      return NextResponse.json(
+        {
+          error:
+            "Authentication required - missing auth_token or uuid cookies",
+        },
+        { status: 401 }
+      );
+    }
+
+    // Choose endpoint: /viewer/create for user, /creator/create for creator
+    const apiEndpoint =
+      userType && userType === "creator"
+        ? "creator/create"
+        : "viewer/create";
+
+    // Prepare fetch with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/${apiEndpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          auth_token: authToken,
+          uuid: uuid,
+        },
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          username: username,
+          ...(userType === "creator"
+            ? {
+                youtube_channel_name: youtubeChannelName,
+                youtube_channel_link: youtubeChannelLink,
+                number_of_subscribers: subscribers,
+                content_length: contentLength,
+              }
+            : {}),
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === "AbortError") {
+        return NextResponse.json(
+          { error: "Request timeout - external API did not respond" },
+          { status: 504 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: "Failed to connect to external API",
+          details: fetchError.message,
+        },
+        { status: 503 }
+      );
+    }
+
+    // Handle non-ok response
+    if (!response.ok) {
+      let errorText;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        errorText = "Could not read error response";
+        console.log("Could not read error response", e)
+      }
+      return NextResponse.json(
+        {
+          error: "External API error",
+          status: response.status,
+          details: errorText,
+        },
+        { status: response.status }
+      );
+    }
+
+    // Parse response
+    let data;
+    try {
+      const responseText = await response.text();
+      if (!responseText) {
+        return NextResponse.json(
+          { error: "Empty response from external API" },
+          { status: 502 }
+        );
+      }
+      data = JSON.parse(responseText);
+    } catch (jsonError) {
+      return NextResponse.json(
+        { error: "Invalid JSON response from external API" , jsonError },
+        { status: 502 }
+      );
+    }
+
+    // Return result
+    if (data && data.status === true) {
       return NextResponse.json({
         status: true,
-        message: 'User created successfully'
+        message: data.message || "User created successfully",
+        data: data.data || null,
       });
     } else {
-      return NextResponse.json({
-        status: false,
-        message: data.message || 'Failed to create user'
-      });
+      return NextResponse.json(
+        {
+          status: false,
+          message: (data && data.message) || "Failed to create user",
+          error: (data && data.error) || null,
+        },
+        { status: 400 }
+      );
     }
   } catch (error) {
-    console.error('Error creating user:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: "Internal server error",
+        details:
+          typeof process !== "undefined" &&
+          process.env &&
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : undefined,
+      },
       { status: 500 }
     );
   }
+}
+
+// OPTIONS handler for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 }

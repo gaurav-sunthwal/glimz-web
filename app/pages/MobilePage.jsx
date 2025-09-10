@@ -1,3 +1,4 @@
+import Logo from "@/components/Logo";
 import Image from "next/image";
 import React from "react";
 
@@ -29,9 +30,7 @@ export default function MobilePage() {
       {/* Main content overlay */}
       <div className="relative z-10 flex flex-col items-center justify-end min-h-screen p-8 pb-12">
         {/* Star icon */}
-        <span className="text-2xl bg-gradient-to-r from-glimz-primary to-glimz-secondary bg-clip-text text-transparent">
-          glimz
-        </span>
+        <Logo/>
 
         {/* Welcome text */}
         <div className="text-center max-w-sm mb-12">
