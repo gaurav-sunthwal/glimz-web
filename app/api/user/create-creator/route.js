@@ -168,6 +168,7 @@ export async function POST(request) {
         path: '/'
       });
 
+      console.log('Creator created successfully. Set is_creator cookie to: 1');
       return response;
     } else {
       return NextResponse.json(
