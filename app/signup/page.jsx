@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,7 +12,8 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
+    <AuthGuard requireAuth={false}>
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center">
       <h1 className="text-4xl font-bold mb-8">Join Glimz</h1>
       <div className="flex w-full max-w-sm flex-col gap-4">
         <button 
@@ -31,5 +33,6 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }

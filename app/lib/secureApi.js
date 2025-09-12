@@ -63,6 +63,47 @@ export const secureApi = {
     return await userDetailsCache.inflight;
   },
 
+  async getUserDetailsByType({ force = false } = {}) {
+    const now = Date.now();
+    const isCacheValid = !force && userDetailsCache.data && now - userDetailsCache.timestamp < 30000;
+    if (isCacheValid) return userDetailsCache.data;
+    if (userDetailsCache.inflight) return await userDetailsCache.inflight;
+
+    userDetailsCache.inflight = (async () => {
+      // Check is_creator cookie to determine which endpoint to call
+      const isCreatorCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('is_creator='))
+        ?.split('=')[1];
+
+      console.log("Checking is_creator cookie:", isCreatorCookie);
+      
+      let endpoint;
+      if (isCreatorCookie === '1') {
+        endpoint = '/api/user/get-creator-details';
+        console.log("Calling creator endpoint");
+      } else if (isCreatorCookie === '0') {
+        endpoint = '/api/user/get-user-details';
+        console.log("Calling user endpoint");
+      } else {
+        // Fallback to original endpoint
+        endpoint = '/api/user/details';
+        console.log("Calling fallback endpoint");
+      }
+
+      const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
+      const data = await resp.json();
+      if (data && data.status) {
+        userDetailsCache.data = data;
+        userDetailsCache.timestamp = Date.now();
+      }
+      userDetailsCache.inflight = null;
+      return data;
+    })();
+
+    return await userDetailsCache.inflight;
+  },
+
   async logout() {
     const resp = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     const data = await resp.json();

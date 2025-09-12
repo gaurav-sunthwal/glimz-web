@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { secureApi } from '../../../lib/secureApi';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function CreatorMobileEntryPage() {
   const [mobileNumber, setMobileNumber] = useState('');
@@ -35,7 +36,8 @@ export default function CreatorMobileEntryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+    <AuthGuard requireAuth={false}>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Enter Your Mobile Number</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,5 +63,6 @@ export default function CreatorMobileEntryPage() {
         </form>
       </div>
     </div>
+    </AuthGuard>
   );
 }

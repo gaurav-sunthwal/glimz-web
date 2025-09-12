@@ -1,10 +1,71 @@
 // Authentication utility functions
 
 /**
- * Check if user is currently authenticated
+ * Check if user is currently authenticated by checking is_creator cookie
+ * @returns {boolean} True if user is authenticated, false otherwise
+ */
+export function isUserAuthenticated() {
+  if (typeof document === 'undefined') return false; // Server-side check
+  
+  const isCreatorCookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('is_creator='))
+    ?.split('=')[1];
+  
+  // User is authenticated if is_creator cookie exists and is not 'null'
+  return isCreatorCookie && isCreatorCookie !== 'null';
+}
+
+/**
+ * Check if user is a creator
+ * @returns {boolean} True if user is a creator, false otherwise
+ */
+export function isUserCreator() {
+  if (typeof document === 'undefined') return false; // Server-side check
+  
+  const isCreatorCookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('is_creator='))
+    ?.split('=')[1];
+  
+  return isCreatorCookie === '1';
+}
+
+/**
+ * Check if user is a regular user
+ * @returns {boolean} True if user is a regular user, false otherwise
+ */
+export function isUserRegular() {
+  if (typeof document === 'undefined') return false; // Server-side check
+  
+  const isCreatorCookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('is_creator='))
+    ?.split('=')[1];
+  
+  return isCreatorCookie === '0';
+}
+
+/**
+ * Check if user needs to complete profile setup
+ * @returns {boolean} True if user needs profile setup, false otherwise
+ */
+export function needsProfileSetup() {
+  if (typeof document === 'undefined') return false; // Server-side check
+  
+  const isCreatorCookie = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('is_creator='))
+    ?.split('=')[1];
+  
+  return isCreatorCookie === 'null' || !isCreatorCookie;
+}
+
+/**
+ * Check if user is currently authenticated (async version for API calls)
  * @returns {Promise<boolean>} True if user is authenticated, false otherwise
  */
-export async function isUserAuthenticated() {
+export async function isUserAuthenticatedAsync() {
   try {
     // Make API call to verify authentication - this is the only reliable way
     const response = await fetch('/api/user/details', { 
@@ -23,10 +84,10 @@ export async function isUserAuthenticated() {
 }
 
 /**
- * Check if user needs to complete profile setup
+ * Check if user needs to complete profile setup (async version)
  * @returns {Promise<boolean>} True if user needs profile setup, false otherwise
  */
-export async function needsProfileSetup() {
+export async function needsProfileSetupAsync() {
   try {
     const response = await fetch('/api/user/details', { 
       method: 'GET', 
@@ -61,21 +122,6 @@ export function getIsCreatorFromCookie() {
   return cookies['is_creator'] || null;
 }
 
-/**
- * Check if user is a creator based on cookie
- * @returns {boolean} True if user is a creator, false otherwise
- */
-export function isUserCreator() {
-  return getIsCreatorFromCookie() === '1';
-}
-
-/**
- * Check if user is a regular user based on cookie
- * @returns {boolean} True if user is a regular user, false otherwise
- */
-export function isUserRegular() {
-  return getIsCreatorFromCookie() === '0';
-}
 
 /**
  * Redirect authenticated users away from auth pages

@@ -99,9 +99,9 @@ export async function POST(request) {
           username: username,
           ...(userType === "creator"
             ? {
-                youtube_channel_name: youtubeChannelName,
-                youtube_channel_link: youtubeChannelLink,
-                number_of_subscribers: subscribers,
+                channel_name: youtubeChannelName,
+                channel_link: youtubeChannelLink,
+                subscribers: subscribers,
                 content_length: contentLength,
               }
             : {}),

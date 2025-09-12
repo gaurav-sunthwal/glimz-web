@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { secureApi } from '../../lib/secureApi';
+import AuthGuard from '@/components/AuthGuard';
 
 function UnifiedSignupComponent() {
   const router = useRouter();
@@ -115,7 +116,8 @@ function UnifiedSignupComponent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+    <AuthGuard requireAuth={false}>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Complete Your Profile</h2>
         {mobileNumber && (
@@ -249,6 +251,7 @@ function UnifiedSignupComponent() {
         </form>
       </div>
     </div>
+    </AuthGuard>
   );
 }
 

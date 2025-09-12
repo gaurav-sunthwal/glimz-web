@@ -17,10 +17,15 @@ const ProfileButton = ({ onAuthChange }) => {
     try {
       isCheckingRef.current = true;
       setLoading(true);
-      const response = await secureApi.getUserDetails();
+      const response = await secureApi.getUserDetailsByType();
       
       if (response.status && response.ViewerDetail) {
         // User has completed profile setup
+        console.log("ProfileButton: User data received:", {
+          isCreator: response.isCreator,
+          userType: response.isCreator ? 'creator' : 'user',
+          userDetails: response.ViewerDetail
+        });
         setUserData({
           ...response.ViewerDetail,
           userType: response.isCreator ? 'creator' : 'user'
