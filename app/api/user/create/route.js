@@ -165,11 +165,25 @@ export async function POST(request) {
 
     // Return result
     if (data && data.status === true) {
-      return NextResponse.json({
+      // Set is_creator cookie based on userType
+      const response = NextResponse.json({
         status: true,
         message: data.message || "User created successfully",
         data: data.data || null,
       });
+
+      // Set is_creator cookie: '1' for creator, '0' for regular user
+      const isCreatorValue = userType === 'creator' ? '1' : '0';
+      response.cookies.set('is_creator', isCreatorValue, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/'
+      });
+
+      console.log(`User created successfully. Set is_creator cookie to: ${isCreatorValue} for userType: ${userType}`);
+      return response;
     } else {
       return NextResponse.json(
         {
