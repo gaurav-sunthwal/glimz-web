@@ -57,6 +57,17 @@ export async function POST(request) {
           maxAge: 60 * 60 * 24 * 7,
           path: '/'
         });
+        
+        // Store is_creator status separately for easy access
+        const isCreatorValue = data.user.is_creator?.toString() || 'null';
+        console.log("Setting is_creator cookie with value:", isCreatorValue);
+        response.cookies.set('is_creator', isCreatorValue, {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 60 * 60 * 24 * 7,
+          path: '/'
+        });
       }
 
       return response;

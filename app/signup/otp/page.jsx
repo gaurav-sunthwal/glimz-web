@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { secureApi } from '../../lib/secureApi';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function OtpVerificationPage() {
   const [otp, setOtp] = useState('');
@@ -24,16 +25,29 @@ export default function OtpVerificationPage() {
       if (response && response.status) {
         // If backend returns user with is_creator flag, decide routing
         const isCreator = response.user?.is_creator;
+        console.log("OTP Verification Response:", response);
+        console.log("is_creator value:", isCreator);
+        
         if (isCreator === null || typeof isCreator === 'undefined') {
           // Not registered yet → go to details
           router.push(`/signup/details?mobileNumber=${mobileNumber}`);
-        } else {
-          // Registered and logged in → go home and refresh header
+        } else if (isCreator === 1) {
+          // User is a creator → go home and refresh header
           window.dispatchEvent(new Event('auth-changed'));
           router.push('/');
           setTimeout(() => {
             window.location.reload();
           }, 50);
+        } else if (isCreator === 0) {
+          // User is a regular user → go home and refresh header
+          window.dispatchEvent(new Event('auth-changed'));
+          router.push('/');
+          setTimeout(() => {
+            window.location.reload();
+          }, 50);
+        } else {
+          // Fallback: go to details page
+          router.push(`/signup/details?mobileNumber=${mobileNumber}`);
         }
       } else {
         setError(response?.message || 'Invalid OTP');
@@ -68,7 +82,8 @@ export default function OtpVerificationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
+    <AuthGuard requireAuth={false}>
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
       <div className="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-6 text-center">Verify Mobile Number</h2>
         <p className="text-center text-gray-400 mb-4">Enter the OTP sent to {mobileNumber}</p>
@@ -115,5 +130,6 @@ export default function OtpVerificationPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   );
 }
