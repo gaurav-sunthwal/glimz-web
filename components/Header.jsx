@@ -6,26 +6,19 @@ import {
   Menu,
   Heart,
   X,
-  Home,
-  Compass,
-  Bookmark,
-  ShoppingCart,
-  MessageCircle,
-  User,
 } from "lucide-react";
 import Logo from "./Logo";
 import { useRouter } from "next/navigation";
 import ProfileButton from "@/components/ui/ProfileButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import TabsNevbar from "./TabsNevbar";
 import { secureApi } from "@/app/lib/secureApi";
 
 export const Header = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
   const lastCheckRef = useRef(0);
@@ -147,7 +140,6 @@ export const Header = () => {
 
   const navItems = [
     { label: "Home", href: "/" },
-    { label: "TV", href: "/tv" },
     { label: "Movies", href: "/movies" },
     { label: "My List", href: "/my-list" },
   ];
@@ -274,87 +266,15 @@ export const Header = () => {
                 onClick={toggleMobileMenu}
                 className="hidden sm:flex lg:hidden btn-glimz-ghost"
               >
-                {isMobileMenuOpen ? (
-                  <X className="h-5 w-5" />
-                ) : (
-                  <Menu className="h-5 w-5" />
-                )}
+                
               </Button>
             </div>
           </div>
 
-          {/* Mobile Search */}
-          {isMobileSearchOpen && (
-            <div className="sm:hidden border-t border-white/10 py-4">
-              <form onSubmit={handleSearch}>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-foreground-muted" />
-                  <Input
-                    type="text"
-                    placeholder="Search movies, shows..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="search-input pl-10 w-full bg-white/10 border-white/20 text-white placeholder:text-white/60"
-                    autoFocus
-                  />
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Tablet Menu (only sm to lg - tablets/iPads only) */}
-          {isMobileMenuOpen && (
-            <div className="hidden sm:block lg:hidden border-t border-white/10 py-4">
-              <nav className="space-y-3 mb-4">
-                {navItems.map((item) => (
-                  <button
-                    key={item.href}
-                    onClick={() => handleNavigation(item.href)}
-                    className="block w-full text-left btn-glimz-ghost text-base font-medium py-2"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-
-              {/* Tablet My List Button */}
-              <Button
-                variant="ghost"
-                onClick={() => handleNavigation("/my-list")}
-                className="w-full btn-glimz-ghost justify-start"
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                My List
-              </Button>
-
-              {/* Tablet Logout Button */}
-              {isLoggedIn && (
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    try {
-                      await secureApi.logout();
-                      setIsLoggedIn(false);
-                      router.push("/");
-                      window.dispatchEvent(new Event("auth-changed"));
-                    } catch (error) {
-                      setIsLoggedIn(false);
-                      router.push("/");
-                      window.dispatchEvent(new Event("auth-changed"));
-                    }
-                  }}
-                  className="w-full btn-glimz-ghost justify-start text-red-400 hover:text-red-300"
-                >
-                  Logout
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </header>
 
       {/* Mobile Bottom Tab Bar - Only for phones (below sm breakpoint) */}
-      <TabsNevbar />
     </>
   );
 };

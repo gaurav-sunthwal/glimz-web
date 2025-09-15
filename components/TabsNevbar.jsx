@@ -33,9 +33,7 @@ const TabsNavBar = () => {
       setActiveTab(currentTab.id);
     } else {
       // Handle special cases
-      if (pathname === "/tv" || pathname === "/movies") {
-        setActiveTab("explore");
-      } else if (pathname.startsWith("/profile")) {
+      if (pathname.startsWith("/profile")) {
         setActiveTab("profile");
       }
     }
