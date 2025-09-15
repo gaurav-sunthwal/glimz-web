@@ -172,7 +172,7 @@ const ProfileButton = ({ onAuthChange }) => {
                 )}
 
                 {/* Account Info */}
-                <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
+                {/* <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
                   <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
                     <FaUsers className="w-4 h-4 text-blue-400 mr-2" />
                     Account Details
@@ -196,7 +196,7 @@ const ProfileButton = ({ onAuthChange }) => {
                       </span>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Logout Section */}
                 <div className="px-6 py-4 border-t border-gray-700/50">
