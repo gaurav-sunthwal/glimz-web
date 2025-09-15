@@ -284,18 +284,18 @@ export default function UploadPage() {
                 <div>
                   <Label htmlFor="category" className="text-white">Category *</Label>
                   <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white focus:border-glimz-primary">
+                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white focus:border-glimz-primary !bg-opacity-100 !bg-gray-800 !border !border-gray-600 !shadow-none">
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="entertainment">Entertainment</SelectItem>
-                      <SelectItem value="education">Education</SelectItem>
-                      <SelectItem value="gaming">Gaming</SelectItem>
-                      <SelectItem value="music">Music</SelectItem>
-                      <SelectItem value="sports">Sports</SelectItem>
-                      <SelectItem value="tech">Technology</SelectItem>
-                      <SelectItem value="lifestyle">Lifestyle</SelectItem>
-                      <SelectItem value="comedy">Comedy</SelectItem>
+                    <SelectContent className="bg-gray-800 border-gray-600 text-white">
+                      <SelectItem value="entertainment" className="hover:bg-glimz-primary/20">Entertainment</SelectItem>
+                      <SelectItem value="education" className="hover:bg-glimz-primary/20">Education</SelectItem>
+                      <SelectItem value="gaming" className="hover:bg-glimz-primary/20">Gaming</SelectItem>
+                      <SelectItem value="music" className="hover:bg-glimz-primary/20">Music</SelectItem>
+                      <SelectItem value="sports" className="hover:bg-glimz-primary/20">Sports</SelectItem>
+                      <SelectItem value="tech" className="hover:bg-glimz-primary/20">Technology</SelectItem>
+                      <SelectItem value="lifestyle" className="hover:bg-glimz-primary/20">Lifestyle</SelectItem>
+                      <SelectItem value="comedy" className="hover:bg-glimz-primary/20">Comedy</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.category && (
