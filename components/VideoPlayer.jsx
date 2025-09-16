@@ -58,8 +58,13 @@ const VideoPlayer = ({
   
   // Security state
   const [securityWarning, setSecurityWarning] = useState(false);
-  const [rightClickDisabled, setRightClickDisabled] = useState(true);
+  const [rightClickDisabled, setRightClickDisabled] = useState(false);
   const [devToolsWarning, setDevToolsWarning] = useState(false);
+  
+  // Context menu state
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [isLooping, setIsLooping] = useState(false);
   
   // Volume status bar
   const [showVolumeStatus, setShowVolumeStatus] = useState(false);
@@ -92,13 +97,11 @@ const VideoPlayer = ({
 
   // Security measures and keyboard controls
   useEffect(() => {
-    // Disable right-click context menu
+    // Handle right-click context menu
     const handleContextMenu = (e) => {
-      if (rightClickDisabled) {
-        e.preventDefault();
-        setSecurityWarning(true);
-        setTimeout(() => setSecurityWarning(false), 3000);
-      }
+      e.preventDefault();
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+      setShowContextMenu(true);
     };
 
     // Handle keyboard controls and security
@@ -359,6 +362,52 @@ const VideoPlayer = ({
     }
   };
 
+  // Context menu functions
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShowContextMenu(false);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: video?.title,
+        text: video?.description,
+        url: window.location.href,
+      });
+    } else {
+      handleCopyUrl();
+    }
+    setShowContextMenu(false);
+  };
+
+  const handleLoop = () => {
+    if (videoRef.current) {
+      videoRef.current.loop = !isLooping;
+      setIsLooping(!isLooping);
+    }
+    setShowContextMenu(false);
+  };
+
+  const handlePictureInPicture = async () => {
+    if (videoRef.current && document.pictureInPictureEnabled) {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else {
+          await videoRef.current.requestPictureInPicture();
+        }
+      } catch (err) {
+        console.error('Picture-in-Picture failed:', err);
+      }
+    }
+    setShowContextMenu(false);
+  };
+
   // Format time helper
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
@@ -385,23 +434,25 @@ const VideoPlayer = ({
   // Close panels when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showSettings || showSpeedPanel || showQualityPanel || showSubtitlePanel) {
+      if (showSettings || showSpeedPanel || showQualityPanel || showSubtitlePanel || showContextMenu) {
         const target = event.target;
         if (!target.closest('[data-settings-panel]') && 
             !target.closest('[data-speed-panel]') && 
             !target.closest('[data-quality-panel]') && 
-            !target.closest('[data-subtitle-panel]')) {
+            !target.closest('[data-subtitle-panel]') &&
+            !target.closest('[data-context-menu]')) {
           setShowSettings(false);
           setShowSpeedPanel(false);
           setShowQualityPanel(false);
           setShowSubtitlePanel(false);
+          setShowContextMenu(false);
         }
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSettings, showSpeedPanel, showQualityPanel, showSubtitlePanel]);
+  }, [showSettings, showSpeedPanel, showQualityPanel, showSubtitlePanel, showContextMenu]);
 
   // Security overlay
   const SecurityOverlay = () => (
@@ -460,25 +511,24 @@ const VideoPlayer = ({
         </div>
       )}
 
-      {/* Video Element */}
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover"
-        src={video?.videoUrl}
-        onLoadedMetadata={handleLoadedMetadata}
-        onTimeUpdate={handleTimeUpdate}
-        onPlay={handlePlay}
-        onPause={handlePause}
-        onLoadStart={() => setIsLoading(true)}
-        onCanPlay={() => setIsLoading(false)}
-        onError={() => setIsLoading(false)}
-        controls={false}
-        disablePictureInPicture
-        onContextMenu={(e) => e.preventDefault()}
-        style={{
-          pointerEvents: 'none', // Prevent direct video interaction
-        }}
-      />
+       {/* Video Element */}
+       <video
+         ref={videoRef}
+         className="w-full h-full object-cover"
+         src={video?.videoUrl}
+         onLoadedMetadata={handleLoadedMetadata}
+         onTimeUpdate={handleTimeUpdate}
+         onPlay={handlePlay}
+         onPause={handlePause}
+         onLoadStart={() => setIsLoading(true)}
+         onCanPlay={() => setIsLoading(false)}
+         onError={() => setIsLoading(false)}
+         controls={false}
+         onContextMenu={(e) => e.preventDefault()}
+         style={{
+           pointerEvents: 'none', // Prevent direct video interaction
+         }}
+       />
 
       {/* Loading Overlay */}
       {isLoading && (
@@ -904,11 +954,94 @@ const VideoPlayer = ({
             >
               <div className="text-white text-sm">English</div>
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+           </div>
+         )}
+
+         {/* Context Menu */}
+         {showContextMenu && (
+           <div 
+             data-context-menu
+             className="fixed bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20 z-50"
+             style={{
+               left: contextMenuPosition.x,
+               top: contextMenuPosition.y,
+               transform: 'translate(-100%, -10px)' // Position above and to the left of cursor
+             }}
+           >
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={handleCopyUrl}
+             >
+               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                 <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z"/>
+                 <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"/>
+               </svg>
+               <span className="text-white text-sm">Copy video URL</span>
+             </div>
+
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={handleShare}
+             >
+               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+               </svg>
+               <span className="text-white text-sm">Share</span>
+             </div>
+
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={handleLoop}
+             >
+               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/>
+               </svg>
+               <span className="text-white text-sm">
+                 {isLooping ? 'Turn off loop' : 'Loop'}
+               </span>
+             </div>
+
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={handlePictureInPicture}
+             >
+               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+               </svg>
+               <span className="text-white text-sm">Picture-in-Picture</span>
+             </div>
+
+             <div className="border-t border-white/20 my-1"></div>
+
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={() => {
+                 setShowSettings(true);
+                 setShowContextMenu(false);
+               }}
+             >
+               <Settings className="h-4 w-4 text-white" />
+               <span className="text-white text-sm">Video settings</span>
+             </div>
+
+             <div 
+               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+               onClick={handleFullscreen}
+             >
+               {isFullscreen ? (
+                 <Minimize className="h-4 w-4 text-white" />
+               ) : (
+                 <Maximize className="h-4 w-4 text-white" />
+               )}
+               <span className="text-white text-sm">
+                 {isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+               </span>
+             </div>
+           </div>
+         )}
+       </div>
+     </div>
+   );
 };
 
 export default VideoPlayer;
