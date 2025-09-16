@@ -1,0 +1,914 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { 
+  Play, 
+  Pause, 
+  Volume2, 
+  VolumeX, 
+  Maximize, 
+  Minimize, 
+  Settings, 
+  X, 
+  RotateCcw,
+  SkipBack,
+  SkipForward,
+  Loader2,
+  Shield,
+  Lock,
+  Eye,
+  EyeOff
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+
+const VideoPlayer = ({ 
+  video, 
+  onClose, 
+  autoPlay = false,
+  isFullscreen = false,
+  onFullscreenChange 
+}) => {
+  const videoRef = useRef(null);
+  const containerRef = useRef(null);
+  const progressRef = useRef(null);
+  const controlsTimeoutRef = useRef(null);
+  
+  // Player state
+  const [isPlaying, setIsPlaying] = useState(autoPlay);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [buffered, setBuffered] = useState(0);
+  
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [videoQuality, setVideoQuality] = useState('auto');
+  const [showSubtitles, setShowSubtitles] = useState(false);
+  const [subtitleLanguage, setSubtitleLanguage] = useState('en');
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  
+  // Security state
+  const [securityWarning, setSecurityWarning] = useState(false);
+  const [rightClickDisabled, setRightClickDisabled] = useState(true);
+  const [devToolsWarning, setDevToolsWarning] = useState(false);
+  
+  // Volume status bar
+  const [showVolumeStatus, setShowVolumeStatus] = useState(false);
+  const [volumeStatusTimeout, setVolumeStatusTimeout] = useState(null);
+  
+  // YouTube-style panels
+  const [showSpeedPanel, setShowSpeedPanel] = useState(false);
+  const [showQualityPanel, setShowQualityPanel] = useState(false);
+  const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
+  
+  // Quality options
+  const qualityOptions = [
+    { value: 'auto', label: 'Auto' },
+    { value: '1080p', label: '1080p' },
+    { value: '720p', label: '720p' },
+    { value: '480p', label: '480p' },
+    { value: '360p', label: '360p' }
+  ];
+  
+  // Speed options
+  const speedOptions = [
+    { value: 0.25, label: '0.25x' },
+    { value: 0.5, label: '0.5x' },
+    { value: 0.75, label: '0.75x' },
+    { value: 1, label: 'Normal' },
+    { value: 1.25, label: '1.25x' },
+    { value: 1.5, label: '1.5x' },
+    { value: 2, label: '2x' }
+  ];
+
+  // Security measures and keyboard controls
+  useEffect(() => {
+    // Disable right-click context menu
+    const handleContextMenu = (e) => {
+      if (rightClickDisabled) {
+        e.preventDefault();
+        setSecurityWarning(true);
+        setTimeout(() => setSecurityWarning(false), 3000);
+      }
+    };
+
+    // Handle keyboard controls and security
+    const handleKeyDown = (e) => {
+      // Security: Disable forbidden keys
+      const forbiddenKeys = [
+        'F12', // Dev tools
+        'Ctrl+Shift+I', // Dev tools
+        'Ctrl+U', // View source
+        'Ctrl+S', // Save
+        'Ctrl+A', // Select all
+        'Ctrl+P', // Print
+        'Ctrl+Shift+C', // Inspect element
+      ];
+      
+      if (forbiddenKeys.some(key => 
+        key.includes('Ctrl+') ? 
+        e.ctrlKey && e.key === key.split('+')[1] :
+        e.key === key
+      )) {
+        e.preventDefault();
+        setSecurityWarning(true);
+        setTimeout(() => setSecurityWarning(false), 3000);
+        return;
+      }
+
+      // Keyboard controls for video player
+      if (videoRef.current) {
+        switch (e.key) {
+          case ' ':
+          case 'k':
+            e.preventDefault();
+            if (isPlaying) {
+              handlePause();
+            } else {
+              handlePlay();
+            }
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            handleSkip(-10);
+            break;
+          case 'ArrowRight':
+            e.preventDefault();
+            handleSkip(10);
+            break;
+          case 'ArrowUp':
+            e.preventDefault();
+            handleVolumeKeyChange(0.05); // Smaller increment
+            break;
+          case 'ArrowDown':
+            e.preventDefault();
+            handleVolumeKeyChange(-0.05); // Smaller increment
+            break;
+          case 'm':
+            e.preventDefault();
+            handleMuteToggle();
+            break;
+          case 'f':
+            e.preventDefault();
+            handleFullscreen();
+            break;
+          case 'j':
+            e.preventDefault();
+            handleSkip(-10);
+            break;
+          case 'l':
+            e.preventDefault();
+            handleSkip(10);
+            break;
+          case '0':
+            e.preventDefault();
+            if (videoRef.current) {
+              videoRef.current.currentTime = 0;
+            }
+            break;
+          case '1':
+          case '2':
+          case '3':
+          case '4':
+          case '5':
+          case '6':
+          case '7':
+          case '8':
+          case '9':
+            e.preventDefault();
+            if (videoRef.current) {
+              const percentage = parseInt(e.key) / 10;
+              videoRef.current.currentTime = videoRef.current.duration * percentage;
+            }
+            break;
+          case 'c':
+            e.preventDefault();
+            setShowSubtitles(!showSubtitles);
+            break;
+          case 's':
+            e.preventDefault();
+            setShowSettings(!showSettings);
+            break;
+          case '?':
+          case 'h':
+            e.preventDefault();
+            setShowKeyboardHelp(!showKeyboardHelp);
+            break;
+          case 'Escape':
+            if (showSettings) {
+              setShowSettings(false);
+            } else if (showKeyboardHelp) {
+              setShowKeyboardHelp(false);
+            } else if (isFullscreen) {
+              handleFullscreen();
+            }
+            break;
+        }
+      }
+    };
+
+    // Detect dev tools
+    const detectDevTools = () => {
+      const threshold = 160;
+      if (window.outerHeight - window.innerHeight > threshold || 
+          window.outerWidth - window.innerWidth > threshold) {
+        setDevToolsWarning(true);
+        setTimeout(() => setDevToolsWarning(false), 5000);
+      }
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+    const devToolsInterval = setInterval(detectDevTools, 1000);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+      clearInterval(devToolsInterval);
+      if (volumeStatusTimeout) {
+        clearTimeout(volumeStatusTimeout);
+      }
+    };
+  }, [rightClickDisabled, isPlaying, volume, showSubtitles, showSettings, isFullscreen]);
+
+  // Video event handlers
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+      setIsLoading(false);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      setCurrentTime(videoRef.current.currentTime);
+      
+      // Calculate buffered progress
+      if (videoRef.current.buffered.length > 0) {
+        const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+        const bufferedPercent = (bufferedEnd / videoRef.current.duration) * 100;
+        setBuffered(bufferedPercent);
+      }
+    }
+  };
+
+  const handlePlay = () => {
+    if (videoRef.current) {
+      videoRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const handlePause = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+  };
+
+  const handleSeek = (value) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = value[0];
+      setCurrentTime(value[0]);
+    }
+  };
+
+  const handleVolumeChange = (value) => {
+    if (videoRef.current) {
+      videoRef.current.volume = value[0];
+      setVolume(value[0]);
+      setIsMuted(value[0] === 0);
+      
+      // Show volume status bar
+      setShowVolumeStatus(true);
+      if (volumeStatusTimeout) {
+        clearTimeout(volumeStatusTimeout);
+      }
+      const timeout = setTimeout(() => {
+        setShowVolumeStatus(false);
+      }, 1500);
+      setVolumeStatusTimeout(timeout);
+    }
+  };
+
+  const handleVolumeKeyChange = (increment) => {
+    const newVolume = Math.max(0, Math.min(1, volume + increment));
+    handleVolumeChange([newVolume]);
+  };
+
+  const handleVolumeClick = (event) => {
+    const slider = event.currentTarget;
+    const rect = slider.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newVolume = Math.max(0, Math.min(1, percentage));
+    handleVolumeChange([newVolume]);
+  };
+
+  const handleMuteToggle = () => {
+    if (videoRef.current) {
+      if (isMuted) {
+        videoRef.current.volume = volume;
+        setIsMuted(false);
+      } else {
+        videoRef.current.volume = 0;
+        setIsMuted(true);
+      }
+      
+      // Show volume status bar
+      setShowVolumeStatus(true);
+      if (volumeStatusTimeout) {
+        clearTimeout(volumeStatusTimeout);
+      }
+      const timeout = setTimeout(() => {
+        setShowVolumeStatus(false);
+      }, 1500);
+      setVolumeStatusTimeout(timeout);
+    }
+  };
+
+  const handleSpeedChange = (speed) => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+      setPlaybackSpeed(speed);
+    }
+  };
+
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      onFullscreenChange?.(true);
+    } else {
+      document.exitFullscreen();
+      onFullscreenChange?.(false);
+    }
+  };
+
+  const handleSkip = (seconds) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime += seconds;
+    }
+  };
+
+  // Format time helper
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Auto-hide controls
+  const resetControlsTimeout = useCallback(() => {
+    clearTimeout(controlsTimeoutRef.current);
+    setShowControls(true);
+    controlsTimeoutRef.current = setTimeout(() => {
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 3000);
+  }, [isPlaying]);
+
+  useEffect(() => {
+    resetControlsTimeout();
+    return () => clearTimeout(controlsTimeoutRef.current);
+  }, [resetControlsTimeout]);
+
+  // Close panels when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showSettings || showSpeedPanel || showQualityPanel || showSubtitlePanel) {
+        const target = event.target;
+        if (!target.closest('[data-settings-panel]') && 
+            !target.closest('[data-speed-panel]') && 
+            !target.closest('[data-quality-panel]') && 
+            !target.closest('[data-subtitle-panel]')) {
+          setShowSettings(false);
+          setShowSpeedPanel(false);
+          setShowQualityPanel(false);
+          setShowSubtitlePanel(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSettings, showSpeedPanel, showQualityPanel, showSubtitlePanel]);
+
+  // Security overlay
+  const SecurityOverlay = () => (
+    <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+      <div className="text-center space-y-4">
+        <Shield className="h-16 w-16 text-red-500 mx-auto" />
+        <h3 className="text-xl font-bold text-white">Security Warning</h3>
+        <p className="text-gray-300 max-w-md">
+          This content is protected. Downloading, recording, or sharing is prohibited.
+        </p>
+        <Button 
+          onClick={() => setSecurityWarning(false)}
+          className="bg-red-600 hover:bg-red-700"
+        >
+          I Understand
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div 
+      ref={containerRef}
+      className={`relative bg-black ${isFullscreen ? 'fixed inset-0 z-50' : 'w-full h-screen'}`}
+      onMouseMove={resetControlsTimeout}
+      onMouseLeave={() => isPlaying && setShowControls(false)}
+    >
+      {/* Security Warning Overlay */}
+      {securityWarning && <SecurityOverlay />}
+      
+      {/* Dev Tools Warning */}
+      {devToolsWarning && (
+        <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 z-40">
+          <Lock className="h-4 w-4" />
+          <span>Developer tools detected. Please close them to continue.</span>
+        </div>
+      )}
+
+      {/* Volume Status Bar */}
+      {showVolumeStatus && (
+        <div className="absolute top-1/2 right-6 transform -translate-y-1/2 bg-black/90 backdrop-blur-sm rounded-lg p-4 z-40 border border-white/20">
+          <div className="flex items-center gap-3">
+            <Volume2 className={`h-6 w-6 ${isMuted ? 'text-red-400' : 'text-white'}`} />
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-32 h-2 bg-white/20 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-glimz-primary transition-all duration-200"
+                  style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
+                />
+              </div>
+              <span className="text-white text-sm font-medium">
+                {isMuted ? 'Muted' : `${Math.round(volume * 100)}%`}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        className="w-full h-full object-cover"
+        src={video?.videoUrl}
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onLoadStart={() => setIsLoading(true)}
+        onCanPlay={() => setIsLoading(false)}
+        onError={() => setIsLoading(false)}
+        controls={false}
+        disablePictureInPicture
+        onContextMenu={(e) => e.preventDefault()}
+        style={{
+          pointerEvents: 'none', // Prevent direct video interaction
+        }}
+      />
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 text-white animate-spin mx-auto" />
+            <p className="text-white">Loading video...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Video Controls Overlay */}
+      <div className={`absolute inset-0 transition-opacity duration-300 ${
+        showControls ? 'opacity-100' : 'opacity-0'
+      }`}>
+        {/* Top Controls */}
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                onClick={onClose}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+              <h2 className="text-white font-semibold truncate max-w-md">
+                {video?.title}
+              </h2>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="bg-white/20 text-white">
+                <Shield className="h-3 w-3 mr-1" />
+                Protected
+              </Badge>
+              <Button
+                onClick={() => setShowSettings(!showSettings)}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Play/Pause Button */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Button
+            onClick={isPlaying ? handlePause : handlePlay}
+            size="lg"
+            className="bg-white/90 hover:bg-white text-black p-8 rounded-full shadow-lg"
+          >
+            {isPlaying ? (
+              <Pause className="h-12 w-12" />
+            ) : (
+              <Play className="h-12 w-12 ml-1" />
+            )}
+          </Button>
+        </div>
+
+        {/* YouTube-style Bottom Controls */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
+          {/* Progress Bar */}
+          <div className="px-4 py-2">
+            <div className="relative group">
+              {/* Buffered Progress */}
+              <div 
+                className="absolute top-0 left-0 h-1 bg-white/30 rounded-full"
+                style={{ width: `${buffered}%` }}
+              />
+              {/* Progress Bar */}
+              <Slider
+                ref={progressRef}
+                value={[currentTime]}
+                max={duration}
+                step={0.1}
+                onValueChange={handleSeek}
+                className="w-full cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Control Bar */}
+          <div className="flex items-center justify-between px-4 py-2">
+            {/* Left Controls */}
+            <div className="flex items-center gap-1">
+              {/* Play/Pause */}
+              <Button
+                onClick={isPlaying ? handlePause : handlePlay}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" />
+                ) : (
+                  <Play className="h-5 w-5" />
+                )}
+              </Button>
+
+              {/* Skip Backward */}
+              <Button
+                onClick={() => handleSkip(-10)}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                <RotateCcw className="h-5 w-5" />
+              </Button>
+
+              {/* Skip Forward */}
+              <Button
+                onClick={() => handleSkip(10)}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                <SkipForward className="h-5 w-5" />
+              </Button>
+
+              
+
+              {/* Time Display */}
+              <div className="text-white text-sm font-mono ml-2">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </div>
+
+              {/* Volume Control */}
+              <div className="flex items-center gap-2 ml-2 group/volume relative">
+                <Button
+                  onClick={handleMuteToggle}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20 p-2 rounded-full"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-5 w-5" />
+                  ) : volume < 0.5 ? (
+                    <Volume2 className="h-5 w-5" />
+                  ) : (
+                    <Volume2 className="h-5 w-5" />
+                  )}
+                </Button>
+                {/* Volume Slider - appears on hover */}
+                <div 
+                  className="w-20 opacity-0 group-hover/volume:opacity-100 transition-opacity duration-200 cursor-pointer hover:opacity-100"
+                  onClick={handleVolumeClick}
+                >
+                  <Slider
+                    value={[isMuted ? 0 : volume]}
+                    max={1}
+                    step={0.01}
+                    onValueChange={handleVolumeChange}
+                    className="w-full"
+                  />
+                </div>
+                {/* Volume Status - shows current volume percentage */}
+                <div className="opacity-0 group-hover/volume:opacity-100 transition-opacity duration-200 text-white text-xs min-w-[3ch] hover:opacity-100">
+                  {isMuted ? 'Muted' : `${Math.round(volume * 100)}%`}
+                </div>
+              </div>  
+            </div>
+
+            {/* Right Controls */}
+            <div className="flex items-center gap-1">
+              {/* Settings */}
+              <Button
+                onClick={() => setShowSettings(!showSettings)}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                <Settings className="h-5 w-5" />
+              </Button>
+
+              {/* Subtitles */}
+              <Button
+                onClick={() => setShowSubtitles(!showSubtitles)}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/>
+                </svg>
+              </Button>
+
+              {/* Fullscreen */}
+              <Button
+                onClick={handleFullscreen}
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/20 p-2 rounded-full"
+              >
+                {isFullscreen ? (
+                  <Minimize className="h-5 w-5" />
+                ) : (
+                  <Maximize className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Keyboard Help Overlay */}
+        {showKeyboardHelp && (
+          <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
+            <div className="bg-black/95 backdrop-blur-sm rounded-lg p-8 w-96 max-w-[90vw] space-y-6 border border-white/20">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-xl font-bold">Keyboard Shortcuts</h3>
+                <Button
+                  onClick={() => setShowKeyboardHelp(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">Space</kbd>
+                    <span className="text-white/80">Play/Pause</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">K</kbd>
+                    <span className="text-white/80">Play/Pause</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">← →</kbd>
+                    <span className="text-white/80">Skip 10s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">J L</kbd>
+                    <span className="text-white/80">Skip 10s</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">↑ ↓</kbd>
+                    <span className="text-white/80">Volume</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">M</kbd>
+                    <span className="text-white/80">Mute</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">F</kbd>
+                    <span className="text-white/80">Fullscreen</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">0-9</kbd>
+                    <span className="text-white/80">Jump to %</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">C</kbd>
+                    <span className="text-white/80">Subtitles</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">S</kbd>
+                    <span className="text-white/80">Settings</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-4 border-t border-white/20">
+                <div className="flex justify-between">
+                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">Esc</kbd>
+                  <span className="text-white/80">Close/Exit Fullscreen</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">? H</kbd>
+                  <span className="text-white/80">Show/Hide Help</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* YouTube-style Settings Panel */}
+        {showSettings && (
+          <div 
+            data-settings-panel
+            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-64 space-y-1 shadow-2xl border border-white/20"
+          >
+            {/* Playback Speed */}
+            <div 
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
+              onClick={() => {
+                setShowSettings(false);
+                setShowSpeedPanel(true);
+              }}
+            >
+              <div className="text-white text-sm">Playback speed</div>
+              <div className="text-white/70 text-xs mt-1">
+                {speedOptions.find(opt => opt.value === playbackSpeed)?.label || 'Normal'}
+              </div>
+            </div>
+
+            {/* Quality */}
+            <div 
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
+              onClick={() => {
+                setShowSettings(false);
+                setShowQualityPanel(true);
+              }}
+            >
+              <div className="text-white text-sm">Quality</div>
+              <div className="text-white/70 text-xs mt-1">
+                {qualityOptions.find(opt => opt.value === videoQuality)?.label || 'Auto'}
+              </div>
+            </div>
+
+            {/* Subtitles */}
+            <div 
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
+              onClick={() => {
+                setShowSettings(false);
+                setShowSubtitlePanel(true);
+              }}
+            >
+              <div className="text-white text-sm">Subtitles</div>
+              <div className="text-white/70 text-xs mt-1">
+                {showSubtitles ? 'On' : 'Off'}
+              </div>
+            </div>
+
+            {/* Keyboard Shortcuts */}
+            <div 
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
+              onClick={() => {
+                setShowSettings(false);
+                setShowKeyboardHelp(true);
+              }}
+            >
+              <div className="text-white text-sm">Keyboard shortcuts</div>
+              <div className="text-white/70 text-xs mt-1">Press ? for help</div>
+            </div>
+          </div>
+        )}
+
+        {/* Speed Panel */}
+        {showSpeedPanel && (
+          <div 
+            data-speed-panel
+            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
+          >
+            <div className="px-3 py-2 text-white text-sm font-medium">Playback speed</div>
+            {speedOptions.map((option) => (
+              <div
+                key={option.value}
+                className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
+                  playbackSpeed === option.value ? 'bg-glimz-primary/20' : ''
+                }`}
+                onClick={() => {
+                  handleSpeedChange(option.value);
+                  setShowSpeedPanel(false);
+                }}
+              >
+                <div className="text-white text-sm">{option.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quality Panel */}
+        {showQualityPanel && (
+          <div 
+            data-quality-panel
+            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
+          >
+            <div className="px-3 py-2 text-white text-sm font-medium">Quality</div>
+            {qualityOptions.map((option) => (
+              <div
+                key={option.value}
+                className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
+                  videoQuality === option.value ? 'bg-glimz-primary/20' : ''
+                }`}
+                onClick={() => {
+                  setVideoQuality(option.value);
+                  setShowQualityPanel(false);
+                }}
+              >
+                <div className="text-white text-sm">{option.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Subtitle Panel */}
+        {showSubtitlePanel && (
+          <div 
+            data-subtitle-panel
+            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
+          >
+            <div className="px-3 py-2 text-white text-sm font-medium">Subtitles</div>
+            <div
+              className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
+                !showSubtitles ? 'bg-glimz-primary/20' : ''
+              }`}
+              onClick={() => {
+                setShowSubtitles(false);
+                setShowSubtitlePanel(false);
+              }}
+            >
+              <div className="text-white text-sm">Off</div>
+            </div>
+            <div
+              className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
+                showSubtitles ? 'bg-glimz-primary/20' : ''
+              }`}
+              onClick={() => {
+                setShowSubtitles(true);
+                setShowSubtitlePanel(false);
+              }}
+            >
+              <div className="text-white text-sm">English</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default VideoPlayer;
