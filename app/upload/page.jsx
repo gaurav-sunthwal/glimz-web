@@ -25,6 +25,8 @@ export default function UploadPage() {
     tags: "",
     thumbnail: null,
     video: null,
+    tier: "free", // free, premium, vip
+    price: "",
   });
   const [errors, setErrors] = useState({});
   const [dragActive, setDragActive] = useState(false);

@@ -58,8 +58,8 @@ export default function VideoDetailsPage() {
   };
 
   const handlePlayVideo = () => {
-    // In a real app, this would open a video player
-    console.log('Playing video:', video.id);
+    // Navigate to the streaming page
+    router.push(`/watch/${video.id}`);
   };
 
   const handleViewDetails = (videoId) => {

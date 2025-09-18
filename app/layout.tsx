@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     "Discover and watch amazing content powered by AI recommendations",
   keywords: "streaming, movies, shows, AI, entertainment",
   authors: [{ name: "Glimz Team" }],
+  
 };
 
 export const viewport: Viewport = {
@@ -26,6 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+     
       <body className={inter.className}>
         <ClientWrapper>{children}</ClientWrapper>
       </body>

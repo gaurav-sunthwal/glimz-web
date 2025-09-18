@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -99,7 +100,7 @@ export const VideoCard = ({
           <Button
             onClick={(e) => {
               e.stopPropagation();
-              onPlay?.(video.id);
+              router.push(`/watch/${video.id}`);
             }}
             className="bg-white/20 backdrop-blur-md border-2 border-white/40 text-white hover:bg-white/30 hover:border-white/60 hover:scale-110 p-4 rounded-full transition-all duration-200 shadow-lg"
           >
