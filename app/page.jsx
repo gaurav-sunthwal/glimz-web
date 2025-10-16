@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage";
 import ExplorePage from "./pages/ExplorePage";
 import { useIsMobile } from "./hooks/use-Mobile";
 import MobilePage from "./pages/MobilePage.jsx";
+import Footer from "./components/footer";
 
 export default function Page() {
   const isMobile = useIsMobile();
@@ -16,6 +17,7 @@ export default function Page() {
       ) : (
         <div className="">
           <HomePage />
+          <Footer />
         </div>
       )}
     </>
