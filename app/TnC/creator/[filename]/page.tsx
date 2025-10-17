@@ -73,7 +73,7 @@ export default async function CreatorDocumentPage({
           </div>
           <div className="mt-4">
             <Link
-              href="/terms/creator"
+              href="/TnC/creator"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Creator Documents
@@ -93,13 +93,13 @@ export default async function CreatorDocumentPage({
           </h1>
           <div className="flex gap-4">
             <Link
-              href="/terms/creator"
+              href="/TnC/creator"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Creator Documents
             </Link>
             <Link
-              href="/terms"
+              href="/TnC"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Terms
@@ -123,7 +123,5 @@ export async function generateStaticParams() {
     filename: encodeURIComponent(file.name),
   }));
 }
-
-
 
 // fix the locaton issue of the files

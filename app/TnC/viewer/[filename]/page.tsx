@@ -73,7 +73,7 @@ export default async function ViewerDocumentPage({
           </div>
           <div className="mt-4">
             <Link
-              href="/terms/viewer"
+              href="/TnC/viewer"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Viewer Documents
@@ -93,13 +93,13 @@ export default async function ViewerDocumentPage({
           </h1>
           <div className="flex gap-4">
             <Link
-              href="/terms/viewer"
+              href="/TnC/viewer"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Viewer Documents
             </Link>
             <Link
-              href="/terms"
+              href="/TnC"
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               ← Back to Terms

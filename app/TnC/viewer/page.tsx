@@ -41,7 +41,7 @@ export default function ViewerPage() {
           {viewerFiles.map((file) => (
             <Link
               key={file.name}
-              href={`/terms/viewer/${encodeURIComponent(file.name)}`}
+              href={`/TnC/viewer/${encodeURIComponent(file.name)}`}
               className="block p-6 bg-card rounded-card shadow-card hover:shadow-glow transition-all duration-300 border border-border hover:border-white/10"
             >
               <h3 className="text-lg font-semibold text-card-foreground mb-2">
@@ -56,7 +56,7 @@ export default function ViewerPage() {
 
         <div className="mt-8">
           <Link
-            href="/terms"
+            href="/TnC"
             className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             ← Back to Terms
