@@ -27,7 +27,7 @@ const viewerFiles = [
 export default function ViewerPage() {
   return (
     <div className="min-h-screen py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-5xl mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Viewer Terms & Policies
@@ -37,7 +37,7 @@ export default function ViewerPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-1">
           {viewerFiles.map((file) => (
             <Link
               key={file.name}
@@ -47,7 +47,7 @@ export default function ViewerPage() {
               <h3 className="text-lg font-semibold text-card-foreground mb-2">
                 {file.displayName}
               </h3>
-              <p className="text-sm text-foreground-muted">Click to view document</p>
+              <p className="text-sm text-foreground-muted text-blue-500 hover:underline">Read document</p>
             </Link>
           ))}
         </div>

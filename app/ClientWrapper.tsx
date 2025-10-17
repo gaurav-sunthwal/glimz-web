@@ -2,19 +2,23 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import MobilePage from "./pages/MobilePage.jsx";
 import { useIsMobile } from "./hooks/use-Mobile.jsx";
 import FloatingUploadButton from "@/components/FloatingUploadButton";
 
 export default function ClientWrapper({ children }: { children: React.ReactNode }) {
     const isMobile = useIsMobile();
-
+    const pathname = usePathname();
 
   useEffect(() => {
     
   }, []);
 
-  if (isMobile) {
+  // Allow terms pages to be accessible on mobile
+  const isTermsPage = pathname?.startsWith('/terms');
+
+  if (isMobile && !isTermsPage) {
     return (
       <div className="block sm:hidden">
         <MobilePage />
