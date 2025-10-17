@@ -7,22 +7,22 @@ import path from "path";
 
 const viewerFiles = [
   {
-    name: "complaint policy and procedure",
+    name: "complaint-policy-and-procedure",
     filename: "complaint policy and procedure.docx",
     displayName: "Complaint Policy and Procedure",
   },
   {
-    name: "cookie policy",
+    name: "cookie-policy",
     filename: "cookie policy.docx",
     displayName: "Cookie Policy",
   },
   {
-    name: "privacy policy",
+    name: "privacy-policy",
     filename: "privacy policy.docx",
     displayName: "Privacy Policy",
   },
   {
-    name: "user agreement",
+    name: "user-agreement",
     filename: "User agreement.docx",
     displayName: "User Agreement",
   },
