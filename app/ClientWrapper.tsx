@@ -7,22 +7,24 @@ import MobilePage from "./pages/MobilePage.jsx";
 import { useIsMobile } from "./hooks/use-Mobile.jsx";
 import FloatingUploadButton from "@/components/FloatingUploadButton";
 
-export default function ClientWrapper({ children }: { children: React.ReactNode }) {
-    const isMobile = useIsMobile();
-    const pathname = usePathname();
+export default function ClientWrapper({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const isMobile = useIsMobile();
+  const pathname = usePathname();
 
-  useEffect(() => {
-    
-  }, []);
+  useEffect(() => {}, []);
 
   // Allow terms pages to be accessible on mobile
-  const isTermsPage = pathname?.startsWith('/terms');
+  const isTermsPage = pathname?.startsWith("/terms");
 
   if (isMobile && !isTermsPage) {
     return (
       <div className="block sm:hidden">
         <MobilePage />
-        <FloatingUploadButton />
+        {/* <FloatingUploadButton /> */}
       </div>
     );
   }
