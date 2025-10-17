@@ -18,7 +18,7 @@ export default function ClientWrapper({
   useEffect(() => {}, []);
 
   // Allow terms pages to be accessible on mobile
-  const isTermsPage = pathname?.startsWith("/terms");
+  const isTermsPage = pathname?.startsWith("/TnC");
 
   if (isMobile && !isTermsPage) {
     return (
