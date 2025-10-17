@@ -37,3 +37,6 @@ console.log('');
 console.log('Document locations:');
 console.log('- Creator documents: app/terms/Creator/');
 console.log('- Viewer documents: app/terms/Viwer/');
+
+
+
