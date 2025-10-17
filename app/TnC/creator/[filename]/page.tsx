@@ -123,3 +123,7 @@ export async function generateStaticParams() {
     filename: encodeURIComponent(file.name),
   }));
 }
+
+
+
+// fix the locaton issue of the files
