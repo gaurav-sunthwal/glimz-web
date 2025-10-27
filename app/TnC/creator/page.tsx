@@ -8,6 +8,11 @@ const creatorFiles = [
     displayName: "Content Creator Agreement",
   },
   {
+    name: "content-creator-privacy-policy",
+    filename: "CONTENT CREATOR PRIVACY POLICY.docx",
+    displayName: "Content Creator Privacy Policy",
+  },
+  {
     name: "content-creator-terms",
     filename: "Content creator term & condition.docx",
     displayName: "Content Creator Terms & Conditions",

@@ -62,6 +62,7 @@ export default function page() {
               </div>
               <ul className="space-y-2 text-sm text-foreground-muted">
                 <li>• Content Creator Agreement</li>
+                <li>• Content Creator Privacy Policy</li>
                 <li>• Content Creator Terms & Conditions</li>
                 <li>• Content Guidelines Policy</li>
                 <li>• Content Takedown Policy</li>
