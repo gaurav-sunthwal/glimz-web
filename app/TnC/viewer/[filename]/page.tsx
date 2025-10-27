@@ -40,9 +40,8 @@ async function getDocumentContent(filename: string) {
     const { value: html } = await mammoth.convertToHtml(
       { buffer: fileBuffer },
       {
-        // Use built-in docx style map + our own mappings to attach classes
         includeEmbeddedStyleMap: true,
-        preserveEmptyParagraphs: true,
+        ignoreEmptyParagraphs: false,
         styleMap: [
           "p[style-name='Title'] => h1.docx-title:fresh",
           "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
@@ -53,17 +52,12 @@ async function getDocumentContent(filename: string) {
           "table => table.docx-table",
           "th => th.docx-th",
           "td => td.docx-td",
-          // Hyperlinks are emitted as <a> by default; the line below is optional
-          "r[style-name='Hyperlink'] => a",
+          // don't force hyperlink runs; Mammoth emits <a> automatically
         ],
-        convertImage: mammoth.images.inline(async (element) => {
-          const b64 = await element.read("base64");
-          return { src: `data:${element.contentType};base64,${b64}` };
-        }),
       }
     );
 
-    // Ensure links open in a new tab & are safe
+    // open links in new tab + safe rel
     const withSafeLinks = html.replace(
       /<a\b(?![^>]*\btarget=)/g,
       '<a target="_blank" rel="noopener noreferrer"'
@@ -76,7 +70,6 @@ async function getDocumentContent(filename: string) {
   }
 }
 
-// If you’re on Next 15 app router with async params:
 export default async function ViewerDocumentPage({
   params,
 }: {
@@ -92,18 +85,18 @@ export default async function ViewerDocumentPage({
 
   if (!content) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-white py-12">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <h2 className="text-lg font-medium text-red-800">Error</h2>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h2 className="text-lg font-semibold text-red-800">Error</h2>
             <p className="text-red-700">
               Unable to load the document. Please try again later.
             </p>
           </div>
-          <div className="mt-4">
+          <div className="mt-6">
             <Link
               href="/TnC/viewer"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
               ← Back to Viewer Documents
             </Link>
@@ -114,50 +107,56 @@ export default async function ViewerDocumentPage({
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen bg-white py-10 md:py-12">
       <div className="max-w-4xl mx-auto px-4">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
             {file.displayName}
           </h1>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/TnC/viewer"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
               ← Back to Viewer Documents
             </Link>
             <Link
               href="/TnC"
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              className="inline-flex items-center px-5 py-2.5 text-sm font-medium text-gray-800 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
               ← Back to Terms
             </Link>
           </div>
         </div>
 
-        <div className="bg-card rounded-card shadow-card p-8 border border-border">
+        {/* Document card */}
+        <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 md:p-8">
           <div
             className={[
               "prose prose-lg max-w-none",
-              // Invert only if your theme needs it; otherwise remove `prose-invert`
-              "prose-invert",
-              // Ensure hyperlinks look like doc links
-              "prose-a:underline prose-a:decoration-2 hover:prose-a:no-underline",
-              "prose-a:break-words",
-              // Tables and lists polish
+              // headings & body — crisp black/dark text
+              "prose-headings:text-gray-900",
+              "prose-p:text-gray-900",
+              "prose-strong:text-gray-900",
+              "prose-li:marker:text-gray-500",
+              // links — blue + underlined
+              "prose-a:text-blue-600 prose-a:underline hover:prose-a:text-blue-800",
+              // tables & spacing polish
               "prose-table:my-4 prose-th:px-3 prose-td:px-3 prose-td:align-top",
+              // images (if any in future)
+              "prose-img:rounded-lg prose-img:mx-auto",
             ].join(" ")}
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
 
-        {/* Optional: a tiny footer link to download the original DOCX */}
+        {/* Download original */}
         <div className="mt-6">
           <a
             href={`/terms/Viewer%20Doc/${encodeURIComponent(file.filename)}`}
             download
-            className="text-sm underline"
+            className="text-sm text-blue-600 underline hover:text-blue-800"
           >
             Download original document (.docx)
           </a>
