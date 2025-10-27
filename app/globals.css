@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,7 +11,7 @@
     --radius: 0.75rem;
     --radius-card: 1rem;
     --radius-button: 0.5rem;
-    
+
     /* Glimz Dark Theme */
     --background: 219 39% 11%;
     --background-secondary: 217 33% 17%;
@@ -24,22 +24,22 @@
     --glimz-primary-dark: 285 84% 52%;
     --glimz-secondary: 320 91% 65%;
     --glimz-accent: 260 100% 75%;
-    
+
     /* UI Elements */
     --card: var(--background-secondary);
     --card-foreground: var(--foreground);
     --card-hover: var(--background-tertiary);
-    
+
     --border: 215 28% 25%;
     --input: var(--background-tertiary);
     --input-border: 215 28% 35%;
     --ring: var(--glimz-primary);
-    
+
     /* Shadows */
     --shadow-glow: 0 0 30px hsl(var(--glimz-primary) / 0.3);
     --shadow-card: 0 8px 32px hsl(var(--background) / 0.8);
     --shadow-hero: 0 25px 60px hsl(var(--background) / 0.9);
-    
+
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -55,7 +55,7 @@
 
   body {
     @apply bg-background text-foreground antialiased overflow-x-hidden;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
   }
 
   /* Custom scrollbar */
@@ -79,7 +79,7 @@
 @layer components {
   /* Font Family Classes */
   .font-inter {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
   }
 
   /* Glimz Button Variants */
@@ -115,11 +115,19 @@
 
   /* Hero Section */
   .hero-gradient {
-    background: linear-gradient(135deg, hsl(var(--glimz-primary)) 0%, hsl(var(--glimz-secondary)) 100%);
+    background: linear-gradient(
+      135deg,
+      hsl(var(--glimz-primary)) 0%,
+      hsl(var(--glimz-secondary)) 100%
+    );
   }
 
   .hero-overlay {
-    background: linear-gradient(0deg, hsl(var(--background)) 0%, transparent 100%);
+    background: linear-gradient(
+      0deg,
+      hsl(var(--background)) 0%,
+      transparent 100%
+    );
   }
 
   /* Carousel Styles */
@@ -170,8 +178,13 @@
 
   /* Custom Animations */
   @keyframes glow-pulse {
-    0%, 100% { box-shadow: 0 0 20px hsl(var(--glimz-primary) / 0.4); }
-    50% { box-shadow: 0 0 40px hsl(var(--glimz-primary) / 0.8); }
+    0%,
+    100% {
+      box-shadow: 0 0 20px hsl(var(--glimz-primary) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px hsl(var(--glimz-primary) / 0.8);
+    }
   }
 
   @keyframes logo-spin {
@@ -191,7 +204,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
@@ -232,4 +245,35 @@
 
 .read-the-docs {
   color: #888;
+}
+
+@layer components {
+  .docx-title {
+    @apply text-4xl font-extrabold mb-4;
+  }
+  .docx-subtitle {
+    @apply text-xl text-muted-foreground mb-6;
+  }
+  .docx-h1 {
+    @apply text-3xl font-bold mt-8 mb-3;
+  }
+  .docx-h2 {
+    @apply text-2xl font-semibold mt-6 mb-2;
+  }
+  .docx-h3 {
+    @apply text-xl font-semibold mt-5 mb-2;
+  }
+  .docx-quote {
+    @apply border-l-4 pl-4 italic text-muted-foreground my-4;
+  }
+
+  .docx-table {
+    @apply w-full border-collapse table-auto;
+  }
+  .docx-th {
+    @apply border px-3 py-2 text-left font-semibold;
+  }
+  .docx-td {
+    @apply border px-3 py-2;
+  }
 }

@@ -36,28 +36,57 @@ async function getDocumentContent(filename: string) {
       filename
     );
     const fileBuffer = fs.readFileSync(filePath);
-    const result = await mammoth.convertToHtml({ buffer: fileBuffer });
-    return result.value;
+
+    const { value: html } = await mammoth.convertToHtml(
+      { buffer: fileBuffer },
+      {
+        // Use built-in docx style map + our own mappings to attach classes
+        includeEmbeddedStyleMap: true,
+        preserveEmptyParagraphs: true,
+        styleMap: [
+          "p[style-name='Title'] => h1.docx-title:fresh",
+          "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
+          "p[style-name='Heading 1'] => h2.docx-h1:fresh",
+          "p[style-name='Heading 2'] => h3.docx-h2:fresh",
+          "p[style-name='Heading 3'] => h4.docx-h3:fresh",
+          "p[style-name='Quote'] => blockquote.docx-quote",
+          "table => table.docx-table",
+          "th => th.docx-th",
+          "td => td.docx-td",
+          // Hyperlinks are emitted as <a> by default; the line below is optional
+          "r[style-name='Hyperlink'] => a",
+        ],
+        convertImage: mammoth.images.inline(async (element) => {
+          const b64 = await element.read("base64");
+          return { src: `data:${element.contentType};base64,${b64}` };
+        }),
+      }
+    );
+
+    // Ensure links open in a new tab & are safe
+    const withSafeLinks = html.replace(
+      /<a\b(?![^>]*\btarget=)/g,
+      '<a target="_blank" rel="noopener noreferrer"'
+    );
+
+    return withSafeLinks;
   } catch (error) {
     console.error("Error reading document:", error);
     return null;
   }
 }
 
+// If you’re on Next 15 app router with async params:
 export default async function ViewerDocumentPage({
   params,
 }: {
   params: Promise<{ filename: string }>;
 }) {
-  // Await params as required by Next.js 15
   const { filename } = await params;
-  // Decode the URL-encoded filename
   const decodedFilename = decodeURIComponent(filename);
   const file = viewerFiles.find((f) => f.name === decodedFilename);
 
-  if (!file) {
-    notFound();
-  }
+  if (!file) notFound();
 
   const content = await getDocumentContent(file.filename);
 
@@ -85,7 +114,7 @@ export default async function ViewerDocumentPage({
   }
 
   return (
-    <div className="min-h-screen  py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -109,9 +138,29 @@ export default async function ViewerDocumentPage({
 
         <div className="bg-card rounded-card shadow-card p-8 border border-border">
           <div
-            className="prose prose-lg max-w-none prose-invert"
+            className={[
+              "prose prose-lg max-w-none",
+              // Invert only if your theme needs it; otherwise remove `prose-invert`
+              "prose-invert",
+              // Ensure hyperlinks look like doc links
+              "prose-a:underline prose-a:decoration-2 hover:prose-a:no-underline",
+              "prose-a:break-words",
+              // Tables and lists polish
+              "prose-table:my-4 prose-th:px-3 prose-td:px-3 prose-td:align-top",
+            ].join(" ")}
             dangerouslySetInnerHTML={{ __html: content }}
           />
+        </div>
+
+        {/* Optional: a tiny footer link to download the original DOCX */}
+        <div className="mt-6">
+          <a
+            href={`/terms/Viewer%20Doc/${encodeURIComponent(file.filename)}`}
+            download
+            className="text-sm underline"
+          >
+            Download original document (.docx)
+          </a>
         </div>
       </div>
     </div>
