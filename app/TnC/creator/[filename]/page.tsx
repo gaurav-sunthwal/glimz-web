@@ -37,7 +37,7 @@ async function getDocumentContent(filename: string) {
   try {
     const filePath = path.join(
       process.cwd(),
-      "public/terms/creator-doc",
+      "public/terms/Creator doc",
       filename
     );
     const fileBuffer = fs.readFileSync(filePath);
@@ -153,7 +153,7 @@ export default async function CreatorDocumentPage({
         {/* Download original */}
         <div className="mt-6">
           <a
-            href={`/terms/creator-doc/${encodeURIComponent(file.filename)}`}
+            href={`/terms/Creator%20doc/${encodeURIComponent(file.filename)}`}
             download
             className="text-sm text-blue-600 underline hover:text-blue-800"
           >
