@@ -37,7 +37,7 @@ async function getDocumentContent(filename: string) {
   try {
     const filePath = path.join(
       process.cwd(),
-      "public/terms/creator-doc",
+      "public/terms/Creator doc",
       filename
     );
     const fileBuffer = fs.readFileSync(filePath);
@@ -47,17 +47,17 @@ async function getDocumentContent(filename: string) {
       {
         includeEmbeddedStyleMap: true,
         ignoreEmptyParagraphs: false,
-        styleMap: [
-          "p[style-name='Title'] => h1.docx-title:fresh",
-          "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
-          "p[style-name='Heading 1'] => h2.docx-h1:fresh",
-          "p[style-name='Heading 2'] => h3.docx-h2:fresh",
-          "p[style-name='Heading 3'] => h4.docx-h3:fresh",
-          "p[style-name='Quote'] => blockquote.docx-quote",
-          "table => table.docx-table",
-          "th => th.docx-th",
-          "td => td.docx-td",
-        ],
+        // styleMap: [
+        //   "p[style-name='Title'] => h1.docx-title:fresh",
+        //   "p[style-name='Subtitle'] => h2.docx-subtitle:fresh",
+        //   "p[style-name='Heading 1'] => h2.docx-h1:fresh",
+        //   "p[style-name='Heading 2'] => h3.docx-h2:fresh",
+        //   "p[style-name='Heading 3'] => h4.docx-h3:fresh",
+        //   "p[style-name='Quote'] => blockquote.docx-quote",
+        //   "table => table.docx-table",
+        //   "th => th.docx-th",
+        //   "td => td.docx-td",
+        // ],
       }
     );
 
@@ -153,7 +153,7 @@ export default async function CreatorDocumentPage({
         {/* Download original */}
         <div className="mt-6">
           <a
-            href={`/terms/creator-doc/${encodeURIComponent(file.filename)}`}
+            href={`/terms/Creator%20doc/${encodeURIComponent(file.filename)}`}
             download
             className="text-sm text-blue-600 underline hover:text-blue-800"
           >
