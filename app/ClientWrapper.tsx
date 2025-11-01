@@ -21,7 +21,7 @@ export default function ClientWrapper({
   const isTermsPage = pathname?.startsWith("/TnC");
   const isDeleteAccountPage = pathname?.startsWith("/delete-account");
 
-  if (isMobile && !isTermsPage) {
+  if (isMobile && !isTermsPage && !isDeleteAccountPage) {
     return (
       <div className="block sm:hidden">
         <MobilePage />
