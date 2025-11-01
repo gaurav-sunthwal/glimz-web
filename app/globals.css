@@ -244,37 +244,5 @@
 }
 
 .read-the-docs {
-  color: #888;
-}
-
-/* app/globals.css */
-@layer components {
-  .docx-title {
-    @apply text-4xl font-extrabold mb-4;
-  }
-  .docx-subtitle {
-    @apply text-xl text-gray-500 mb-6;
-  }
-  .docx-h1 {
-    @apply text-3xl font-bold mt-8 mb-3;
-  }
-  .docx-h2 {
-    @apply text-2xl font-semibold mt-6 mb-2;
-  }
-  .docx-h3 {
-    @apply text-xl font-semibold mt-5 mb-2;
-  }
-  .docx-quote {
-    @apply border-l-4 pl-4 italic text-gray-600 my-4;
-  }
-
-  .docx-table {
-    @apply w-full border-collapse table-auto;
-  }
-  .docx-th {
-    @apply border px-3 py-2 text-left font-semibold bg-gray-50;
-  }
-  .docx-td {
-    @apply border px-3 py-2;
-  }
+  color: #000;
 }

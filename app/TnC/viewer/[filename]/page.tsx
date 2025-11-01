@@ -133,20 +133,7 @@ export default async function ViewerDocumentPage({
         {/* Document card */}
         <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 md:p-8">
           <div
-            className={[
-              "prose prose-lg max-w-none",
-              // headings & body — crisp black/dark text
-              "prose-headings:text-gray-900",
-              "prose-p:text-gray-900",
-              "prose-strong:text-gray-900",
-              "prose-li:marker:text-gray-500",
-              // links — blue + underlined
-              "prose-a:text-blue-600 prose-a:underline hover:prose-a:text-blue-800",
-              // tables & spacing polish
-              "prose-table:my-4 prose-th:px-3 prose-td:px-3 prose-td:align-top",
-              // images (if any in future)
-              "prose-img:rounded-lg prose-img:mx-auto",
-            ].join(" ")}
+            className="max-w-none text-black leading-relaxed space-y-4 [&_a]:text-blue-600 [&_a]:underline [&_a:hover]:text-blue-800 [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_h3]:text-xl [&_h3]:font-semibold [&_h4]:text-lg [&_h4]:font-medium"
             dangerouslySetInnerHTML={{ __html: content }}
           />
         </div>
