@@ -19,6 +19,7 @@ export default function ClientWrapper({
 
   // Allow terms pages to be accessible on mobile
   const isTermsPage = pathname?.startsWith("/TnC");
+  const isDeleteAccountPage = pathname?.startsWith("/delete-account");
 
   if (isMobile && !isTermsPage) {
     return (
