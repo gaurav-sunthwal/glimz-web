@@ -9,6 +9,7 @@ export async function POST() {
   response.cookies.set('uuid', '', { path: '/', maxAge: 0 });
   response.cookies.set('user_data', '', { path: '/', maxAge: 0 });
   response.cookies.set('is_creator', '', { path: '/', maxAge: 0 });
+  response.cookies.set('is_admin', '', { path: '/', maxAge: 0 });
 
   return response;
 }

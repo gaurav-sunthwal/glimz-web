@@ -16,6 +16,15 @@ export function isUserAuthenticated() {
   return isCreatorCookie && isCreatorCookie !== 'null';
 }
 
+export function isUserAdmin() {
+  if (typeof document === 'undefined') return false;
+  const isAdmin = document.cookie
+    .split('; ')
+    .find(row => row.startsWith('is_admin='))
+    ?.split('=')[1];
+  return isAdmin === '1';
+}
+
 /**
  * Check if user is a creator
  * @returns {boolean} True if user is a creator, false otherwise
