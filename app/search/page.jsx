@@ -1,18 +1,19 @@
 "use client"
 
-import { Suspense, useState, useEffect } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Search as SearchIcon, X } from 'lucide-react';
+import { ArrowLeft, Search as SearchIcon, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { VideoCard } from '@/components/VideoCard';
+import { CreatorCard } from '@/components/CreatorCard';
 import { useAppStore } from '../store/appStore';
-import videosData from '@/data/videos.json';
 
 function SearchComponent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
+  const initialType = searchParams.get('type') || 'all';
   
   const { 
     searchQuery, 
@@ -28,50 +29,121 @@ function SearchComponent() {
   } = useAppStore();
 
   const [localQuery, setLocalQuery] = useState(initialQuery);
+  const [searchType, setSearchType] = useState(initialType);
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalResults, setTotalResults] = useState(0);
+  const [apiResponse, setApiResponse] = useState(null);
 
-  const handleSearch = (query) => {
+  const handleSearch = useCallback(async (query, type = 'all', pageNum = 1) => {
     if (!query.trim()) {
       setSearchResults([]);
       setIsSearching(false);
+      setTotalResults(0);
+      setApiResponse(null);
       return;
     }
 
     setIsSearching(true);
     setSearchQuery(query);
 
-    // Simulate API delay
-    setTimeout(() => {
-      const filtered = videosData.filter(video => 
-        video.title.toLowerCase().includes(query.toLowerCase()) ||
-        video.description.toLowerCase().includes(query.toLowerCase()) ||
-        video.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
-      );
-      
-      setSearchResults(filtered);
+    try {
+      const queryParams = new URLSearchParams({
+        q: query.trim(),
+        type: type,
+        page: pageNum.toString(),
+        limit: limit.toString(),
+      });
+
+      const response = await fetch(`/api/search?${queryParams.toString()}`);
+      const data = await response.json();
+
+      if (data.status && data.data) {
+        setApiResponse(data.data);
+        setTotalResults(data.data.total || 0);
+        
+        // Transform API results to match component expectations
+        const transformedResults = data.data.results.map(result => {
+          if (result.type === 'content') {
+            // Transform content result to match VideoCard expectations
+            return {
+              id: result.id,
+              title: result.title,
+              description: result.description,
+              thumbnail: result.thumbnail,
+              video: result.video,
+              teaser: result.teaser,
+              creator_id: result.creator_id,
+              created_at: result.created_at,
+              score: result.score,
+              highlight: result.highlight,
+              // Add default values for VideoCard
+              duration: 'N/A',
+              genre: [],
+              releaseYear: new Date(result.created_at).getFullYear(),
+              rating: null,
+              views: null,
+              likes: null,
+              isLive: false,
+            };
+          } else {
+            // Creator result - already matches CreatorCard expectations
+            return result;
+          }
+        });
+        
+        setSearchResults(transformedResults);
+      } else {
+        setSearchResults([]);
+        setTotalResults(0);
+        setApiResponse(null);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+      setTotalResults(0);
+      setApiResponse(null);
+    } finally {
       setIsSearching(false);
-    }, 300);
-  };
+    }
+  }, [limit, setSearchQuery, setSearchResults, setIsSearching]);
 
   useEffect(() => {
     if (initialQuery) {
       setLocalQuery(initialQuery);
-      handleSearch(initialQuery);
+      setSearchType(initialType);
+      handleSearch(initialQuery, initialType, 1);
     }
-  }, [initialQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery, initialType]);
 
   const handleInputChange = (value) => {
     setLocalQuery(value);
+    setPage(1); // Reset to first page on new search
     if (value.trim()) {
-      handleSearch(value);
+      handleSearch(value, searchType, 1);
     } else {
       setSearchResults([]);
       setIsSearching(false);
+      setTotalResults(0);
+      setApiResponse(null);
+    }
+  };
+
+  const handleTypeChange = (type) => {
+    setSearchType(type);
+    setPage(1); // Reset to first page when changing type
+    if (localQuery.trim()) {
+      handleSearch(localQuery, type, 1);
     }
   };
 
   const handleClearSearch = () => {
     setLocalQuery('');
+    setPage(1);
     clearSearch();
+    setTotalResults(0);
+    setApiResponse(null);
   };
 
   const handleWatchlistToggle = (videoId) => {
@@ -94,7 +166,25 @@ function SearchComponent() {
     router.push(`/video/${videoId}`);
   };
 
+  const handleCreatorClick = (creator) => {
+    router.push(`/profile/${creator.id}`);
+  };
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    if (localQuery.trim()) {
+      handleSearch(localQuery, searchType, newPage);
+    }
+    // Scroll to top on page change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const totalPages = Math.ceil(totalResults / limit);
   const genres = ['Action', 'Drama', 'Comedy', 'Sci-Fi', 'Thriller', 'Romance', 'Fantasy', 'Horror'];
+  
+  // Separate content and creator results
+  const contentResults = searchResults.filter(r => r.type === 'content' || (!r.type && r.title));
+  const creatorResults = searchResults.filter(r => r.type === 'creator');
 
   return (
     <div className="min-h-screen bg-background text-white pt-16 sm:pt-20">
@@ -171,7 +261,7 @@ function SearchComponent() {
           // Loading State
           <div className="flex flex-col items-center justify-center py-16 sm:py-20">
             <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-glimz-primary border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-foreground-muted text-sm sm:text-base">Searching for "{localQuery}"...</p>
+            <p className="text-foreground-muted text-sm sm:text-base">Searching for &quot;{localQuery}&quot;...</p>
           </div>
         ) : searchResults.length === 0 ? (
           // No Results State
@@ -198,28 +288,130 @@ function SearchComponent() {
         ) : (
           // Results State
           <div className="space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-              <h2 className="text-xl sm:text-2xl font-bold">
-                Search Results for &quot;{localQuery}&quot;
-              </h2>
-              <p className="text-foreground-muted text-sm sm:text-base">
-                {searchResults.length} {searchResults.length === 1 ? 'result' : 'results'} found
-              </p>
+            {/* Header with Type Filter */}
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                <h2 className="text-xl sm:text-2xl font-bold">
+                  Search Results for &quot;{localQuery}&quot;
+                </h2>
+                <p className="text-foreground-muted text-sm sm:text-base">
+                  {totalResults} {totalResults === 1 ? 'result' : 'results'} found
+                </p>
+              </div>
+              
+              {/* Type Filter Tabs */}
+              <div className="flex gap-2 border-b border-white/10">
+                {['all', 'content', 'creator'].map((type) => (
+                  <Button
+                    key={type}
+                    onClick={() => handleTypeChange(type)}
+                    variant="ghost"
+                    className={`px-4 py-2 rounded-t-lg border-b-2 transition-all ${
+                      searchType === type
+                        ? 'border-glimz-primary text-glimz-primary bg-glimz-primary/10'
+                        : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </Button>
+                ))}
+              </div>
             </div>
-            
-            <div className=" flex flex-wrap justify-start gap-5">
-              {searchResults.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  video={video}
-                  onPlay={handlePlayVideo}
-                  onAddToList={handleWatchlistToggle}
-                  onViewDetails={handleViewDetails}
-                  isInWatchlist={watchlist.includes(video.id)}
-                  size="large"
-                />
-              ))}
-            </div>
+
+            {/* Content Results */}
+            {contentResults.length > 0 && (searchType === 'all' || searchType === 'content') && (
+              <div className="space-y-4">
+                {searchType === 'all' && (
+                  <h3 className="text-lg font-semibold text-white/90">Content</h3>
+                )}
+                <div className="flex flex-wrap justify-start gap-5">
+                  {contentResults.map((video) => (
+                    <VideoCard
+                      key={`content-${video.id}`}
+                      video={video}
+                      onPlay={handlePlayVideo}
+                      onAddToList={handleWatchlistToggle}
+                      onViewDetails={handleViewDetails}
+                      isInWatchlist={watchlist.includes(video.id)}
+                      size="large"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Creator Results */}
+            {creatorResults.length > 0 && (searchType === 'all' || searchType === 'creator') && (
+              <div className="space-y-4">
+                {searchType === 'all' && (
+                  <h3 className="text-lg font-semibold text-white/90">Creators</h3>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {creatorResults.map((creator) => (
+                    <CreatorCard
+                      key={`creator-${creator.id}`}
+                      creator={creator}
+                      onClick={handleCreatorClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-6">
+                <Button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        variant={page === pageNum ? "default" : "ghost"}
+                        className={`min-w-[40px] ${
+                          page === pageNum
+                            ? 'bg-glimz-primary text-white'
+                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  variant="outline"
+                  className="border-white/20 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

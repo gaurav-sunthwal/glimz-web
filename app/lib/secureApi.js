@@ -113,6 +113,30 @@ export const secureApi = {
     return data;
   },
 
+  async search({ query, type = "all", page = 1, limit = 10 }) {
+    if (!query || !query.trim()) {
+      return {
+        status: false,
+        code: 400,
+        message: "Search query is required",
+        error: "Missing required parameter: q",
+      };
+    }
+
+    const queryParams = new URLSearchParams({
+      q: query.trim(),
+      type: type,
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+
+    const resp = await fetch(`/api/search?${queryParams.toString()}`, {
+      method: "GET",
+      credentials: "include",
+    });
+    return await resp.json();
+  },
+
   isAuthenticated() {
     return true;
   }
