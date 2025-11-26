@@ -9,17 +9,18 @@ export async function GET() {
     const cookieStore = cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
+    const user_type = cookieStore.get("user_type")?.value;
 
     console.log("Fetching creator details for creator:", { uuid, auth_token });
 
     // Check if UUID exists
-    if (!uuid) {
+    if (!uuid || user_type !== '1') {
       console.warn("No UUID found in cookies");
       return NextResponse.json(
         {
           status: false,
           error: "Authentication required",
-          message: "Creator is not Registered",
+          message: "User is not Registered",
         },
         { status: 401 }
       );
@@ -32,7 +33,7 @@ export async function GET() {
         {
           status: false,
           error: "Authentication required",
-          message: "Creator is not Registered",
+          message: "User is not Registered",
         },
         { status: 401 }
       );
