@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useState } from "react";
 import { Play, Heart, Clock, ThumbsUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { WishlistDialog } from "./WishlistDialog";
 
 export const VideoCard = ({
   video,
@@ -17,6 +17,7 @@ export const VideoCard = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
 
   const sizeClasses = {
     small: "w-96 h-56",
@@ -37,7 +38,12 @@ export const VideoCard = ({
       className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-20`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onClick={() =>handleViewDetails(video.id)}
+      onClick={(e) => {
+        // Only navigate if clicking on the card itself, not on interactive elements
+        if (e.target === e.currentTarget || !e.target.closest('button')) {
+          handleViewDetails(video.id);
+        }
+      }}
     >
       {/* Main Card Container */}
       <div className="relative w-full h-full overflow-hidden rounded-lg bg-gray-900 shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -93,16 +99,21 @@ export const VideoCard = ({
 
         {/* Play Button Overlay */}
         <div
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 pointer-events-none ${
             isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75"
           }`}
         >
           <Button
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               router.push(`/watch/${video.id}`);
             }}
-            className="bg-white/20 backdrop-blur-md border-2 border-white/40 text-white hover:bg-white/30 hover:border-white/60 hover:scale-110 p-4 rounded-full transition-all duration-200 shadow-lg"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            className="bg-white/20 backdrop-blur-md border-2 border-white/40 text-white hover:bg-white/30 hover:border-white/60 hover:scale-110 p-4 rounded-full transition-all duration-200 shadow-lg pointer-events-auto"
           >
             <Play className="h-6 w-6 fill-current ml-0.5" />
           </Button>
@@ -152,7 +163,7 @@ export const VideoCard = ({
             </div>
 
             {/* Right Side - Action Buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0 relative z-50">
               {/* Likes */}
               {video.likes && (
                 <div className="flex items-center gap-1 text-white/80 text-xs">
@@ -166,10 +177,21 @@ export const VideoCard = ({
                 variant="ghost"
                 size="sm"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                  onAddToList?.(video.id);
+                  if (isInWatchlist) {
+                    // If already in watchlist, remove it
+                    onAddToList?.(video.id);
+                  } else {
+                    // Show wishlist dialog to add to wishlist
+                    setShowWishlistDialog(true);
+                  }
                 }}
-                className={`p-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 hover:bg-white/25 transition-all duration-200 ${
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                className={`p-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 hover:bg-white/25 transition-all duration-200 relative z-50 ${
                   isInWatchlist
                     ? "text-red-400 bg-red-400/20 border-red-400/30"
                     : "text-white hover:text-red-400"
@@ -198,6 +220,17 @@ export const VideoCard = ({
           </div>
         </div>
       </div>
+
+      {/* Wishlist Dialog */}
+      <WishlistDialog
+        open={showWishlistDialog}
+        onOpenChange={setShowWishlistDialog}
+        contentId={video.id}
+        onSuccess={() => {
+          // Optionally call onAddToList to update UI
+          onAddToList?.(video.id);
+        }}
+      />
     </div>
   );
 };

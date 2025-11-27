@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { HeroBanner } from '@/components/HeroBanner';
 import { VideoCarousel } from '@/components/VideoCarousel';
@@ -12,6 +13,7 @@ import { getVideoWithPlaceholders } from '../utils/updateVideoData';
 import { useIsMobile } from '../hooks/use-Mobile';
 
 const HomePage = () => {
+  const router = useRouter();
   const { 
     currentPage, 
     watchlist, 
@@ -26,6 +28,8 @@ const HomePage = () => {
   const [isLoadingContinueWatching, setIsLoadingContinueWatching] = useState(true);
   const [purchasedContent, setPurchasedContent] = useState([]);
   const [isLoadingPurchasedContent, setIsLoadingPurchasedContent] = useState(true);
+  const [trendingContent, setTrendingContent] = useState([]);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(true);
   const isMobile =  useIsMobile();
   // Get videos with consistent placeholder images
   const videos = getVideoWithPlaceholders();
@@ -168,6 +172,67 @@ const HomePage = () => {
     fetchPurchasedContent();
   }, []);
 
+  // Fetch trending content
+  useEffect(() => {
+    const fetchTrendingContent = async () => {
+      try {
+        setIsLoadingTrending(true);
+        const response = await fetch('/api/content?page=1&limit=20', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        console.log('Trending content data:', data);
+        
+        if (data.status && data.data && Array.isArray(data.data)) {
+          // Transform API response to match VideoCard format
+          const transformedVideos = data.data.map((item) => {
+            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || '';
+            
+            return {
+              id: item.content_id,
+              title: item.title || 'Untitled',
+              thumbnail: thumbnailUrl,
+              video: item.video,
+              teaser: item.teaser,
+              description: item.description || '',
+              creator_id: item.creator_id,
+              creator_name: item.creator_name,
+              username: item.username,
+              is_paid: item.is_paid,
+              price: item.price,
+              views_count: item.views_count,
+              likes_count: item.likes_count,
+              comment_count: item.comment_count,
+              playlist_id: item.playlist_id,
+              created_at: item.created_at,
+              // Add default values for VideoCard
+              genre: [],
+              releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
+              rating: null,
+              views: item.views_count ? `${item.views_count} views` : null,
+              likes: item.likes_count ? `${item.likes_count} likes` : null,
+              isLive: false,
+              duration: 'N/A', // Duration not provided in API response
+            };
+          });
+          
+          setTrendingContent(transformedVideos);
+        } else {
+          setTrendingContent([]);
+        }
+      } catch (error) {
+        console.error('Error fetching trending content:', error);
+        setTrendingContent([]);
+      } finally {
+        setIsLoadingTrending(false);
+      }
+    };
+
+    fetchTrendingContent();
+  }, []);
+
   // Helper function to format duration
   const formatDuration = (seconds) => {
     if (!seconds) return 'N/A';
@@ -200,8 +265,8 @@ const HomePage = () => {
   };
 
   const handleViewDetails = (videoId) => {
-    setCurrentVideoId(videoId);
-    setCurrentPage('/video');
+    // Navigate to video details page
+    router.push(`/video/${videoId}`);
   };
 
   const handleWatchlistToggle = (videoId) => {
@@ -256,6 +321,20 @@ const HomePage = () => {
 
       {/* Content Sections */}
       <div className="relative z-10 ">
+        {/* Trending Now Section */}
+        {!isLoadingTrending && trendingContent.length > 0 && (
+          <VideoCarousel
+            key="Trending Now"
+            title="Trending Now"
+            videos={trendingContent}
+            onPlay={handlePlayVideo}
+            onAddToList={handleWatchlistToggle}
+            onViewDetails={handleViewDetails}
+            watchlist={watchlist}
+            size={isMobile ? "medium" : "large"}
+          />
+        )}
+
         {/* Continue Watching Section */}
         {!isLoadingContinueWatching && continueWatching.length > 0 && (
           <VideoCarousel

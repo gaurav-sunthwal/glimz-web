@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import MobilePage from "./pages/MobilePage.jsx";
 import { useIsMobile } from "./hooks/use-Mobile.jsx";
 import FloatingUploadButton from "@/components/FloatingUploadButton";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function ClientWrapper({
   children,
@@ -34,6 +35,7 @@ export default function ClientWrapper({
     <Suspense>
       {children}
       <FloatingUploadButton />
+      <Toaster />
     </Suspense>
   );
 }
