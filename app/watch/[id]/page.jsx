@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import VideoPlayer from '@/components/VideoPlayer';
-import videosData from '@/data/videos.json';
 
 export default function WatchPage() {
     const params = useParams();
@@ -15,17 +14,102 @@ export default function WatchPage() {
     const videoId = params.id;
 
     const [video, setVideo] = useState(null);
+    const [relatedVideos, setRelatedVideos] = useState([]);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showSecurityInfo, setShowSecurityInfo] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const foundVideo = videosData.find(v => v.id === videoId);
-        if (foundVideo) {
-            setVideo(foundVideo);
-            setIsLoading(false);
-        } else {
-            setIsLoading(false);
+        const fetchVideoDetails = async () => {
+            try {
+                setIsLoading(true);
+                const response = await fetch(`/api/creator/content/${videoId}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                
+                const data = await response.json();
+                console.log('Watch page video data:', data);
+                
+                if (data.status && data.data?.data) {
+                    const contentData = data.data.data;
+                    
+                    // Get video URL from variants (prefer auto, fallback to 720p, then 480p)
+                    let videoUrl = '';
+                    if (contentData.video?.variants) {
+                        videoUrl = contentData.video.variants.auto || 
+                                  contentData.video.variants['720p'] || 
+                                  contentData.video.variants['480p'] || 
+                                  Object.values(contentData.video.variants)[0] || '';
+                    }
+                    
+                    // Transform API response to match VideoPlayer expectations
+                    const transformedVideo = {
+                        id: contentData.content_id,
+                        title: contentData.title,
+                        description: contentData.description,
+                        thumbnail: contentData.thumbnail?.url || contentData.thumbnail || '',
+                        videoUrl: videoUrl,
+                        video: contentData.video,
+                        teaser: contentData.teaser,
+                        creator_id: contentData.creator_id,
+                        creator_name: contentData.creator_name || 'Unknown Creator',
+                        is_paid: contentData.is_paid,
+                        price: contentData.price,
+                        views_count: contentData.views_count,
+                        likes_count: contentData.likes_count,
+                        comment_count: contentData.comment_count,
+                        playlist_id: contentData.playlist_id,
+                        genre: contentData.genre || [],
+                        age_restriction: contentData.age_restriction,
+                        created_at: contentData.created_at,
+                        // Add default values for display
+                        releaseYear: contentData.created_at ? new Date(contentData.created_at).getFullYear() : new Date().getFullYear(),
+                        duration: 'N/A',
+                        rating: contentData.age_restriction || null,
+                        views: contentData.views_count || '0',
+                        likes: contentData.likes_count || '0',
+                        isLive: false,
+                    };
+                    
+                    setVideo(transformedVideo);
+                    
+                    // Fetch related videos (trending content)
+                    try {
+                        const relatedResponse = await fetch('/api/content?page=1&limit=12', {
+                            method: 'GET',
+                            credentials: 'include',
+                        });
+                        
+                        const relatedData = await relatedResponse.json();
+                        if (relatedData.status && relatedData.data && Array.isArray(relatedData.data)) {
+                            const related = relatedData.data
+                                .filter(v => v.content_id !== contentData.content_id)
+                                .slice(0, 3)
+                                .map((item) => ({
+                                    id: item.content_id,
+                                    title: item.title,
+                                    thumbnail: item.thumbnail?.url || item.thumbnail || '',
+                                    description: item.description || '',
+                                    duration: 'N/A',
+                                }));
+                            
+                            setRelatedVideos(related);
+                        }
+                    } catch (relatedError) {
+                        console.error('Error fetching related videos:', relatedError);
+                        setRelatedVideos([]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching video details:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (videoId) {
+            fetchVideoDetails();
         }
     }, [videoId]);
 
@@ -246,24 +330,30 @@ export default function WatchPage() {
                                     </div>
 
                                     {/* Related Videos */}
-                                    <div className="bg-white/5 rounded-lg p-6">
-                                        <h3 className="text-lg font-semibold mb-4">More Like This</h3>
-                                        <div className="space-y-3">
-                                            {videosData.filter(v => v.id !== video.id).slice(0, 3).map((relatedVideo) => (
-                                                <div key={relatedVideo.id} className="flex gap-3 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors">
-                                                    <img
-                                                        src={relatedVideo.thumbnail}
-                                                        alt={relatedVideo.title}
-                                                        className="w-16 h-12 object-cover rounded"
-                                                    />
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-medium truncate">{relatedVideo.title}</h4>
-                                                        <p className="text-xs text-gray-400">{relatedVideo.duration}</p>
+                                    {relatedVideos.length > 0 && (
+                                        <div className="bg-white/5 rounded-lg p-6">
+                                            <h3 className="text-lg font-semibold mb-4">More Like This</h3>
+                                            <div className="space-y-3">
+                                                {relatedVideos.map((relatedVideo) => (
+                                                    <div 
+                                                        key={relatedVideo.id} 
+                                                        className="flex gap-3 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors"
+                                                        onClick={() => router.push(`/video/${relatedVideo.id}`)}
+                                                    >
+                                                        <img
+                                                            src={relatedVideo.thumbnail}
+                                                            alt={relatedVideo.title}
+                                                            className="w-16 h-12 object-cover rounded"
+                                                        />
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="text-sm font-medium truncate">{relatedVideo.title}</h4>
+                                                            <p className="text-xs text-gray-400">{relatedVideo.duration}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { 
   Play, 
   Pause, 
@@ -17,7 +17,13 @@ import {
   Shield,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Wifi,
+  WifiOff,
+  Check,
+  Monitor,
+  Zap,
+  Gauge
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -25,6 +31,85 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+
+// Network speed detection utility
+const detectNetworkSpeed = async () => {
+  return new Promise((resolve) => {
+    // Use Network Information API if available
+    if ('connection' in navigator) {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (connection) {
+        const effectiveType = connection.effectiveType;
+        const downlink = connection.downlink;
+        
+        // Map effectiveType to quality
+        const speedMap = {
+          'slow-2g': { speed: 'slow', quality: '360p', mbps: 0.5 },
+          '2g': { speed: 'slow', quality: '360p', mbps: 0.5 },
+          '3g': { speed: 'medium', quality: '480p', mbps: 1.5 },
+          '4g': { speed: 'fast', quality: '720p', mbps: 10 },
+        };
+        
+        const networkInfo = speedMap[effectiveType] || { speed: 'fast', quality: '720p', mbps: downlink || 10 };
+        resolve({
+          speed: networkInfo.speed,
+          recommendedQuality: networkInfo.quality,
+          mbps: networkInfo.mbps,
+          effectiveType
+        });
+        return;
+      }
+    }
+    
+    // Fallback: Test with a small image
+    const testImage = new Image();
+    const startTime = Date.now();
+    testImage.onload = () => {
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+      // Approximate size in bytes (1KB test)
+      const sizeInBytes = 1024;
+      const speedMbps = (sizeInBytes * 8) / (duration * 1000000);
+      
+      let recommendedQuality = '720p';
+      let speed = 'fast';
+      
+      if (speedMbps < 1) {
+        recommendedQuality = '360p';
+        speed = 'slow';
+      } else if (speedMbps < 3) {
+        recommendedQuality = '480p';
+        speed = 'medium';
+      } else if (speedMbps < 8) {
+        recommendedQuality = '720p';
+        speed = 'medium';
+      } else {
+        recommendedQuality = '1080p';
+        speed = 'fast';
+      }
+      
+      resolve({
+        speed,
+        recommendedQuality,
+        mbps: speedMbps,
+        effectiveType: 'unknown'
+      });
+    };
+    
+    testImage.onerror = () => {
+      // Default to medium quality if test fails
+      resolve({
+        speed: 'medium',
+        recommendedQuality: '720p',
+        mbps: 5,
+        effectiveType: 'unknown'
+      });
+    };
+    
+    // Use a small transparent pixel with cache busting
+    testImage.src = `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7?t=${Date.now()}`;
+  });
+};
 
 const VideoPlayer = ({ 
   video, 
@@ -37,6 +122,10 @@ const VideoPlayer = ({
   const containerRef = useRef(null);
   const progressRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
+  const networkSpeedRef = useRef(null);
+  const qualityChangeTimeoutRef = useRef(null);
+  const isInitialLoadRef = useRef(true);
+  const lastQualityRef = useRef(null);
   
   // Player state
   const [isPlaying, setIsPlaying] = useState(autoPlay);
@@ -46,12 +135,16 @@ const VideoPlayer = ({
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [buffered, setBuffered] = useState(0);
+  const [networkSpeed, setNetworkSpeed] = useState(null);
+  const [isChangingQuality, setIsChangingQuality] = useState(false);
   
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [videoQuality, setVideoQuality] = useState('auto');
+  const [userSelectedQuality, setUserSelectedQuality] = useState(null); // null means auto
   const [showSubtitles, setShowSubtitles] = useState(false);
   const [subtitleLanguage, setSubtitleLanguage] = useState('en');
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
@@ -75,14 +168,248 @@ const VideoPlayer = ({
   const [showQualityPanel, setShowQualityPanel] = useState(false);
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
   
-  // Quality options
-  const qualityOptions = [
-    { value: 'auto', label: 'Auto' },
-    { value: '1080p', label: '1080p' },
-    { value: '720p', label: '720p' },
-    { value: '480p', label: '480p' },
-    { value: '360p', label: '360p' }
-  ];
+  // Extract available qualities from video variants
+  const availableQualities = useMemo(() => {
+    if (!video?.video?.variants) {
+      return [{ value: 'auto', label: 'Auto' }];
+    }
+    
+    const variants = video.video.variants;
+    const qualityOrder = ['1080p', '720p', '480p', '360p', '240p'];
+    const qualities = [{ value: 'auto', label: 'Auto' }];
+    
+    qualityOrder.forEach(quality => {
+      if (variants[quality]) {
+        qualities.push({ value: quality, label: quality });
+      }
+    });
+    
+    // Add any other variants not in the standard list
+    Object.keys(variants).forEach(key => {
+      if (key !== 'auto' && !qualityOrder.includes(key) && !qualities.find(q => q.value === key)) {
+        qualities.push({ value: key, label: key });
+      }
+    });
+    
+    return qualities;
+  }, [video?.video?.variants]);
+  
+  // Get current video URL based on quality selection
+  const getVideoUrl = useCallback((quality) => {
+    if (!video?.video?.variants) return video?.videoUrl || '';
+    
+    const variants = video.video.variants;
+    
+    if (quality === 'auto' || !quality) {
+      // Auto mode: use network speed recommendation or fallback
+      if (networkSpeedRef.current?.recommendedQuality && variants[networkSpeedRef.current.recommendedQuality]) {
+        return variants[networkSpeedRef.current.recommendedQuality];
+      }
+      // Fallback order
+      return variants.auto || variants['720p'] || variants['480p'] || variants['360p'] || Object.values(variants)[0] || '';
+    }
+    
+    return variants[quality] || variants.auto || video?.videoUrl || '';
+  }, [video]);
+  
+  // Detect network speed on mount
+  useEffect(() => {
+    const checkNetworkSpeed = async () => {
+      const speedInfo = await detectNetworkSpeed();
+      networkSpeedRef.current = speedInfo;
+      setNetworkSpeed(speedInfo);
+      
+      // Auto-select quality if user hasn't manually selected
+      if (!userSelectedQuality && video?.video?.variants) {
+        const recommended = speedInfo.recommendedQuality;
+        if (video.video.variants[recommended]) {
+          setVideoQuality(recommended);
+        }
+      }
+    };
+    
+    checkNetworkSpeed();
+    
+    // Monitor network changes
+    if ('connection' in navigator) {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (connection) {
+        const handleConnectionChange = async () => {
+          const speedInfo = await detectNetworkSpeed();
+          networkSpeedRef.current = speedInfo;
+          setNetworkSpeed(speedInfo);
+          
+          // Auto-adjust quality if in auto mode
+          if (!userSelectedQuality && video?.video?.variants) {
+            const recommended = speedInfo.recommendedQuality;
+            if (video.video.variants[recommended] && videoQuality !== recommended) {
+              setVideoQuality(recommended);
+            }
+          }
+        };
+        
+        connection.addEventListener('change', handleConnectionChange);
+        return () => connection.removeEventListener('change', handleConnectionChange);
+      }
+    }
+  }, [video, userSelectedQuality, videoQuality]);
+  
+  // Auto-play effect when video is ready
+  useEffect(() => {
+    if (autoPlay && videoRef.current && video) {
+      const tryAutoPlay = () => {
+        if (videoRef.current && videoRef.current.readyState >= 3) { // HAVE_FUTURE_DATA
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                setIsPlaying(true);
+              })
+              .catch((error) => {
+                // Autoplay prevented - this is normal in many browsers
+                console.log('Autoplay prevented by browser:', error);
+                setIsPlaying(false);
+              });
+          }
+        }
+      };
+      
+      // Try immediately if ready
+      if (videoRef.current.readyState >= 3) {
+        tryAutoPlay();
+      } else {
+        // Wait for video to be ready
+        videoRef.current.addEventListener('canplaythrough', tryAutoPlay, { once: true });
+        videoRef.current.addEventListener('loadeddata', tryAutoPlay, { once: true });
+      }
+    }
+  }, [autoPlay, video, videoQuality]);
+
+  // Update video source when quality changes
+  useEffect(() => {
+    if (!videoRef.current || !video || !video.video?.variants) return;
+    
+    const newUrl = getVideoUrl(videoQuality);
+    const currentSrc = videoRef.current.src || videoRef.current.currentSrc;
+    
+    // Check if URL actually changed (compare full URLs)
+    if (newUrl && newUrl !== currentSrc && newUrl !== '') {
+      const wasPlaying = isPlaying;
+      // Only save time if this is not the initial load and we have a valid position
+      const shouldRestorePosition = !isInitialLoadRef.current && lastQualityRef.current !== null;
+      const savedTime = shouldRestorePosition ? Math.max(0, videoRef.current.currentTime || 0) : 0;
+      
+      // Update refs
+      lastQualityRef.current = videoQuality;
+      if (isInitialLoadRef.current) {
+        isInitialLoadRef.current = false;
+      }
+      
+      setIsChangingQuality(true);
+      setIsLoading(true);
+      
+      // Pause and save state
+      if (wasPlaying) {
+        videoRef.current.pause();
+      }
+      
+      // Store the saved time in a ref to ensure it persists
+      const savedTimeRef = { value: savedTime };
+      
+      // Function to restore playback position
+      const restorePlayback = () => {
+        if (!videoRef.current) return;
+        
+        const seekToTime = () => {
+          if (videoRef.current && videoRef.current.readyState >= 2 && savedTimeRef.value > 0) {
+            // Ensure we don't seek beyond duration
+            const maxTime = videoRef.current.duration || Infinity;
+            const targetTime = Math.min(savedTimeRef.value, maxTime);
+            
+            if (targetTime > 0 && targetTime < maxTime) {
+              videoRef.current.currentTime = targetTime;
+              setCurrentTime(targetTime);
+              setIsChangingQuality(false);
+              
+              // Resume playback if it was playing
+              if (wasPlaying || (autoPlay && isInitialLoadRef.current === false)) {
+                const playPromise = videoRef.current.play();
+                if (playPromise !== undefined) {
+                  playPromise
+                    .then(() => {
+                      setIsPlaying(true);
+                    })
+                    .catch(() => {
+                      setIsPlaying(false);
+                    });
+                }
+              }
+              return true;
+            }
+          }
+          return false;
+        };
+        
+        // Only restore if we have a saved time
+        if (savedTimeRef.value > 0) {
+          // Try multiple events to ensure we catch when video is ready
+          const handleCanSeek = () => {
+            if (seekToTime()) {
+              // Remove other listeners since we succeeded
+              if (videoRef.current) {
+                videoRef.current.removeEventListener('canplay', handleCanSeek);
+                videoRef.current.removeEventListener('canplaythrough', handleCanSeek);
+                videoRef.current.removeEventListener('loadeddata', handleCanSeek);
+              }
+            }
+          };
+          
+          // Listen for multiple events to ensure we can seek
+          if (videoRef.current) {
+            videoRef.current.addEventListener('canplay', handleCanSeek, { once: true });
+            videoRef.current.addEventListener('canplaythrough', handleCanSeek, { once: true });
+            videoRef.current.addEventListener('loadeddata', handleCanSeek, { once: true });
+            
+            // Also try immediately if video is already ready
+            if (videoRef.current.readyState >= 2) {
+              setTimeout(() => {
+                if (!seekToTime()) {
+                  // If immediate seek failed, wait a bit more
+                  setTimeout(seekToTime, 200);
+                }
+              }, 50);
+            }
+          }
+        } else {
+          // No position to restore, just mark as done
+          setIsChangingQuality(false);
+          if (wasPlaying || autoPlay) {
+            const playPromise = videoRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  setIsPlaying(true);
+                })
+                .catch(() => {
+                  setIsPlaying(false);
+                });
+            }
+          }
+        }
+      };
+      
+      // Change source
+      videoRef.current.src = newUrl;
+      videoRef.current.load();
+      
+      // Restore playback after source change
+      restorePlayback();
+    } else if (isInitialLoadRef.current && newUrl) {
+      // First load - mark as not initial anymore
+      isInitialLoadRef.current = false;
+      lastQualityRef.current = videoQuality;
+    }
+  }, [videoQuality, video, getVideoUrl, isPlaying, autoPlay]);
   
   // Speed options
   const speedOptions = [
@@ -248,6 +575,23 @@ const VideoPlayer = ({
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
+      setIsChangingQuality(false);
+      
+      // Auto-play if enabled
+      if (autoPlay && !isPlaying) {
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+            })
+            .catch((error) => {
+              // Autoplay was prevented (browser policy)
+              console.log('Autoplay prevented:', error);
+              setIsPlaying(false);
+            });
+        }
+      }
     }
   };
 
@@ -260,6 +604,75 @@ const VideoPlayer = ({
         const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
         const bufferedPercent = (bufferedEnd / videoRef.current.duration) * 100;
         setBuffered(bufferedPercent);
+      }
+    }
+  };
+
+  const handleWaiting = () => {
+    setIsBuffering(true);
+    setIsLoading(true);
+  };
+
+  const handleCanPlay = () => {
+    setIsLoading(false);
+    setIsBuffering(false);
+    
+    // Auto-play if enabled and not already playing
+    if (autoPlay && videoRef.current && !isPlaying && videoRef.current.paused) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            // Autoplay was prevented
+            console.log('Autoplay prevented:', error);
+            setIsPlaying(false);
+          });
+      }
+    }
+  };
+
+  const handleCanPlayThrough = () => {
+    setIsLoading(false);
+    setIsBuffering(false);
+    
+    // Auto-play if enabled and not already playing
+    if (autoPlay && videoRef.current && !isPlaying && videoRef.current.paused) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((error) => {
+            console.log('Autoplay prevented:', error);
+            setIsPlaying(false);
+          });
+      }
+    }
+  };
+
+  const handlePlaying = () => {
+    setIsLoading(false);
+    setIsBuffering(false);
+    setIsPlaying(true);
+  };
+
+  const handleStalled = () => {
+    setIsBuffering(true);
+  };
+
+  const handleProgress = () => {
+    if (videoRef.current && videoRef.current.buffered.length > 0) {
+      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      const bufferedPercent = (bufferedEnd / videoRef.current.duration) * 100;
+      setBuffered(bufferedPercent);
+      
+      // If buffered enough, stop showing loading
+      if (bufferedPercent > 5) {
+        setIsBuffering(false);
       }
     }
   };
@@ -343,6 +756,45 @@ const VideoPlayer = ({
     if (videoRef.current) {
       videoRef.current.playbackRate = speed;
       setPlaybackSpeed(speed);
+    }
+  };
+
+  const handleQualityChange = (quality) => {
+    if (quality === 'auto') {
+      setUserSelectedQuality(null);
+      // Use network speed recommendation
+      if (networkSpeedRef.current?.recommendedQuality && video?.video?.variants?.[networkSpeedRef.current.recommendedQuality]) {
+        const recommended = networkSpeedRef.current.recommendedQuality;
+        setVideoQuality(recommended);
+        // Force update by setting a different value first, then the target
+        setTimeout(() => {
+          setVideoQuality(recommended);
+        }, 10);
+      } else {
+        setVideoQuality('auto');
+      }
+    } else {
+      setUserSelectedQuality(quality);
+      // Force update
+      setVideoQuality(quality);
+      setTimeout(() => {
+        setVideoQuality(quality);
+      }, 10);
+    }
+    setShowQualityPanel(false);
+  };
+  
+  // Handle click on video to play/pause
+  const handleVideoClick = (e) => {
+    // Don't trigger if clicking on controls
+    if (e.target.closest('[data-controls]') || e.target.closest('button') || e.target.closest('[data-settings-panel]')) {
+      return;
+    }
+    
+    if (isPlaying) {
+      handlePause();
+    } else {
+      handlePlay();
     }
   };
 
@@ -479,6 +931,8 @@ const VideoPlayer = ({
       className={`relative bg-black ${isFullscreen ? 'fixed inset-0 z-50' : 'w-full h-screen'}`}
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
+      onClick={handleVideoClick}
+      data-controls-container
     >
       {/* Security Warning Overlay */}
       {securityWarning && <SecurityOverlay />}
@@ -514,38 +968,91 @@ const VideoPlayer = ({
        {/* Video Element */}
        <video
          ref={videoRef}
-         className="w-full h-full object-cover"
-         src={video?.videoUrl}
+         className="w-full h-full object-cover transition-opacity duration-300"
+         src={getVideoUrl(videoQuality)}
+         autoPlay={autoPlay}
+         muted={false} // Don't force mute - let user control
          onLoadedMetadata={handleLoadedMetadata}
          onTimeUpdate={handleTimeUpdate}
-         onPlay={handlePlay}
+         onPlay={handlePlaying}
          onPause={handlePause}
          onLoadStart={() => setIsLoading(true)}
-         onCanPlay={() => setIsLoading(false)}
-         onError={() => setIsLoading(false)}
+         onCanPlay={handleCanPlay}
+         onCanPlayThrough={handleCanPlayThrough}
+         onWaiting={handleWaiting}
+         onStalled={handleStalled}
+         onProgress={handleProgress}
+         onError={() => {
+           setIsLoading(false);
+           setIsBuffering(false);
+         }}
          controls={false}
          onContextMenu={(e) => e.preventDefault()}
+         preload="auto"
+         playsInline
          style={{
            pointerEvents: 'none', // Prevent direct video interaction
+           opacity: isChangingQuality ? 0.5 : 1,
          }}
        />
 
       {/* Loading Overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+      {(isLoading || isBuffering || isChangingQuality) && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-30 transition-opacity duration-300">
           <div className="text-center space-y-4">
-            <Loader2 className="h-12 w-12 text-white animate-spin mx-auto" />
-            <p className="text-white">Loading video...</p>
+            <div className="relative">
+              <Loader2 className="h-16 w-16 text-glimz-primary animate-spin mx-auto" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-8 w-8 border-2 border-white/30 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {isChangingQuality && (
+                <p className="text-white font-medium text-lg">Changing quality...</p>
+              )}
+              {isBuffering && !isChangingQuality && (
+                <p className="text-white font-medium text-lg">Buffering...</p>
+              )}
+              {isLoading && !isBuffering && !isChangingQuality && (
+                <p className="text-white font-medium text-lg">Loading video...</p>
+              )}
+              {networkSpeed && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
+                  {networkSpeed.speed === 'fast' ? (
+                    <Wifi className="h-4 w-4 text-green-400" />
+                  ) : networkSpeed.speed === 'medium' ? (
+                    <Wifi className="h-4 w-4 text-yellow-400" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-red-400" />
+                  )}
+                  <span>Network: {networkSpeed.speed}</span>
+                  {videoQuality !== 'auto' && (
+                    <span className="text-gray-400">• Quality: {videoQuality}</span>
+                  )}
+                </div>
+              )}
+            </div>
+            {/* Progress indicator */}
+            <div className="w-64 h-1 bg-white/20 rounded-full overflow-hidden mx-auto">
+              <div 
+                className="h-full bg-glimz-primary transition-all duration-300"
+                style={{ width: `${buffered}%` }}
+              />
+            </div>
           </div>
         </div>
       )}
 
       {/* Video Controls Overlay */}
-      <div className={`absolute inset-0 transition-opacity duration-300 ${
-        showControls ? 'opacity-100' : 'opacity-0'
-      }`}>
+      <div 
+        className={`absolute inset-0 transition-opacity duration-200 ease-in-out ${
+          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        data-controls
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Top Controls */}
-        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4">
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4 pointer-events-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
@@ -579,11 +1086,18 @@ const VideoPlayer = ({
         </div>
 
         {/* Center Play/Pause Button */}
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <Button
-            onClick={isPlaying ? handlePause : handlePlay}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isPlaying) {
+                handlePause();
+              } else {
+                handlePlay();
+              }
+            }}
             size="lg"
-            className="bg-white/90 hover:bg-white text-black p-8 rounded-full shadow-lg"
+            className="bg-white/90 hover:bg-white text-black p-8 rounded-full shadow-lg pointer-events-auto transition-transform duration-200 hover:scale-110"
           >
             {isPlaying ? (
               <Pause className="h-12 w-12" />
@@ -594,7 +1108,7 @@ const VideoPlayer = ({
         </div>
 
         {/* YouTube-style Bottom Controls */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pointer-events-auto">
           {/* Progress Bar */}
           <div className="px-4 py-2">
             <div className="relative group">
@@ -844,8 +1358,17 @@ const VideoPlayer = ({
               }}
             >
               <div className="text-white text-sm">Quality</div>
-              <div className="text-white/70 text-xs mt-1">
-                {qualityOptions.find(opt => opt.value === videoQuality)?.label || 'Auto'}
+              <div className="text-white/70 text-xs mt-1 flex items-center gap-2">
+                {userSelectedQuality ? (
+                  <span>{userSelectedQuality}</span>
+                ) : (
+                  <>
+                    <span>Auto</span>
+                    {networkSpeed && (
+                      <span className="text-gray-500">({networkSpeed.recommendedQuality})</span>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
@@ -905,23 +1428,63 @@ const VideoPlayer = ({
         {showQualityPanel && (
           <div 
             data-quality-panel
-            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
+            className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-56 space-y-1 shadow-2xl border border-white/20 z-50"
           >
-            <div className="px-3 py-2 text-white text-sm font-medium">Quality</div>
-            {qualityOptions.map((option) => (
+            <div className="px-3 py-2 text-white text-sm font-medium border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Monitor className="h-4 w-4" />
+                <span>Quality</span>
+              </div>
+              {networkSpeed && (
+                <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                  {networkSpeed.speed === 'fast' ? (
+                    <Zap className="h-3 w-3 text-green-400" />
+                  ) : networkSpeed.speed === 'medium' ? (
+                    <Gauge className="h-3 w-3 text-yellow-400" />
+                  ) : (
+                    <WifiOff className="h-3 w-3 text-red-400" />
+                  )}
+                  <span>Network: {networkSpeed.speed}</span>
+                </div>
+              )}
+            </div>
+            {availableQualities.map((option) => {
+              const isSelected = option.value === 'auto' 
+                ? !userSelectedQuality 
+                : userSelectedQuality === option.value;
+              const isRecommended = option.value === 'auto' 
+                ? false 
+                : networkSpeed?.recommendedQuality === option.value && !userSelectedQuality;
+              
+              return (
               <div
                 key={option.value}
-                className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
-                  videoQuality === option.value ? 'bg-glimz-primary/20' : ''
-                }`}
-                onClick={() => {
-                  setVideoQuality(option.value);
-                  setShowQualityPanel(false);
-                }}
-              >
-                <div className="text-white text-sm">{option.label}</div>
+                  className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer transition-all duration-150 ${
+                    isSelected ? 'bg-glimz-primary/30' : ''
+                  }`}
+                  onClick={() => handleQualityChange(option.value)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white text-sm">{option.label}</span>
+                      {option.value === 'auto' && (
+                        <Zap className="h-3 w-3 text-gray-400" />
+                      )}
               </div>
-            ))}
+                    <div className="flex items-center gap-2">
+                      {isRecommended && !isSelected && (
+                        <Badge variant="outline" className="text-xs border-green-500/50 text-green-400">
+                          Recommended
+                        </Badge>
+                      )}
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-glimz-primary" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 

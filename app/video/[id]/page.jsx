@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Play, Heart, Share, Plus, Clock, Calendar } from 'lucide-react';
+import { ArrowLeft, Play, Heart, Share, Plus, Clock, Calendar, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { VideoCarousel } from '@/components/VideoCarousel';
 import { useAppStore } from '../../store/appStore';
-import videosData from '@/data/videos.json';
+import { WishlistDialog } from '@/components/WishlistDialog';
 
 export default function VideoDetailsPage() {
   const params = useParams();
@@ -16,50 +16,103 @@ export default function VideoDetailsPage() {
   const { watchlist, addToWatchlist, removeFromWatchlist } = useAppStore();
   const [video, setVideo] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
 
   useEffect(() => {
-    const foundVideo = videosData.find(v => v.id === videoId);
-    if (foundVideo) {
-      setVideo(foundVideo);
-      
-      // Get recommended videos (same genre or random)
-      const recommended = videosData
-        .filter(v => v.id !== videoId)
-        .filter(v => v.genre.some(g => foundVideo.genre.includes(g)))
-        .slice(0, 12);
-      
-      setRecommendedVideos(recommended);
+    const fetchVideoDetails = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/creator/content/${videoId}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        console.log('Video details data:', data);
+        
+        if (data.status && data.data?.data) {
+          const contentData = data.data.data;
+          
+          // Transform API response to match component expectations
+          const transformedVideo = {
+            id: contentData.content_id,
+            title: contentData.title,
+            description: contentData.description,
+            thumbnail: contentData.thumbnail?.url || contentData.thumbnail || '',
+            heroImage: contentData.thumbnail?.url || contentData.thumbnail || '',
+            video: contentData.video,
+            teaser: contentData.teaser,
+            creator_id: contentData.creator_id,
+            creator_name: contentData.creator_name || 'Unknown Creator',
+            is_paid: contentData.is_paid,
+            price: contentData.price,
+            views_count: contentData.views_count,
+            likes_count: contentData.likes_count,
+            comment_count: contentData.comment_count,
+            playlist_id: contentData.playlist_id,
+            genre: contentData.genre || [],
+            age_restriction: contentData.age_restriction,
+            created_at: contentData.created_at,
+            // Add default values
+            releaseYear: contentData.created_at ? new Date(contentData.created_at).getFullYear() : new Date().getFullYear(),
+            duration: 'N/A',
+            rating: contentData.age_restriction || null,
+            views: contentData.views_count ? `${contentData.views_count} views` : '0 views',
+            likes: contentData.likes_count ? `${contentData.likes_count} likes` : '0 likes',
+            isLive: false,
+          };
+          
+          setVideo(transformedVideo);
+          
+          // Fetch recommended videos (trending content)
+          const recommendedResponse = await fetch('/api/content?page=1&limit=12', {
+            method: 'GET',
+            credentials: 'include',
+          });
+          
+          const recommendedData = await recommendedResponse.json();
+          if (recommendedData.status && recommendedData.data && Array.isArray(recommendedData.data)) {
+            const recommended = recommendedData.data
+              .filter(v => v.content_id !== contentData.content_id)
+              .slice(0, 12)
+              .map((item) => ({
+                id: item.content_id,
+                title: item.title,
+                thumbnail: item.thumbnail?.url || item.thumbnail || '',
+                description: item.description || '',
+                genre: [],
+                releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
+                rating: null,
+                views: item.views_count ? `${item.views_count} views` : null,
+                likes: item.likes_count ? `${item.likes_count} likes` : null,
+                duration: 'N/A',
+                isLive: false,
+              }));
+            
+            setRecommendedVideos(recommended);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching video details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (videoId) {
+      fetchVideoDetails();
     }
   }, [videoId]);
 
-  if (!video) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-glimz-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-foreground-muted text-sm sm:text-base">Loading video details...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const isInWatchlist = watchlist.includes(video.id);
-
-  const handleWatchlistToggle = () => {
-    if (isInWatchlist) {
-      removeFromWatchlist(video.id);
-    } else {
-      addToWatchlist(video.id);
-    }
-  };
-
+  // Handler functions - defined before early returns
   const handleBack = () => {
     router.push('/');
   };
 
-  const handlePlayVideo = () => {
+  const handlePlayVideo = (videoId) => {
     // Navigate to the streaming page
-    router.push(`/watch/${video.id}`);
+    router.push(`/watch/${videoId || video?.id}`);
   };
 
   const handleViewDetails = (videoId) => {
@@ -71,6 +124,44 @@ export default function VideoDetailsPage() {
       removeFromWatchlist(videoId);
     } else {
       addToWatchlist(videoId);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-glimz-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-foreground-muted text-sm sm:text-base">Loading video details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Video Not Found</h2>
+          <p className="text-foreground-muted mb-6">The video you're looking for doesn't exist.</p>
+          <Button onClick={handleBack} className="btn-glimz-primary">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const isInWatchlist = video ? watchlist.includes(video.id) : false;
+
+  const handleWatchlistToggle = () => {
+    if (!video) return;
+    if (isInWatchlist) {
+      removeFromWatchlist(video.id);
+    } else {
+      // Show wishlist dialog
+      setShowWishlistDialog(true);
     }
   };
 
@@ -132,7 +223,7 @@ export default function VideoDetailsPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
               <Button
-                onClick={handlePlayVideo}
+                onClick={() => handlePlayVideo(video.id)}
                 className="btn-glimz-primary text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 shadow-glow w-full sm:w-auto"
               >
                 <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2 fill-current" />
@@ -175,6 +266,16 @@ export default function VideoDetailsPage() {
           </div>
         </section>
       )}
+
+      {/* Wishlist Dialog */}
+      <WishlistDialog
+        open={showWishlistDialog}
+        onOpenChange={setShowWishlistDialog}
+        contentId={video.id}
+        onSuccess={() => {
+          // Optionally update UI
+        }}
+      />
     </div>
   );
 }
