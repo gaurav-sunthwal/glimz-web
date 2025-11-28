@@ -45,7 +45,6 @@ import { Bell, Search, LayoutDashboard, Users as UsersIcon, ShoppingCart, BarCha
 import { Toaster } from "@/components/ui/toaster";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import { isUserAdmin } from "@/app/lib/authUtils";
 import { useIsMobile } from "@/app/hooks/use-Mobile";
 import Cookies from "js-cookie";
 
@@ -120,19 +119,13 @@ export default function AdminPage() {
   ];
 
   useEffect(() => {
-    const admin = isUserAdmin();
-    if (!admin) {
-      router.push("/admin/login");
-      return;
-    }
+    // Auth removed - admin check disabled
     setGuardChecking(false);
   }, [router]);
 
   function handleLogout() {
-    try {
-      Cookies.remove("is_admin");
-    } catch {}
-    router.push("/admin/login");
+    // Auth removed - logout disabled
+    router.push("/");
   }
 
   useEffect(() => {

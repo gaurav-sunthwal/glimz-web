@@ -3,45 +3,6 @@
 const userDetailsCache = { data: null, timestamp: 0, inflight: null };
 
 export const secureApi = {
-  async sendOTP(mobileNo) {
-    const resp = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ mobileNo })
-    });
-    return await resp.json();
-  },
-
-  async verifyOTP(mobileNo, otp) {
-    const resp = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ mobileNo, otp })
-    });
-    return await resp.json();
-  },
-
-  async resendOTP(mobileNo) {
-    const resp = await fetch('/api/auth/resend-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ mobileNo })
-    });
-    return await resp.json();
-  },
-
-  async createUser(userData, userType) {
-    const resp = await fetch('/api/user/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ ...userData, userType })
-    });
-    return await resp.json();
-  },
 
   async getUserDetails({ force = false } = {}) {
     const now = Date.now();
@@ -50,14 +11,26 @@ export const secureApi = {
     if (userDetailsCache.inflight) return await userDetailsCache.inflight;
 
     userDetailsCache.inflight = (async () => {
-      const resp = await fetch('/api/user/details', { method: 'GET', credentials: 'include' });
-      const data = await resp.json();
-      if (data && data.status) {
-        userDetailsCache.data = data;
-        userDetailsCache.timestamp = Date.now();
+      try {
+        const resp = await fetch('/api/user/details', { method: 'GET', credentials: 'include' });
+        const data = await resp.json();
+        
+        // Check if response indicates authentication error (401 Unauthorized or status: false)
+        const isAuthError = (!resp.ok && resp.status === 401) || !data || !data.status;
+        
+        if (isAuthError) {
+          // Handle auth error
+        } else if (data && data.status) {
+          userDetailsCache.data = data;
+          userDetailsCache.timestamp = Date.now();
+        }
+        
+        userDetailsCache.inflight = null;
+        return data;
+      } catch (error) {
+        userDetailsCache.inflight = null;
+        return { status: false, error: error.message };
       }
-      userDetailsCache.inflight = null;
-      return data;
     })();
 
     return await userDetailsCache.inflight;
@@ -70,48 +43,52 @@ export const secureApi = {
     if (userDetailsCache.inflight) return await userDetailsCache.inflight;
 
     userDetailsCache.inflight = (async () => {
-      // Check is_creator cookie to determine which endpoint to call
-      const isCreatorCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('is_creator='))
-        ?.split('=')[1];
+      try {
+        // Check is_creator cookie to determine which endpoint to call
+        const isCreatorCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('is_creator='))
+          ?.split('=')[1];
 
-      console.log("Checking is_creator cookie:", isCreatorCookie);
-      
-      let endpoint;
-      if (isCreatorCookie === '1') {
-        endpoint = '/api/user/get-creator-details';
-        console.log("Calling creator endpoint");
-      } else if (isCreatorCookie === '0') {
-        endpoint = '/api/user/get-user-details';
-        console.log("Calling user endpoint");
-      } else {
-        // Fallback to original endpoint
-        endpoint = '/api/user/details';
-        console.log("Calling fallback endpoint");
-      }
+        console.log("Checking is_creator cookie:", isCreatorCookie);
+        
+        let endpoint;
+        if (isCreatorCookie === '1') {
+          endpoint = '/api/auth/get-creator-detail';
+          console.log("Calling creator endpoint");
+        } else if (isCreatorCookie === '0') {
+          endpoint = '/api/auth/get-viewer-detail';
+          console.log("Calling user endpoint");
+        } else {
+          // Fallback to original endpoint
+          endpoint = '/api/user/details';
+          console.log("Calling fallback endpoint");
+        }
 
-      const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
-      const data = await resp.json();
-      if (data && data.status) {
-        userDetailsCache.data = data;
-        userDetailsCache.timestamp = Date.now();
+        const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
+        const data = await resp.json();
+        
+        // Check if response indicates authentication error (401 Unauthorized or status: false)
+        const isAuthError = (!resp.ok && resp.status === 401) || !data || !data.status;
+        
+        if (isAuthError) {
+          // Handle auth error
+        } else if (data && data.status) {
+          userDetailsCache.data = data;
+          userDetailsCache.timestamp = Date.now();
+        }
+        
+        userDetailsCache.inflight = null;
+        return data;
+      } catch (error) {
+        userDetailsCache.inflight = null;
+        return { status: false, error: error.message };
       }
-      userDetailsCache.inflight = null;
-      return data;
     })();
 
     return await userDetailsCache.inflight;
   },
 
-  async logout() {
-    const resp = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    const data = await resp.json();
-    userDetailsCache.data = null;
-    userDetailsCache.timestamp = 0;
-    userDetailsCache.inflight = null;
-    return data;
-  },
 
   async search({ query, type = "all", page = 1, limit = 10 }) {
     if (!query || !query.trim()) {
@@ -135,6 +112,45 @@ export const secureApi = {
       credentials: "include",
     });
     return await resp.json();
+  },
+
+  async logout() {
+    try {
+      const resp = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Clear cache
+      userDetailsCache.data = null;
+      userDetailsCache.timestamp = 0;
+      
+      // Clear cookies on client side as well
+      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Dispatch auth changed event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth-changed'));
+      }
+      
+      return await resp.json();
+    } catch (error) {
+      // Clear cookies even on error
+      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      userDetailsCache.data = null;
+      userDetailsCache.timestamp = 0;
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth-changed'));
+      }
+      
+      return { status: false, error: error.message };
+    }
   },
 
   isAuthenticated() {

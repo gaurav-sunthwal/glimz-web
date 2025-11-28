@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, X, Video, Image, ArrowLeft, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { isUserCreator } from "@/app/lib/authUtils";
 import { Header } from "@/components/Header";
 
 export default function UploadPage() {
@@ -34,7 +33,7 @@ export default function UploadPage() {
   useEffect(() => {
     // Check if user is a creator
     const checkCreatorStatus = () => {
-      const creatorStatus = isUserCreator();
+      const creatorStatus = false; // Auth removed
       setIsCreator(creatorStatus);
       setIsLoading(false);
       

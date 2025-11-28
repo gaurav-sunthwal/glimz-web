@@ -9,12 +9,11 @@ export async function GET() {
     const cookieStore = cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
-    const user_type = cookieStore.get("user_type")?.value;
 
     console.log("Fetching creator details for creator:", { uuid, auth_token });
 
     // Check if UUID exists
-    if (!uuid || user_type !== '1') {
+    if (!uuid) {
       console.warn("No UUID found in cookies");
       return NextResponse.json(
         {
@@ -61,12 +60,14 @@ export async function GET() {
         const data = await response.json();
         console.log("Creator API response data:", data);
 
-        // Check if we got valid creator details - note the lowercase 'creatorDetail'
-        if (data && data.status && data.creatorDetail) {
+        // Check if we got valid creator details - handle both response formats
+        const creatorDetail = data?.creatorDetail || data?.CreatorDetail || data?.data;
+        if (data && data.status && creatorDetail) {
           console.log("✅ Successfully fetched creator details from creator endpoint");
           return NextResponse.json({
             status: true,
-            ViewerDetail: data.creatorDetail, // Map creatorDetail to ViewerDetail for consistency
+            data: creatorDetail, // Match React Native format: response.data
+            creatorDetail: creatorDetail, // Also include for backward compatibility
             isCreator: true,
           });
         }

@@ -60,12 +60,14 @@ export async function GET() {
         const data = await response.json();
         console.log("Viewer API response data:", data);
 
-        // Check if we got valid user details
-        if (data && data.status && data.ViewerDetail) {
+        // Check if we got valid user details - handle both response formats
+        const viewerDetail = data?.ViewerDetail || data?.data;
+        if (data && data.status && viewerDetail) {
           console.log("✅ Successfully fetched user details from viewer endpoint");
           return NextResponse.json({
             status: true,
-            ViewerDetail: data.ViewerDetail,
+            data: viewerDetail, // Match React Native format: response.data
+            ViewerDetail: viewerDetail, // Also include for backward compatibility
             isCreator: false,
           });
         }
