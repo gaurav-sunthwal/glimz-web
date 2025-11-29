@@ -13,6 +13,7 @@ import ProfileButton from "@/components/ui/ProfileButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { secureApi } from "@/app/lib/secureApi";
+import { clearAllCookies } from "@/app/lib/authUtils";
 
 export const Header = () => {
   const router = useRouter();
@@ -32,43 +33,111 @@ export const Header = () => {
     try {
       if (isCheckingRef.current) return;
 
-      // Basic cookie check first
-      const authToken = document.cookie.includes("auth_token=");
-      const hasUuid = document.cookie.includes("uuid=");
+      const now = Date.now();
+
+      // Check for is_creator cookie (non-httpOnly, readable by JavaScript)
+      // auth_token and uuid are httpOnly, so we can't read them directly
+      const isCreatorCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('is_creator='))
+        ?.split('=')[1];
+      
+      const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
+      const hasIsCreator = isCreatorCookie !== undefined && isCreatorCookie !== null;
+
+      // If user has is_creator cookie set to 0 or 1, they are authenticated
+      // Immediately set logged in state
+      if (isRegistered) {
+        setIsLoggedInIfChanged(true);
+        
+        // Cooldown: if recently verified and cookies still present, skip API re-check
+        if (now - lastCheckRef.current < 30000) {
+          return;
+        }
+        // Still make API call to get fresh profile data in background
+        lastCheckRef.current = now;
+      } else if (!hasIsCreator) {
+        // No is_creator cookie - check if we have any cookies at all
+        const hasAnyCookie = document.cookie.length > 0;
+        if (!hasAnyCookie) {
+          // No cookies at all - user is definitely not logged in
+          setIsLoggedInIfChanged(false);
+          lastCheckRef.current = now;
+          return;
+        }
+        // We have some cookies but no is_creator - might be in profile setup
+        // Continue to API check below
+      }
 
       // Cooldown: if recently verified and cookies still present, skip re-check
-      const now = Date.now();
       if (
         isLoggedIn &&
-        authToken &&
-        hasUuid &&
+        hasIsCreator &&
         now - lastCheckRef.current < 30000
       ) {
         return;
       }
 
-      // If no cookies, immediately mark logged out without hitting API
-      if (!authToken || !hasUuid) {
-        setIsLoggedInIfChanged(false);
-        lastCheckRef.current = now;
-        return;
-      }
-
       isCheckingRef.current = true;
-      // Confirm with server only when needed
-      const response = await secureApi.getUserDetails();
-      if (response.status && response.ViewerDetail) {
+      // Use getUserDetailsByType to get the correct profile data
+      const response = await secureApi.getUserDetailsByType();
+      
+      // Check if we have profile data (either ViewerDetail or creatorDetail)
+      const profileData = response.ViewerDetail || response.creatorDetail || response.data;
+      
+      if (response.status && profileData) {
+        // User is authenticated and has profile
         setIsLoggedInIfChanged(true);
       } else if (response.needsProfileSetup) {
-        // User needs to complete profile setup, redirect them
-        window.location.href = "/signup/details";
-        setIsLoggedInIfChanged(false);
+        // User has auth tokens but needs to complete profile setup
+        // Still show as logged in so they can access profile button
+        // ProfileButton will handle redirecting to profile setup
+        setIsLoggedInIfChanged(true);
       } else {
-        setIsLoggedInIfChanged(false);
+        // Check is_creator cookie - only clear if user is registered (0 or 1)
+        // If is_creator is null, user needs profile setup, so don't clear cookies
+        const isCreatorCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('is_creator='))
+          ?.split('=')[1];
+        
+        const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
+        const hasAnyCookie = document.cookie.length > 0;
+        
+        // Only clear cookies if user is registered (0/1) and got an error
+        if (isRegistered && hasAnyCookie) {
+          console.log('Authentication error detected for registered user. Clearing all cookies...');
+          clearAllCookies();
+        } else if (!isRegistered) {
+          // is_creator is null - user needs profile setup, but has auth tokens
+          // They're partially authenticated, show profile button but they'll need to complete setup
+          setIsLoggedInIfChanged(true);
+        } else {
+          setIsLoggedInIfChanged(false);
+        }
       }
       lastCheckRef.current = Date.now();
     } catch (error) {
-      // If API fails but cookies exist, keep current state to avoid loops
+      // Check is_creator cookie - only clear if user is registered (0 or 1)
+      const isCreatorCookie = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('is_creator='))
+        ?.split('=')[1];
+      
+      const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
+      const hasAnyCookie = document.cookie.length > 0;
+      
+      // Only clear cookies if user is registered (0/1) and got an error
+      if (isRegistered && hasAnyCookie) {
+        console.log('Authentication error caught for registered user. Clearing all cookies...', error);
+        clearAllCookies();
+        setIsLoggedInIfChanged(false);
+      } else if (!isRegistered && hasAnyCookie) {
+        // User has auth tokens but no profile yet - still show as logged in
+        setIsLoggedInIfChanged(true);
+      } else {
+        setIsLoggedInIfChanged(false);
+      }
     } finally {
       isCheckingRef.current = false;
     }
@@ -76,6 +145,17 @@ export const Header = () => {
 
   useEffect(() => {
     checkAuthStatus();
+    
+    // Also check immediately if is_creator cookie exists
+    const isCreatorCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('is_creator='));
+    const hasIsCreatorCookie = !!isCreatorCookie;
+    
+    if (hasIsCreatorCookie && !isLoggedIn) {
+      // If is_creator cookie exists but we're not logged in, check again
+      setTimeout(() => checkAuthStatus(), 100);
+    }
   }, []);
 
   // Check auth status when the page becomes visible
@@ -94,12 +174,25 @@ export const Header = () => {
   // Listen for explicit auth change events only
   useEffect(() => {
     const handleAuthEvent = () => {
+      // Force immediate check when auth changes
+      isCheckingRef.current = false;
       checkAuthStatus();
     };
 
     window.addEventListener("auth-changed", handleAuthEvent);
+    
+    // Also listen for storage events (in case auth state changes in another tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'glimz-auth-storage') {
+        checkAuthStatus();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
     return () => {
       window.removeEventListener("auth-changed", handleAuthEvent);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
@@ -220,38 +313,13 @@ export const Header = () => {
 
               {/* Auth Button */}
               {isLoggedIn ? (
-                <div className="hidden md:flex lg:flex items-center space-x-2">
-                  <ProfileButton />
-                  <Button
-                    onClick={async () => {
-                      try {
-                        await secureApi.logout();
-                        setIsLoggedIn(false);
-                        router.push("/");
-                        window.dispatchEvent(new Event("auth-changed"));
-                      } catch (error) {
-                        setIsLoggedIn(false);
-                        router.push("/");
-                        window.dispatchEvent(new Event("auth-changed"));
-                      }
-                    }}
-                    variant="ghost"
-                    className="btn-glimz-ghost text-sm px-3 py-2"
-                  >
-                    Logout
-                  </Button>
+                <div className="flex items-center">
+                  <ProfileButton onAuthChange={setIsLoggedInIfChanged} />
                 </div>
               ) : (
                 <>
                   <Button
-                    onClick={() => handleNavigation("/login")}
-                    variant="ghost"
-                    className="btn-glimz-ghost text-sm px-3 sm:px-4 py-2 mr-2"
-                  >
-                    <span className="">Login</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleNavigation("/signup")}
+                    onClick={() => router.push("/auth")}
                     className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
                   >
                     <span className="">Get Started</span>

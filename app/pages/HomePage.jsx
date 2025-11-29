@@ -30,11 +30,13 @@ const HomePage = () => {
   const [isLoadingPurchasedContent, setIsLoadingPurchasedContent] = useState(true);
   const [trendingContent, setTrendingContent] = useState([]);
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
+  const [trendingBannerVideos, setTrendingBannerVideos] = useState([]);
+  const [isLoadingBannerVideos, setIsLoadingBannerVideos] = useState(true);
   const isMobile =  useIsMobile();
   // Get videos with consistent placeholder images
   const videos = getVideoWithPlaceholders();
   
-  // Get featured video for hero banner
+  // Get featured video for hero banner (fallback)
   const featuredVideo = videos.find(v => v.featured) || videos[0];
 
   // Fetch continue watching data
@@ -172,7 +174,69 @@ const HomePage = () => {
     fetchPurchasedContent();
   }, []);
 
-  // Fetch trending content
+  // Fetch trending content for banner (top 5)
+  useEffect(() => {
+    const fetchTrendingBannerContent = async () => {
+      try {
+        setIsLoadingBannerVideos(true);
+        const response = await fetch('/api/content?page=1&limit=5', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        
+        const data = await response.json();
+        console.log('Trending banner content data:', data);
+        
+        if (data.status && data.data && Array.isArray(data.data)) {
+          // Transform API response to match HeroBanner format
+          const transformedVideos = data.data.slice(0, 5).map((item) => {
+            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || '';
+            
+            return {
+              id: item.content_id,
+              title: item.title || 'Untitled',
+              thumbnail: thumbnailUrl,
+              heroImage: thumbnailUrl, // Use thumbnail as hero image
+              video: item.video,
+              teaser: item.teaser,
+              description: item.description || '',
+              creator_id: item.creator_id,
+              creator_name: item.creator_name,
+              username: item.username,
+              is_paid: item.is_paid,
+              price: item.price,
+              views_count: item.views_count,
+              likes_count: item.likes_count,
+              comment_count: item.comment_count,
+              playlist_id: item.playlist_id,
+              created_at: item.created_at,
+              // Add default values for HeroBanner
+              genre: [],
+              releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
+              rating: null,
+              views: item.views_count ? `${item.views_count} views` : null,
+              likes: item.likes_count ? `${item.likes_count} likes` : null,
+              isLive: false,
+              duration: 'N/A', // Duration not provided in API response
+            };
+          });
+          
+          setTrendingBannerVideos(transformedVideos);
+        } else {
+          setTrendingBannerVideos([]);
+        }
+      } catch (error) {
+        console.error('Error fetching trending banner content:', error);
+        setTrendingBannerVideos([]);
+      } finally {
+        setIsLoadingBannerVideos(false);
+      }
+    };
+
+    fetchTrendingBannerContent();
+  }, []);
+
+  // Fetch trending content for carousel
   useEffect(() => {
     const fetchTrendingContent = async () => {
       try {
@@ -313,11 +377,19 @@ const HomePage = () => {
       />
 
       {/* Hero Banner */}
-      <HeroBanner
-        video={featuredVideo}
-        onPlay={handlePlayVideo}
-        onMoreInfo={handleViewDetails}
-      />
+      {!isLoadingBannerVideos && trendingBannerVideos.length > 0 ? (
+        <HeroBanner
+          videos={trendingBannerVideos}
+          onPlay={handlePlayVideo}
+          onMoreInfo={handleViewDetails}
+        />
+      ) : (
+        <HeroBanner
+          video={featuredVideo}
+          onPlay={handlePlayVideo}
+          onMoreInfo={handleViewDetails}
+        />
+      )}
 
       {/* Content Sections */}
       <div className="relative z-10 ">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FaUserCircle, FaSignOutAlt, FaUsers, FaEnvelope, FaPhone } from 'react-icons/fa';
+import { FaUserCircle, FaSignOutAlt, FaUsers, FaEnvelope, FaPhone, FaYoutube, FaUsers as FaSubscribers, FaClock, FaIdCard, FaCalendar, FaLink } from 'react-icons/fa';
 import { secureApi } from '@/app/lib/secureApi';
 
 const ProfileButton = ({ onAuthChange }) => {
@@ -19,16 +19,20 @@ const ProfileButton = ({ onAuthChange }) => {
       setLoading(true);
       const response = await secureApi.getUserDetailsByType();
       
-      if (response.status && response.ViewerDetail) {
+      // Handle both ViewerDetail and creatorDetail responses
+      const profileData = response.ViewerDetail || response.creatorDetail || response.data;
+      const isCreator = response.isCreator || (response.creatorDetail !== undefined);
+      
+      if (response.status && profileData) {
         // User has completed profile setup
         console.log("ProfileButton: User data received:", {
-          isCreator: response.isCreator,
-          userType: response.isCreator ? 'creator' : 'user',
-          userDetails: response.ViewerDetail
+          isCreator: isCreator,
+          userType: isCreator ? 'creator' : 'user',
+          userDetails: profileData
         });
         setUserData({
-          ...response.ViewerDetail,
-          userType: response.isCreator ? 'creator' : 'user'
+          ...profileData,
+          userType: isCreator ? 'creator' : 'user'
         });
         if (onAuthChange) onAuthChange(true);
       } else if (response.needsProfileSetup) {
@@ -38,7 +42,6 @@ const ProfileButton = ({ onAuthChange }) => {
         if (onAuthChange) onAuthChange(false);
         // Redirect to profile setup and preselect type if provided
         const preferred = response.preferredType ? `?userType=${encodeURIComponent(response.preferredType)}` : '';
-        window.location.href = `/signup/details${preferred}`;
       } else {
         // User not authenticated
         setUserData(null);
@@ -119,17 +122,25 @@ const ProfileButton = ({ onAuthChange }) => {
           />
           
           {/* Dropdown */}
-          <div className="absolute -right-[100px] mt-4 w-80 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700 z-50 overflow-hidden backdrop-blur-sm">
+          <div className="absolute -right-[100px] mt-4 w-96 max-h-[600px] overflow-y-auto bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl border border-gray-700 z-50 backdrop-blur-sm">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 to-blue-900/20"></div>
             
             {userData ? (
               <div className="relative">
                 {/* Header Section */}
-                <div className="px-6 py-4 bg-gradient-to-r from-purple-600/10 to-blue-600/10 border-b border-gray-700/50">
+                <div className="px-6 py-4 bg-gradient-to-r from-purple-600/10 to-blue-600/10 border-b border-gray-700/50 sticky top-0 z-10 backdrop-blur-sm">
                   <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
-                      <FaUserCircle className="w-8 h-8 text-white" />
-                    </div>
+                    {userData.profile_image ? (
+                      <img 
+                        src={userData.profile_image} 
+                        alt="Profile" 
+                        className="w-12 h-12 rounded-full object-cover border-2 border-purple-500"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <FaUserCircle className="w-8 h-8 text-white" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-bold text-white truncate">
                         {userData.first_name} {userData.last_name}
@@ -137,69 +148,96 @@ const ProfileButton = ({ onAuthChange }) => {
                       <p className="text-xs text-purple-300 uppercase tracking-wider font-medium">
                         {userData.userType === 'creator' ? 'Content Creator' : 'User'}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        @{userData.username}
-                      </p>
+                      {userData.username && (
+                        <p className="text-xs text-gray-400">
+                          @{userData.username}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Contact Info */}
-                <div className="px-6 py-4 space-y-3">
-                  <div className="flex items-center space-x-3 text-gray-300">
-                    <FaEnvelope className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span className="text-sm truncate">{userData.email}</span>
-                  </div>
-                  {userData.mobile_no && (
+                <div className="px-6 py-4 space-y-3 border-b border-gray-700/50">
+                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                    <FaEnvelope className="w-4 h-4 text-blue-400 mr-2" />
+                    Contact Information
+                  </h4>
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-3 text-gray-300">
-                      <FaPhone className="w-4 h-4 text-green-400 flex-shrink-0" />
-                      <span className="text-sm">{userData.mobile_no}</span>
+                      <FaEnvelope className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <span className="text-sm truncate">{userData.email}</span>
                     </div>
-                  )}
+                    {userData.mobile_no && (
+                      <div className="flex items-center space-x-3 text-gray-300">
+                        <FaPhone className="w-4 h-4 text-green-400 flex-shrink-0" />
+                        <span className="text-sm">+91 {userData.mobile_no}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Profile Image */}
-                {userData.profile_image && (
-                  <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
-                    <div className="flex items-center justify-center">
-                      <img 
-                        src={userData.profile_image} 
-                        alt="Profile" 
-                        className="w-20 h-20 rounded-full object-cover border-2 border-purple-500"
-                      />
-                    </div>
-                  </div>
+                {/* Creator Specific Info */}
+                {userData.userType === 'creator' && (
+                  <>
+                    {userData.channel_name && (
+                      <div className="px-6 py-4 border-b border-gray-700/50">
+                        <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
+                          <FaYoutube className="w-4 h-4 text-red-400 mr-2" />
+                          YouTube Channel
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex items-start space-x-3">
+                            <FaUsers className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-gray-400">Channel Name</p>
+                              <p className="text-sm text-white truncate">{userData.channel_name}</p>
+                            </div>
+                          </div>
+                          {userData.channel_link && (
+                            <div className="flex items-start space-x-3">
+                              <FaLink className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-400">Channel Link</p>
+                                <a 
+                                  href={userData.channel_link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-400 hover:text-blue-300 truncate block"
+                                >
+                                  {userData.channel_link}
+                                </a>
+                              </div>
+                            </div>
+                          )}
+                          {userData.subscribers && (
+                            <div className="flex items-start space-x-3">
+                              <FaSubscribers className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-400">Subscribers</p>
+                                <p className="text-sm text-white">{parseInt(userData.subscribers).toLocaleString()}</p>
+                              </div>
+                            </div>
+                          )}
+                          {userData.content_length && (
+                            <div className="flex items-start space-x-3">
+                              <FaClock className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs text-gray-400">Content Length</p>
+                                <p className="text-sm text-white">{userData.content_length}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {/* Account Info */}
-                {/* <div className="px-6 py-4 bg-gray-800/30 border-t border-gray-700/50">
-                  <h4 className="text-sm font-semibold text-white mb-3 flex items-center">
-                    <FaUsers className="w-4 h-4 text-blue-400 mr-2" />
-                    Account Details
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 gap-3 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">User ID</span>
-                      <span className="text-white font-medium">{userData.user_id}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">UUID</span>
-                      <span className="text-white font-medium text-xs">{userData.uuid?.substring(0, 8)}...</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Member Since</span>
-                      <span className="text-white font-medium">
-                        {new Date(userData.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </div>
-                </div> */}
+               
 
                 {/* Logout Section */}
-                <div className="px-6 py-4 border-t border-gray-700/50">
+                <div className="px-6 py-4 sticky bottom-0 bg-gray-900/95 backdrop-blur-sm border-t border-gray-700/50">
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-red-600 hover:to-red-500 text-white text-sm font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-800 group"

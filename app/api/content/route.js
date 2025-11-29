@@ -5,40 +5,12 @@ const API_BASE_URL = "http://api.glimznow.com/api";
 
 export async function GET(request) {
   try {
-    // Get UUID and auth token from cookies
+    // Get UUID and auth token from cookies (optional for trending content)
     const cookieStore = cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
     console.log("Fetching content list:", { uuid, auth_token });
-
-    // Check if UUID exists
-    if (!uuid) {
-      console.warn("No UUID found in cookies");
-      return NextResponse.json(
-        {
-          status: false,
-          code: 401,
-          message: "Authentication required",
-          error: "User is not authenticated",
-        },
-        { status: 401 }
-      );
-    }
-
-    // Check if auth token exists
-    if (!auth_token) {
-      console.warn("No authentication token found in cookies");
-      return NextResponse.json(
-        {
-          status: false,
-          code: 401,
-          message: "Authentication required",
-          error: "User is not authenticated",
-        },
-        { status: 401 }
-      );
-    }
 
     const { searchParams } = new URL(request.url);
     const page = searchParams.get("page") || "1";
@@ -50,16 +22,25 @@ export async function GET(request) {
       limit: limit,
     });
 
+    // Build headers - only include auth if available
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    
+    // Add auth headers only if they exist (for trending content, auth is not required)
+    if (uuid) {
+      headers["uuid"] = uuid;
+    }
+    if (auth_token) {
+      headers["auth_token"] = auth_token;
+    }
+
     // Call external API
     let response;
     try {
       response = await fetch(`${API_BASE_URL}/content?${queryParams.toString()}`, {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "uuid": uuid,
-          "auth_token": auth_token,
-        },
+        headers: headers,
       });
     } catch (fetchError) {
       console.error("Error calling content API:", fetchError);
