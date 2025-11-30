@@ -54,11 +54,8 @@ export async function GET() {
         },
       });
 
-      console.log("Creator API response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Creator API response data:", data);
 
         // Check if we got valid creator details - handle both response formats
         const creatorDetail = data?.creatorDetail || data?.CreatorDetail || data?.data;

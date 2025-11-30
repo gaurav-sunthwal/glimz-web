@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { HeroBanner } from '@/components/HeroBanner';
+import { HeroBannerSkeleton } from '@/components/HeroBannerSkeleton';
 import { VideoCarousel } from '@/components/VideoCarousel';
+import { VideoCarouselSkeleton } from '@/components/VideoCarouselSkeleton';
 import { VideoDetails } from '../pages/VideoDetails';
 import { Search } from '../pages/Search';
 import { useAppStore } from '../store/appStore';
@@ -50,7 +52,6 @@ const HomePage = () => {
         });
         
         const data = await response.json();
-        console.log(data);
         if (data.status && data.result && Array.isArray(data.result)) {
           // Transform API response to match VideoCard format
           const transformedVideos = data.result.map((item) => {
@@ -115,7 +116,6 @@ const HomePage = () => {
         });
         
         const data = await response.json();
-        console.log('Purchased content data:', data);
         
         if (data.status && data.data && Array.isArray(data.data)) {
           // Flatten subscriptions from all data items
@@ -185,7 +185,6 @@ const HomePage = () => {
         });
         
         const data = await response.json();
-        console.log('Trending banner content data:', data);
         
         if (data.status && data.data && Array.isArray(data.data)) {
           // Transform API response to match HeroBanner format
@@ -247,7 +246,6 @@ const HomePage = () => {
         });
         
         const data = await response.json();
-        console.log('Trending content data:', data);
         
         if (data.status && data.data && Array.isArray(data.data)) {
           // Transform API response to match VideoCard format
@@ -322,7 +320,6 @@ const HomePage = () => {
 
   const handlePlayVideo = (videoId) => {
     // In a real app, this would open a video player
-    console.log('Playing video:', videoId);
     // For now, just navigate to video details
     setCurrentVideoId(videoId);
     setCurrentPage('/video');
@@ -377,7 +374,9 @@ const HomePage = () => {
       />
 
       {/* Hero Banner */}
-      {!isLoadingBannerVideos && trendingBannerVideos.length > 0 ? (
+      {isLoadingBannerVideos ? (
+        <HeroBannerSkeleton />
+      ) : trendingBannerVideos.length > 0 ? (
         <HeroBanner
           videos={trendingBannerVideos}
           onPlay={handlePlayVideo}
@@ -394,7 +393,12 @@ const HomePage = () => {
       {/* Content Sections */}
       <div className="relative z-10 ">
         {/* Trending Now Section */}
-        {!isLoadingTrending && trendingContent.length > 0 && (
+        {isLoadingTrending ? (
+          <VideoCarouselSkeleton 
+            title="Trending Now"
+            size={isMobile ? "medium" : "large"}
+          />
+        ) : trendingContent.length > 0 && (
           <VideoCarousel
             key="Trending Now"
             title="Trending Now"
@@ -408,7 +412,12 @@ const HomePage = () => {
         )}
 
         {/* Continue Watching Section */}
-        {!isLoadingContinueWatching && continueWatching.length > 0 && (
+        {isLoadingContinueWatching ? (
+          <VideoCarouselSkeleton 
+            title="Continue Watching"
+            size={isMobile ? "medium" : "large"}
+          />
+        ) : continueWatching.length > 0 && (
           <VideoCarousel
             key="Continue Watching"
             title="Continue Watching"
@@ -422,7 +431,12 @@ const HomePage = () => {
         )}
 
         {/* Purchased Content Section */}
-        {!isLoadingPurchasedContent && purchasedContent.length > 0 && (
+        {isLoadingPurchasedContent ? (
+          <VideoCarouselSkeleton 
+            title="Purchased Content"
+            size={isMobile ? "medium" : "large"}
+          />
+        ) : purchasedContent.length > 0 && (
           <VideoCarousel
             key="Purchased Content"
             title="Purchased Content"

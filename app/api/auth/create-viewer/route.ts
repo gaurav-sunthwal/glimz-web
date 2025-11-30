@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     // Get auth tokens from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authToken = cookieStore.get('auth_token')?.value;
     const uuid = cookieStore.get('uuid')?.value;
 
@@ -67,13 +67,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: 'Viewer registration failed',
-        error: error.message,
+        error: errorMessage,
       },
       { status: 500 }
     );

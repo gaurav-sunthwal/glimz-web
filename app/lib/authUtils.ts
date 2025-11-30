@@ -25,23 +25,38 @@ export function isUserCreator(): boolean {
 
 /**
  * Check if the current user is authenticated
- * Note: httpOnly cookies (auth_token, uuid) cannot be read by JavaScript,
- * so we use is_creator cookie as a proxy (it's set when user has verified OTP)
- * @returns {boolean} True if user is authenticated, false otherwise
+ * Checks for the presence of auth_token and uuid cookies
+ * Note: If cookies are httpOnly, they cannot be read by JavaScript.
+ * In that case, this function checks localStorage as a fallback.
+ * @returns {boolean} True if user is authenticated (has both auth_token and uuid), false otherwise
  */
 export function isAuthenticated(): boolean {
   if (typeof document === 'undefined') {
     return false;
   }
 
-  // Since auth_token and uuid are httpOnly, we can't read them directly
-  // We use is_creator cookie as a proxy (it's set when user has verified OTP)
-  // Note: For new users who just verified OTP but haven't created a profile,
-  // is_creator might not be set yet, but they still have auth_token and uuid cookies
-  // In that case, we can't detect auth via cookies alone - would need to check auth store
-  const hasIsCreator = document.cookie.includes('is_creator=');
+  // Try to read cookies first (works if they're not httpOnly)
+  const authToken = getAuthToken();
+  const uuid = getUserUuid();
   
-  return hasIsCreator;
+  // If we can read both cookies, user is authenticated
+  if (authToken && uuid) {
+    return true;
+  }
+  
+  // If cookies are httpOnly (can't read them), check localStorage as fallback
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const authTokenInStorage = localStorage.getItem('auth_token');
+    const uuidInStorage = localStorage.getItem('uuid');
+    
+    // User is authenticated if both exist in localStorage
+    if (authTokenInStorage && uuidInStorage) {
+      return true;
+    }
+  }
+  
+  // If we can't find both auth_token and uuid in cookies or localStorage, user is not authenticated
+  return false;
 }
 
 /**

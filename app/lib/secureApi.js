@@ -49,20 +49,15 @@ export const secureApi = {
           .split('; ')
           .find(row => row.startsWith('is_creator='))
           ?.split('=')[1];
-
-        console.log("Checking is_creator cookie:", isCreatorCookie);
         
         let endpoint;
         if (isCreatorCookie === '1') {
           endpoint = '/api/auth/get-creator-detail';
-          console.log("Calling creator endpoint");
         } else if (isCreatorCookie === '0') {
           endpoint = '/api/auth/get-viewer-detail';
-          console.log("Calling user endpoint");
         } else {
           // Fallback to original endpoint
           endpoint = '/api/user/details';
-          console.log("Calling fallback endpoint");
         }
 
         const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
@@ -125,10 +120,58 @@ export const secureApi = {
       userDetailsCache.data = null;
       userDetailsCache.timestamp = 0;
       
-      // Clear cookies on client side as well
-      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      // Clear all cookies on client side (with all possible paths)
+      if (typeof document !== 'undefined') {
+        const cookieNames = ['auth_token', 'uuid', 'is_creator'];
+        const paths = ['/', '/auth', '/profile', '/upload', ''];
+        
+        cookieNames.forEach(cookieName => {
+          // Clear with different paths
+          paths.forEach(path => {
+            const pathAttr = path ? `path=${path};` : '';
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${pathAttr}`;
+          });
+          
+          // Try clearing with domain (if applicable)
+          try {
+            const hostname = window.location.hostname;
+            // Try with current domain
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${hostname};`;
+            // Try with dot-prefixed domain (for subdomains)
+            if (hostname.indexOf('.') !== -1) {
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${hostname};`;
+            }
+          } catch {
+            // Ignore domain errors
+          }
+        });
+      }
+      
+      // Clear localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('uuid');
+        localStorage.removeItem('userData');
+        // Clear any other auth-related items
+        Object.keys(localStorage).forEach(key => {
+          if (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token') || key.toLowerCase().includes('uuid')) {
+            localStorage.removeItem(key);
+          }
+        });
+      }
+      
+      // Clear sessionStorage as well
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        sessionStorage.removeItem('auth_token');
+        sessionStorage.removeItem('uuid');
+        sessionStorage.removeItem('userData');
+        // Clear any other auth-related items
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token') || key.toLowerCase().includes('uuid')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      }
       
       // Dispatch auth changed event
       if (typeof window !== 'undefined') {
@@ -137,17 +180,59 @@ export const secureApi = {
       
       return await resp.json();
     } catch (error) {
-      // Clear cookies even on error
-      document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      // Clear everything even on error
+      if (typeof document !== 'undefined') {
+        const cookieNames = ['auth_token', 'uuid', 'is_creator'];
+        const paths = ['/', '/auth', '/profile', '/upload', ''];
+        
+        cookieNames.forEach(cookieName => {
+          // Clear with different paths
+          paths.forEach(path => {
+            const pathAttr = path ? `path=${path};` : '';
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${pathAttr}`;
+          });
+          
+          // Try clearing with domain (if applicable)
+          try {
+            const hostname = window.location.hostname;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${hostname};`;
+            if (hostname.indexOf('.') !== -1) {
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${hostname};`;
+            }
+          } catch {
+            // Ignore domain errors
+          }
+        });
+      }
+      
+      if (typeof window !== 'undefined') {
+        if (window.localStorage) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('uuid');
+          localStorage.removeItem('userData');
+          Object.keys(localStorage).forEach(key => {
+            if (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token') || key.toLowerCase().includes('uuid')) {
+              localStorage.removeItem(key);
+            }
+          });
+        }
+        
+        if (window.sessionStorage) {
+          sessionStorage.removeItem('auth_token');
+          sessionStorage.removeItem('uuid');
+          sessionStorage.removeItem('userData');
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token') || key.toLowerCase().includes('uuid')) {
+              sessionStorage.removeItem(key);
+            }
+          });
+        }
+        
+        window.dispatchEvent(new Event('auth-changed'));
+      }
       
       userDetailsCache.data = null;
       userDetailsCache.timestamp = 0;
-      
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('auth-changed'));
-      }
       
       return { status: false, error: error.message };
     }

@@ -1,200 +1,38 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
-  Menu,
-  Heart,
-  X,
+  User,
+  LogOut,
+  Settings,
 } from "lucide-react";
 import Logo from "./Logo";
 import { useRouter } from "next/navigation";
-import ProfileButton from "@/components/ui/ProfileButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { secureApi } from "@/app/lib/secureApi";
-import { clearAllCookies } from "@/app/lib/authUtils";
+import { ProfileButton } from "./ProfileButton";
 
 export const Header = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
-  const lastCheckRef = useRef(0);
-  const isCheckingRef = useRef(false);
-
-  const setIsLoggedInIfChanged = (next) => {
-    setIsLoggedIn((prev) => (prev === next ? prev : next));
-  };
-
-  const checkAuthStatus = async () => {
-    try {
-      if (isCheckingRef.current) return;
-
-      const now = Date.now();
-
-      // Check for is_creator cookie (non-httpOnly, readable by JavaScript)
-      // auth_token and uuid are httpOnly, so we can't read them directly
-      const isCreatorCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('is_creator='))
-        ?.split('=')[1];
-      
-      const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
-      const hasIsCreator = isCreatorCookie !== undefined && isCreatorCookie !== null;
-
-      // If user has is_creator cookie set to 0 or 1, they are authenticated
-      // Immediately set logged in state
-      if (isRegistered) {
-        setIsLoggedInIfChanged(true);
-        
-        // Cooldown: if recently verified and cookies still present, skip API re-check
-        if (now - lastCheckRef.current < 30000) {
-          return;
-        }
-        // Still make API call to get fresh profile data in background
-        lastCheckRef.current = now;
-      } else if (!hasIsCreator) {
-        // No is_creator cookie - check if we have any cookies at all
-        const hasAnyCookie = document.cookie.length > 0;
-        if (!hasAnyCookie) {
-          // No cookies at all - user is definitely not logged in
-          setIsLoggedInIfChanged(false);
-          lastCheckRef.current = now;
-          return;
-        }
-        // We have some cookies but no is_creator - might be in profile setup
-        // Continue to API check below
-      }
-
-      // Cooldown: if recently verified and cookies still present, skip re-check
-      if (
-        isLoggedIn &&
-        hasIsCreator &&
-        now - lastCheckRef.current < 30000
-      ) {
-        return;
-      }
-
-      isCheckingRef.current = true;
-      // Use getUserDetailsByType to get the correct profile data
-      const response = await secureApi.getUserDetailsByType();
-      
-      // Check if we have profile data (either ViewerDetail or creatorDetail)
-      const profileData = response.ViewerDetail || response.creatorDetail || response.data;
-      
-      if (response.status && profileData) {
-        // User is authenticated and has profile
-        setIsLoggedInIfChanged(true);
-      } else if (response.needsProfileSetup) {
-        // User has auth tokens but needs to complete profile setup
-        // Still show as logged in so they can access profile button
-        // ProfileButton will handle redirecting to profile setup
-        setIsLoggedInIfChanged(true);
-      } else {
-        // Check is_creator cookie - only clear if user is registered (0 or 1)
-        // If is_creator is null, user needs profile setup, so don't clear cookies
-        const isCreatorCookie = document.cookie
-          .split('; ')
-          .find(row => row.startsWith('is_creator='))
-          ?.split('=')[1];
-        
-        const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
-        const hasAnyCookie = document.cookie.length > 0;
-        
-        // Only clear cookies if user is registered (0/1) and got an error
-        if (isRegistered && hasAnyCookie) {
-          console.log('Authentication error detected for registered user. Clearing all cookies...');
-          clearAllCookies();
-        } else if (!isRegistered) {
-          // is_creator is null - user needs profile setup, but has auth tokens
-          // They're partially authenticated, show profile button but they'll need to complete setup
-          setIsLoggedInIfChanged(true);
-        } else {
-          setIsLoggedInIfChanged(false);
-        }
-      }
-      lastCheckRef.current = Date.now();
-    } catch (error) {
-      // Check is_creator cookie - only clear if user is registered (0 or 1)
-      const isCreatorCookie = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('is_creator='))
-        ?.split('=')[1];
-      
-      const isRegistered = isCreatorCookie === '0' || isCreatorCookie === '1';
-      const hasAnyCookie = document.cookie.length > 0;
-      
-      // Only clear cookies if user is registered (0/1) and got an error
-      if (isRegistered && hasAnyCookie) {
-        console.log('Authentication error caught for registered user. Clearing all cookies...', error);
-        clearAllCookies();
-        setIsLoggedInIfChanged(false);
-      } else if (!isRegistered && hasAnyCookie) {
-        // User has auth tokens but no profile yet - still show as logged in
-        setIsLoggedInIfChanged(true);
-      } else {
-        setIsLoggedInIfChanged(false);
-      }
-    } finally {
-      isCheckingRef.current = false;
-    }
-  };
-
-  useEffect(() => {
-    checkAuthStatus();
-    
-    // Also check immediately if is_creator cookie exists
-    const isCreatorCookie = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('is_creator='));
-    const hasIsCreatorCookie = !!isCreatorCookie;
-    
-    if (hasIsCreatorCookie && !isLoggedIn) {
-      // If is_creator cookie exists but we're not logged in, check again
-      setTimeout(() => checkAuthStatus(), 100);
-    }
-  }, []);
-
-  // Check auth status when the page becomes visible
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        checkAuthStatus();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
-
-  // Listen for explicit auth change events only
-  useEffect(() => {
-    const handleAuthEvent = () => {
-      // Force immediate check when auth changes
-      isCheckingRef.current = false;
-      checkAuthStatus();
-    };
-
-    window.addEventListener("auth-changed", handleAuthEvent);
-    
-    // Also listen for storage events (in case auth state changes in another tab)
-    const handleStorageChange = (e) => {
-      if (e.key === 'glimz-auth-storage') {
-        checkAuthStatus();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener("auth-changed", handleAuthEvent);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
+  const [profileData, setProfileData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -215,6 +53,7 @@ export const Header = () => {
     else if (path === "/orders") setActiveTab("orders");
     else if (path === "/chat") setActiveTab("chat");
     else if (path === "/profile") setActiveTab("profile");
+
   };
 
   const toggleMobileSearch = () => {
@@ -229,6 +68,110 @@ export const Header = () => {
     if (isMobileSearchOpen) {
       setIsMobileSearchOpen(false);
     }
+  };
+
+  // Check authentication by verifying auth_token and uuid exist
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        setLoading(true);
+        
+        // Check is_creator cookie to determine which endpoint to call
+        const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+          const [key, value] = cookie.split('=');
+          acc[key] = decodeURIComponent(value);
+          return acc;
+        }, {});
+        
+        const isCreatorCookie = cookies['is_creator'];
+        
+        let endpoint;
+        if (isCreatorCookie === '1') {
+          endpoint = '/api/auth/get-creator-detail';
+        } else if (isCreatorCookie === '0') {
+          endpoint = '/api/auth/get-viewer-detail';
+        } else {
+          // Fallback to original endpoint
+          endpoint = '/api/user/details';
+        }
+
+        // Make direct API call to verify authentication - this will return 401 if auth_token/uuid don't exist
+        const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
+        const response = await resp.json();
+        
+        // Check if response indicates authentication error (401 Unauthorized or status: false)
+        const isAuthError = (!resp.ok && resp.status === 401) || !response || !response.status;
+        
+        if (!isAuthError && response && response.status) {
+          setIsAuthenticated(true);
+          setIsCreator(isCreatorCookie === '1');
+          
+          // Get profile data
+          const userData = response.CreatorDetail || response.ViewerDetail || response.creatorDetail || response.data;
+          setProfileData(userData);
+        } else {
+          // Not authenticated - no valid auth_token/uuid
+          // Clear any stale cookies that might exist
+          if (isAuthError && (resp.status === 401 || !response || !response.status)) {
+            // Clear cookies to prevent middleware from redirecting
+            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          }
+          setIsAuthenticated(false);
+          setIsCreator(false);
+          setProfileData(null);
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setIsAuthenticated(false);
+        setIsCreator(false);
+        setProfileData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('auth-changed', handleAuthChange);
+    return () => window.removeEventListener('auth-changed', handleAuthChange);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await secureApi.logout();
+      setIsAuthenticated(false);
+      setIsCreator(false);
+      setProfileData(null);
+      router.push('/');
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
+  };
+
+  const getUserName = () => {
+    if (!profileData) return "User";
+    return profileData.name || profileData.username || profileData.first_name || "User";
+  };
+
+  const getUserEmail = () => {
+    if (!profileData) return "";
+    return profileData.email || "";
   };
 
   const navItems = [
@@ -311,20 +254,30 @@ export const Header = () => {
                 <Heart className="h-4 w-4" />
               </Button> */}
 
-              {/* Auth Button */}
-              {isLoggedIn ? (
-                <div className="flex items-center">
-                  <ProfileButton onAuthChange={setIsLoggedInIfChanged} />
-                </div>
-              ) : (
-                <>
-                  <Button
-                    onClick={() => router.push("/auth")}
-                    className="btn-glimz-primary text-sm px-3 sm:px-4 py-2"
-                  >
-                    <span className="">Get Started</span>
-                  </Button>
-                </>
+              {/* Get Started Button - Show when not authenticated */}
+              {!loading && !isAuthenticated && (
+                <Button
+                  onClick={() => {
+                    // Clear any stale cookies before navigating to auth page
+                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                    router.push('/auth?redirect=/');
+                  }}
+                  className="bg-glimz-primary hover:bg-glimz-primary/90 text-white"
+                  size="sm"
+                >
+                  Get Started
+                </Button>
+              )}
+
+              {/* Profile Button - Show when authenticated */}
+              {!loading && isAuthenticated && (
+                <ProfileButton
+                  profileData={profileData}
+                  isCreator={isCreator}
+                  onLogout={handleLogout}
+                />
               )}
 
               {/* Tablet Menu Button - Only for tablets (sm to lg) */}

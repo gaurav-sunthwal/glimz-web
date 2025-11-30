@@ -188,30 +188,8 @@ export default function UserProfile() {
           )}
         </div>
 
-        {/* Account details */}
-        <div className="space-y-4">
-          <h4 className="text-lg font-medium text-purple-400 border-b border-gray-700 pb-2">
-            Account Details
-          </h4>
-          {userData.viewer_id && (
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <span className="text-gray-400 text-sm">Viewer ID</span>
-              <p className="text-white font-medium">{userData.viewer_id}</p>
-            </div>
-          )}
-          {userData.user_id && (
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <span className="text-gray-400 text-sm">User ID</span>
-              <p className="text-white font-medium">{userData.user_id}</p>
-            </div>
-          )}
-          {userData.uuid && (
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <span className="text-gray-400 text-sm">UUID</span>
-              <p className="text-white font-mono text-sm">{userData.uuid}</p>
-            </div>
-          )}
-        </div>
+        
+        
       </div>
     </div>
   );

@@ -2,470 +2,399 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, X, Video, Image, ArrowLeft, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Header } from "@/components/Header";
+import { isUserCreator, isAuthenticated } from "@/app/lib/authUtils";
+import { MediaUploadStep } from "./components/MediaUploadStep";
+import { ContentDetailsStep } from "./components/ContentDetailsStep";
+import { VideoPreviewStep } from "./components/VideoPreviewStep";
+import { PricingPublishStep } from "./components/PricingPublishStep";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+
+// Types matching the React Native app
+export const CONTENT_CREATION_STEPS = {
+  MEDIA_UPLOAD: 0,
+  VIDEO_PREVIEW: 1,
+  CONTENT_DETAILS: 2,
+  PRICING_PUBLISH: 3,
+};
+
+const STEP_NAMES = [
+  "Upload Media",
+  "Preview",
+  "Content Details",
+  "Publish",
+];
 
 export default function UploadPage() {
   const router = useRouter();
-  const [isCreator, setIsCreator] = useState(false);
+  const [currentStep, setCurrentStep] = useState(CONTENT_CREATION_STEPS.MEDIA_UPLOAD);
   const [isLoading, setIsLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    category: "",
-    tags: "",
-    thumbnail: null,
-    video: null,
-    tier: "free", // free, premium, vip
-    price: "",
+  const [isCreator, setIsCreator] = useState(false);
+  const [isAuth, setIsAuth] = useState(false);
+
+  console.log("📄 [Upload Page] Component mounted/rendered");
+  const [contentData, setContentData] = useState({
+    teaserVideo: null,
+    contentVideo: null,
+    teaserThumbnail: null,
+    contentData: {
+      title: "",
+      description: "",
+      category: "",
+      tags: [],
+      isPremium: false,
+      price: undefined,
+      playlistId: null,
+      ageRestriction: "G",
+      hasCopyrightRights: false,
+      isInformationAccurate: false,
+    },
   });
-  const [errors, setErrors] = useState({});
-  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
-    // Check if user is a creator
-    const checkCreatorStatus = () => {
-      const creatorStatus = false; // Auth removed
-      setIsCreator(creatorStatus);
-      setIsLoading(false);
+    const checkAccess = async () => {
+      console.log("🔍 [Upload Page] Checking access...");
       
-      if (!creatorStatus) {
-        // Redirect non-creators to home page
-        router.push("/");
+      try {
+        setIsLoading(true);
+        
+        // Check is_creator cookie to determine which endpoint to call (same as Header.jsx)
+        const cookies = typeof document !== 'undefined' 
+          ? document.cookie.split('; ').reduce((acc, cookie) => {
+              const [key, value] = cookie.split('=');
+              acc[key] = decodeURIComponent(value);
+              return acc;
+            }, {})
+          : {};
+        
+        const isCreatorCookie = cookies['is_creator'];
+        console.log("🔍 [Upload Page] is_creator cookie value:", isCreatorCookie);
+        
+        let endpoint;
+        if (isCreatorCookie === '1') {
+          endpoint = '/api/auth/get-creator-detail';
+        } else if (isCreatorCookie === '0') {
+          endpoint = '/api/auth/get-viewer-detail';
+        } else {
+          // Fallback to original endpoint
+          endpoint = '/api/user/details';
+        }
+
+        console.log("🔍 [Upload Page] Making API call to:", endpoint);
+
+        // Make direct API call to verify authentication (same method as Header.jsx)
+        const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
+        const response = await resp.json();
+        
+        console.log("🔍 [Upload Page] API response status:", resp.status);
+        console.log("🔍 [Upload Page] API response data:", response);
+        
+        // Check if response indicates authentication error (401 Unauthorized or status: false)
+        const isAuthError = (!resp.ok && resp.status === 401) || !response || !response.status;
+        
+        if (!isAuthError && response && response.status) {
+          // User is authenticated
+          setIsAuth(true);
+          setIsCreator(isCreatorCookie === '1');
+          setIsLoading(false);
+          
+          console.log("✅ [Upload Page] User is authenticated");
+          console.log("✅ [Upload Page] Creator status:", isCreatorCookie === '1');
+          
+          // If is_creator = 0, user is a viewer, redirect to home
+          if (isCreatorCookie === '0') {
+            console.log("❌ [Upload Page] User is a viewer (is_creator=0) - redirecting to /");
+            router.push("/");
+            return;
+          }
+
+          // If is_creator = 1, user is a creator, allow access
+          if (isCreatorCookie === '1') {
+            console.log("✅ [Upload Page] User is a creator (is_creator=1) - access granted");
+            return;
+          }
+        } else {
+          // Not authenticated - no valid auth_token/uuid
+          console.log("❌ [Upload Page] User not authenticated - redirecting to /auth");
+          setIsAuth(false);
+          setIsCreator(false);
+          setIsLoading(false);
+          router.push("/auth");
+          return;
+        }
+      } catch (error) {
+        console.error("❌ [Upload Page] Error checking authentication:", error);
+        setIsAuth(false);
+        setIsCreator(false);
+        setIsLoading(false);
+        router.push("/auth");
       }
     };
 
-    checkCreatorStatus();
+    checkAccess();
   }, [router]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
+  const handleDataChange = (updates) => {
+    console.log("🔄 [Upload Page] handleDataChange called with:", updates);
+    setContentData((prev) => {
+      const newData = updates.contentData
+        ? {
+            ...prev,
+            ...updates,
+            contentData: {
+              ...prev.contentData,
+              ...updates.contentData,
+            },
+          }
+        : {
+            ...prev,
+            ...updates,
+          };
+      console.log("🔄 [Upload Page] Previous data:", prev);
+      console.log("🔄 [Upload Page] New data:", newData);
+      return newData;
+    });
+  };
+
+  const handleNext = () => {
+    if (currentStep < Object.keys(CONTENT_CREATION_STEPS).length - 1) {
+      console.log(`➡️ [Upload Page] Moving to next step: ${currentStep + 1}`);
+      setCurrentStep(currentStep + 1);
+    } else {
+      console.log("⚠️ [Upload Page] Already on last step, cannot proceed");
     }
   };
 
-  const handleFileUpload = (file, type) => {
-    const maxSize = type === 'video' ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB for video, 10MB for thumbnail
-    const allowedTypes = type === 'video' 
-      ? ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/webm']
-      : ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
-    if (file.size > maxSize) {
-      setErrors(prev => ({
-        ...prev,
-        [type]: `File size must be less than ${type === 'video' ? '500MB' : '10MB'}`
-      }));
-      return;
-    }
-
-    if (!allowedTypes.includes(file.type)) {
-      setErrors(prev => ({
-        ...prev,
-        [type]: `Invalid file type. Allowed: ${allowedTypes.join(', ')}`
-      }));
-      return;
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      [type]: file
-    }));
-
-    // Clear error
-    setErrors(prev => ({
-      ...prev,
-      [type]: ""
-    }));
-  };
-
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
+  const handleBack = () => {
+    if (currentStep > 0) {
+      console.log(`⬅️ [Upload Page] Moving to previous step: ${currentStep - 1}`);
+      setCurrentStep(currentStep - 1);
+    } else {
+      console.log("⚠️ [Upload Page] Already on first step, cannot go back");
     }
   };
 
-  const handleDrop = (e, type) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0], type);
-    }
-  };
-
-  const removeFile = (type) => {
-    setFormData(prev => ({
-      ...prev,
-      [type]: null
-    }));
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    }
-
-    if (!formData.category) {
-      newErrors.category = "Category is required";
-    }
-
-    if (!formData.video) {
-      newErrors.video = "Video file is required";
-    }
-
-    if (!formData.thumbnail) {
-      newErrors.thumbnail = "Thumbnail is required";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    setUploading(true);
-    
-    try {
-      // Create FormData for file upload
-      const uploadData = new FormData();
-      uploadData.append('title', formData.title);
-      uploadData.append('description', formData.description);
-      uploadData.append('category', formData.category);
-      uploadData.append('tags', formData.tags);
-      uploadData.append('video', formData.video);
-      uploadData.append('thumbnail', formData.thumbnail);
-
-      // Here you would make the API call to upload the video
-      // const response = await fetch('/api/upload', {
-      //   method: 'POST',
-      //   body: uploadData,
-      //   credentials: 'include'
-      // });
-
-      // Simulate upload process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        category: "",
-        tags: "",
-        thumbnail: null,
-        video: null,
-      });
-      
-      alert("Video uploaded successfully!");
-      
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Failed to upload video. Please try again.");
-    } finally {
-      setUploading(false);
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case CONTENT_CREATION_STEPS.MEDIA_UPLOAD:
+        return (
+          contentData.teaserVideo &&
+          contentData.contentVideo &&
+          contentData.teaserThumbnail
+        );
+      case CONTENT_CREATION_STEPS.VIDEO_PREVIEW:
+        return true; // Preview step is optional
+      case CONTENT_CREATION_STEPS.CONTENT_DETAILS:
+        return (
+          contentData.contentData.title.trim() &&
+          contentData.contentData.category &&
+          contentData.contentData.hasCopyrightRights &&
+          contentData.contentData.isInformationAccurate
+        );
+      default:
+        return true;
     }
   };
 
   if (isLoading) {
+    console.log("⏳ [Upload Page] Still loading...");
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-glimz-primary" />
       </div>
     );
   }
 
+  if (!isAuth) {
+    console.log("🚫 [Upload Page] Not authenticated - returning null (will redirect)");
+    return null; // Will redirect
+  }
+
   if (!isCreator) {
+    console.log("🚫 [Upload Page] Not a creator - showing access denied or redirecting");
+    // This will be handled by the useEffect redirect logic
+    // But show a loading state while checking
+    if (isLoading) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-glimz-primary" />
+        </div>
+      );
+    }
+    
+    // If we get here, show access denied message
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-white mb-2">Access Denied</h1>
-          <p className="text-white/70 mb-4">Only creators can access this page.</p>
-          <Button onClick={() => router.push("/")} className="bg-glimz-primary hover:bg-glimz-primary/90">
-            Go Home
-          </Button>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto px-4 py-16 flex items-center justify-center">
+          <Card className="max-w-md w-full bg-gray-900/80 backdrop-blur-xl border-gray-700 p-8">
+            <Alert className="border-red-500/50 bg-red-500/10">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <AlertDescription className="text-white mt-2">
+                <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+                <p className="text-white/70 mb-4">
+                  Only creators can upload content. Please create a creator account to access this feature.
+                </p>
+                <Button
+                  onClick={() => {
+                    console.log("🏠 [Upload Page] 'Go Home' button clicked - redirecting to /");
+                    router.push("/");
+                  }}
+                  className="bg-glimz-primary hover:bg-glimz-primary/90 w-full"
+                >
+                  Go Home
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </Card>
         </div>
       </div>
     );
   }
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case CONTENT_CREATION_STEPS.MEDIA_UPLOAD:
+        return (
+          <MediaUploadStep
+            data={contentData}
+            onDataChange={handleDataChange}
+            onNext={handleNext}
+          />
+        );
+      case CONTENT_CREATION_STEPS.VIDEO_PREVIEW:
+        return (
+          <VideoPreviewStep
+            data={contentData}
+            onDataChange={handleDataChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case CONTENT_CREATION_STEPS.CONTENT_DETAILS:
+        return (
+          <ContentDetailsStep
+            data={contentData}
+            onDataChange={handleDataChange}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        );
+      case CONTENT_CREATION_STEPS.PRICING_PUBLISH:
+        return (
+          <PricingPublishStep
+            data={contentData}
+            onDataChange={handleDataChange}
+            onBack={handleBack}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center mb-8">
+        {/* Step Indicator */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-white">Create Content</h1>
             <Button
               variant="ghost"
-              onClick={() => router.back()}
-              className="mr-4 text-white hover:bg-white/10"
+              onClick={() => {
+                console.log("🔙 [Upload Page] Cancel button clicked - routing back");
+                router.back();
+              }}
+              className="text-white hover:bg-white/10"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+          </div>
+          
+          {/* Progress Steps */}
+          <div className="flex items-center gap-2 mb-8">
+            {STEP_NAMES.map((name, index) => (
+              <div key={index} className="flex items-center flex-1">
+                <div className="flex items-center flex-1">
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
+                      index === currentStep
+                        ? "border-glimz-primary bg-glimz-primary text-white"
+                        : index < currentStep
+                        ? "border-green-500 bg-green-500 text-white"
+                        : "border-gray-600 text-gray-400"
+                    }`}
+                  >
+                    {index < currentStep ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                    ) : (
+                      <span className="text-sm font-semibold">{index + 1}</span>
+                    )}
+                  </div>
+                  <span
+                    className={`ml-2 text-sm font-medium ${
+                      index === currentStep
+                        ? "text-white"
+                        : index < currentStep
+                        ? "text-green-400"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {name}
+                  </span>
+                </div>
+                {index < STEP_NAMES.length - 1 && (
+                  <div
+                    className={`h-0.5 flex-1 mx-2 ${
+                      index < currentStep ? "bg-green-500" : "bg-gray-600"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <div className="max-w-4xl mx-auto">{renderStep()}</div>
+
+        {/* Navigation Buttons */}
+        {currentStep !== CONTENT_CREATION_STEPS.PRICING_PUBLISH && (
+          <div className="max-w-4xl mx-auto mt-8 flex justify-between">
+            <Button
+              variant="ghost"
+              onClick={handleBack}
+              disabled={currentStep === 0}
+              className="text-white hover:bg-white/10"
+            >
               Back
             </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-white">Upload Content</h1>
-              <p className="text-white/70">Share your creativity with the world</p>
-            </div>
+            <Button
+              onClick={handleNext}
+              disabled={!canProceedToNextStep()}
+              className="bg-glimz-primary hover:bg-glimz-primary/90 text-white"
+            >
+              Next
+            </Button>
           </div>
-
-          <Card className="bg-gray-900/80 backdrop-blur-xl border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white text-2xl">Video Upload</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Title */}
-                <div>
-                  <Label htmlFor="title" className="text-white">Title *</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    placeholder="Enter video title"
-                    className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400 focus:border-glimz-primary"
-                  />
-                  {errors.title && (
-                    <p className="text-red-400 text-sm mt-1">{errors.title}</p>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <Label htmlFor="description" className="text-white">Description *</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Describe your video"
-                    rows={4}
-                    className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400 focus:border-glimz-primary"
-                  />
-                  {errors.description && (
-                    <p className="text-red-400 text-sm mt-1">{errors.description}</p>
-                  )}
-                </div>
-
-                {/* Category */}
-                <div>
-                  <Label htmlFor="category" className="text-white">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white focus:border-glimz-primary !bg-opacity-100 !bg-gray-800 !border !border-gray-600 !shadow-none">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-600 text-white">
-                      <SelectItem value="entertainment" className="hover:bg-glimz-primary/20">Entertainment</SelectItem>
-                      <SelectItem value="education" className="hover:bg-glimz-primary/20">Education</SelectItem>
-                      <SelectItem value="gaming" className="hover:bg-glimz-primary/20">Gaming</SelectItem>
-                      <SelectItem value="music" className="hover:bg-glimz-primary/20">Music</SelectItem>
-                      <SelectItem value="sports" className="hover:bg-glimz-primary/20">Sports</SelectItem>
-                      <SelectItem value="tech" className="hover:bg-glimz-primary/20">Technology</SelectItem>
-                      <SelectItem value="lifestyle" className="hover:bg-glimz-primary/20">Lifestyle</SelectItem>
-                      <SelectItem value="comedy" className="hover:bg-glimz-primary/20">Comedy</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.category && (
-                    <p className="text-red-400 text-sm mt-1">{errors.category}</p>
-                  )}
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <Label htmlFor="tags" className="text-white">Tags</Label>
-                  <Input
-                    id="tags"
-                    name="tags"
-                    value={formData.tags}
-                    onChange={handleInputChange}
-                    placeholder="Enter tags separated by commas"
-                    className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-400 focus:border-glimz-primary"
-                  />
-                </div>
-
-                {/* Video Upload */}
-                <div>
-                  <Label className="text-white">Video File *</Label>
-                  <div
-                    className={`mt-2 border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                      dragActive
-                        ? "border-glimz-primary bg-glimz-primary/10"
-                        : "border-gray-600 hover:border-gray-500"
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={(e) => handleDrop(e, 'video')}
-                  >
-                    {formData.video ? (
-                      <div className="space-y-2">
-                        <Video className="h-12 w-12 text-glimz-primary mx-auto" />
-                        <p className="text-white font-medium">{formData.video.name}</p>
-                        <p className="text-white/60 text-sm">
-                          {(formData.video.size / (1024 * 1024)).toFixed(2)} MB
-                        </p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile('video')}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Upload className="h-12 w-12 text-white/60 mx-auto" />
-                        <p className="text-white">Drop your video here or click to browse</p>
-                        <p className="text-white/60 text-sm">MP4, AVI, MOV, WMV, WebM (Max 500MB)</p>
-                        <input
-                          type="file"
-                          accept="video/*"
-                          onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'video')}
-                          className="hidden"
-                          id="video-upload"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('video-upload').click()}
-                          className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
-                        >
-                          Choose Video
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {errors.video && (
-                    <p className="text-red-400 text-sm mt-1">{errors.video}</p>
-                  )}
-                </div>
-
-                {/* Thumbnail Upload */}
-                <div>
-                  <Label className="text-white">Thumbnail *</Label>
-                  <div
-                    className={`mt-2 border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                      dragActive
-                        ? "border-glimz-primary bg-glimz-primary/10"
-                        : "border-gray-600 hover:border-gray-500"
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={(e) => handleDrop(e, 'thumbnail')}
-                  >
-                    {formData.thumbnail ? (
-                      <div className="space-y-2">
-                        <Image className="h-8 w-8 text-glimz-primary mx-auto" />
-                        <p className="text-white font-medium">{formData.thumbnail.name}</p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeFile('thumbnail')}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <X className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <Image className="h-8 w-8 text-white/60 mx-auto" />
-                        <p className="text-white">Drop thumbnail here or click to browse</p>
-                        <p className="text-white/60 text-sm">JPEG, PNG, GIF, WebP (Max 10MB)</p>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0], 'thumbnail')}
-                          className="hidden"
-                          id="thumbnail-upload"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('thumbnail-upload').click()}
-                          className="bg-gray-800 border-gray-600 text-white hover:bg-gray-700"
-                        >
-                          Choose Thumbnail
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {errors.thumbnail && (
-                    <p className="text-red-400 text-sm mt-1">{errors.thumbnail}</p>
-                  )}
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end space-x-4 pt-6">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => router.back()}
-                    className="text-white hover:bg-gray-800"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={uploading}
-                    className="bg-glimz-primary hover:bg-glimz-primary/90 text-white px-8"
-                  >
-                    {uploading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload Video
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
+        )}
       </div>
     </div>
   );

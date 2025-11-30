@@ -166,16 +166,12 @@ export async function GET() {
         },
       });
 
-      console.log(`${userType} API response status:`, response.status);
-
       if (response.ok) {
         data = await response.json();
-        console.log(`${userType} API response data:`, data);
 
         // Check if we got valid user details
         const userDetail = data?.creatorDetail || data?.CreatorDetail || data?.ViewerDetail;
         if (data && data.status && userDetail) {
-          console.log(`✅ Successfully fetched ${userType} details from ${apiEndpoint}`);
           return NextResponse.json({
             status: true,
             ViewerDetail: userDetail,

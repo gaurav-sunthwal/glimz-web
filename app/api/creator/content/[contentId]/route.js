@@ -10,8 +10,6 @@ export async function GET(request, { params }) {
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
-    console.log("Fetching content details:", { uuid, auth_token });
-
     // Check if UUID exists
     if (!uuid) {
       console.warn("No UUID found in cookies");
@@ -78,8 +76,6 @@ export async function GET(request, { params }) {
       );
     }
 
-    console.log("Content details API response status:", response.status);
-
     // Handle non-ok response
     if (!response.ok) {
       let errorData;
@@ -99,7 +95,6 @@ export async function GET(request, { params }) {
 
     // Parse successful response
     const data = await response.json();
-    console.log("Content details API response data:", data);
 
     // Return the response as-is from the external API
     return NextResponse.json(data, { status: 200 });

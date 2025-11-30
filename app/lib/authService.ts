@@ -1,7 +1,5 @@
 // Auth service for Next.js - matches React Native implementation
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
-
 export interface ApiResponse<T> {
   status: boolean;
   code: number;
@@ -88,7 +86,7 @@ export interface CreatorDetail {
   channel_link: string;
   subscribers: string;
   content_length: string;
-  genre?: any;
+  genre?: string | string[] | null;
   status: number;
   profile_image?: string;
   is_deleted: number;
@@ -127,12 +125,13 @@ class AuthService {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Login failed',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -153,12 +152,13 @@ class AuthService {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'OTP verification failed',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -179,12 +179,13 @@ class AuthService {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Resend OTP failed',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -205,12 +206,13 @@ class AuthService {
 
       const result = await response.json();
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Creator registration failed',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -227,12 +229,13 @@ class AuthService {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Failed to get creator details',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -251,14 +254,15 @@ class AuthService {
         body: JSON.stringify(data),
       });
 
-      const data = await response.json();
-      return data;
-    } catch (error: any) {
+      const responseData = await response.json();
+      return responseData;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Viewer registration failed',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -275,12 +279,13 @@ class AuthService {
 
       const data = await response.json();
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         status: false,
         code: 500,
         message: 'Failed to get viewer details',
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
@@ -290,12 +295,12 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-    } catch (error: any) {
-      console.error('Logout error:', error);
+      // Use secureApi for comprehensive logout that clears all storage
+      const { secureApi } = await import('./secureApi');
+      await secureApi.logout();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Logout error:', errorMessage);
     }
   }
 }
