@@ -3,50 +3,60 @@ import { NextResponse } from "next/server";
 
 const API_BASE_URL = "http://api.glimznow.com/api";
 
-export async function GET(request) {
+export async function POST(request) {
   try {
-    // Get UUID and auth token from cookies (optional for trending content)
     const cookieStore = cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
+    const is_creator = cookieStore.get("is_creator")?.value;
 
-    const { searchParams } = new URL(request.url);
-    const page = searchParams.get("page") || "1";
-    const limit = searchParams.get("limit") || "10";
+    // Check if user is authenticated and is a creator
+    if (!uuid || !auth_token) {
+      return NextResponse.json(
+        {
+          status: false,
+          code: 401,
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
 
-    // Build query string
-    const queryParams = new URLSearchParams({
-      page: page,
-      limit: limit,
-    });
+    if (is_creator !== "1") {
+      return NextResponse.json(
+        {
+          status: false,
+          code: 403,
+          message: "Only creators can upload content",
+        },
+        { status: 403 }
+      );
+    }
 
-    // Build headers - only include auth if available
+    // Get FormData from request
+    const formData = await request.formData();
+
+    // Build headers with authentication
     const headers = {
-      "Content-Type": "application/json",
+      uuid: uuid,
+      auth_token: auth_token,
     };
-    
-    // Add auth headers only if they exist (for trending content, auth is not required)
-    if (uuid) {
-      headers["uuid"] = uuid;
-    }
-    if (auth_token) {
-      headers["auth_token"] = auth_token;
-    }
 
     // Call external API
     let response;
     try {
-      response = await fetch(`${API_BASE_URL}/content?${queryParams.toString()}`, {
-        method: "GET",
+      response = await fetch(`${API_BASE_URL}/creator/content/upload`, {
+        method: "POST",
         headers: headers,
+        body: formData,
       });
     } catch (fetchError) {
-      console.error("Error calling content API:", fetchError);
+      console.error("Error calling upload API:", fetchError);
       return NextResponse.json(
         {
           status: false,
           code: 503,
-          message: "Failed to connect to content service",
+          message: "Failed to connect to upload service",
           error: fetchError.message,
         },
         { status: 503 }
@@ -62,7 +72,7 @@ export async function GET(request) {
         errorData = {
           status: false,
           code: response.status,
-          message: "Failed to fetch content",
+          message: "Failed to upload content",
           error: "Could not read error response",
         };
       }
@@ -76,7 +86,7 @@ export async function GET(request) {
     // Return the response as-is from the external API
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
-    console.error("Error in GET /api/content:", error);
+    console.error("Error in POST /api/creator/content/upload:", error);
     return NextResponse.json(
       {
         status: false,
@@ -88,4 +98,3 @@ export async function GET(request) {
     );
   }
 }
-

@@ -29,13 +29,14 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: 'Failed to send OTP',
-        error: error.message,
+        error: errorMessage,
       },
       { status: 500 }
     );

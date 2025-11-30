@@ -58,7 +58,7 @@ export async function GET(request) {
       let errorData;
       try {
         errorData = await response.json();
-      } catch (e) {
+      } catch {
         errorData = {
           status: false,
           code: response.status,

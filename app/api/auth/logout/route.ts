@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
-    const cookieStore = cookies();
     const nextResponse = NextResponse.json({ status: true, message: 'Logged out successfully' });
 
     // Clear all auth cookies
@@ -12,13 +10,14 @@ export async function POST() {
     nextResponse.cookies.delete('is_creator');
 
     return nextResponse;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: 'Logout failed',
-        error: error.message,
+        error: errorMessage,
       },
       { status: 500 }
     );

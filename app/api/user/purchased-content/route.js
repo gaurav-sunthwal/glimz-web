@@ -10,8 +10,6 @@ export async function GET() {
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
-    console.log("Fetching purchased content list:", { uuid, auth_token });
-
     // Check if UUID exists
     if (!uuid) {
       console.warn("No UUID found in cookies");
@@ -41,11 +39,6 @@ export async function GET() {
     }
 
     // Fetch purchased content list from external API
-    console.log("Making request to purchased content endpoint:", {
-      url: `${API_BASE_URL}/user/purchased-content`,
-      uuid: uuid,
-    });
-
     try {
       const response = await fetch(`${API_BASE_URL}/user/purchased-content`, {
         method: "GET",
@@ -56,11 +49,8 @@ export async function GET() {
         },
       });
 
-      console.log("Purchased content API response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Purchased content API response data:", data);
 
         // Return the response as-is from the external API
         return NextResponse.json(data, { status: 200 });

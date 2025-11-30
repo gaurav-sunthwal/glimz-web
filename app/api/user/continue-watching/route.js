@@ -56,11 +56,8 @@ export async function GET() {
         },
       });
 
-      console.log("Continue watching API response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Continue watching API response data:", data);
 
         // Return the response as-is from the external API
         return NextResponse.json(data, { status: 200 });

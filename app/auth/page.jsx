@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "../lib/authService";
 import { useAuthStore } from "../store/authStore";
+import { isAuthenticated as checkAuthCookies, getAuthToken, getUserUuid } from "../lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,13 +67,16 @@ export default function AuthPage() {
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
-    if (isAuthenticated) {
-      // User is authenticated, redirect to home or redirect URL
+    // Check actual cookies instead of store state (store might have stale data)
+    const isAuthFromCookies = checkAuthCookies();
+    
+    if (isAuthFromCookies) {
+      // User is authenticated (has both auth_token and uuid), redirect to home or redirect URL
       const redirect = searchParams.get("redirect");
       const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
       router.push(redirectUrl);
     }
-  }, [isAuthenticated, router, searchParams]);
+  }, [router, searchParams]);
 
   // Countdown timer effect
   useEffect(() => {
@@ -182,9 +186,10 @@ export default function AuthPage() {
             if (creatorDetail.status && profileData) {
               // Creator profile exists, login complete
               setAuthentication(true, "creator", profileData, auth_token, uuid);
+              const redirectUrl = getRedirectUrl();
               alert("Welcome back! Login successful.");
               window.dispatchEvent(new Event("auth-changed"));
-              router.push(getRedirectUrl());
+              router.push(redirectUrl);
               return;
             } else {
               // Creator profile doesn't exist, show creator form
@@ -207,9 +212,10 @@ export default function AuthPage() {
             if (viewerDetail.status && profileData) {
               // Viewer profile exists, login complete
               setAuthentication(true, "user", profileData, auth_token, uuid);
+              const redirectUrl = getRedirectUrl();
               alert("Welcome back! Login successful.");
               window.dispatchEvent(new Event("auth-changed"));
-              router.push(getRedirectUrl());
+              router.push(redirectUrl);
               return;
             } else {
               // Viewer profile doesn't exist, show user form
@@ -350,9 +356,10 @@ export default function AuthPage() {
           authToken || undefined,
           userUuid || undefined
         );
+        const redirectUrl = getRedirectUrl();
         alert("Welcome to Glimz! Profile created successfully!");
         window.dispatchEvent(new Event("auth-changed"));
-        router.push(getRedirectUrl());
+        router.push(redirectUrl);
       } else {
         alert(response.message || "Failed to create profile");
       }
@@ -424,9 +431,10 @@ export default function AuthPage() {
           authToken || undefined,
           userUuid || undefined
         );
+        const redirectUrl = getRedirectUrl();
         alert("Welcome to Glimz Creator! Profile created successfully!");
         window.dispatchEvent(new Event("auth-changed"));
-        router.push(getRedirectUrl());
+        router.push(redirectUrl);
       } else {
         alert(response.message || "Failed to create creator profile");
       }

@@ -54,11 +54,8 @@ export async function GET() {
         },
       });
 
-      console.log("Viewer API response status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        console.log("Viewer API response data:", data);
 
         // Check if we got valid user details - handle both response formats
         const viewerDetail = data?.ViewerDetail || data?.data;

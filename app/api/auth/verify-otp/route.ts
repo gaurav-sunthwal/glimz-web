@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
 
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
       const { auth_token, uuid, user } = responseData;
 
       if (auth_token && uuid) {
-        const cookieStore = cookies();
         const nextResponse = NextResponse.json(data, { status: response.status });
 
         // Set auth cookies
@@ -71,13 +69,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: 'OTP verification failed',
-        error: error.message,
+        error: errorMessage,
       },
       { status: 500 }
     );

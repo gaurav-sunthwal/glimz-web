@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimzno
 export async function GET() {
   try {
     // Get auth tokens from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authToken = cookieStore.get('auth_token')?.value;
     const uuid = cookieStore.get('uuid')?.value;
 
@@ -44,13 +44,14 @@ export async function GET() {
     }
 
     return NextResponse.json(data, { status: response.status });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: 'Failed to get viewer details',
-        error: error.message,
+        error: errorMessage,
       },
       { status: 500 }
     );

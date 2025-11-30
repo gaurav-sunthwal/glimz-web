@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       { id, title, message, scheduledAt: scheduledTime, status: "scheduled" },
       { status: 200 }
     );
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 }
