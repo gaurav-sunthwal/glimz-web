@@ -84,8 +84,8 @@ const VideoPreviewCard = ({
         video.preload = "metadata";
         video.onloadedmetadata = () => {
           const duration = video.duration;
-          if (type === "teaser" && duration > 30) {
-            alert("Teaser video must be 30 seconds or less");
+          if (type === "teaser" && duration > 90) {
+            alert("Teaser video must be 90 seconds or less");
             return;
           }
 
@@ -166,7 +166,7 @@ const VideoPreviewCard = ({
           </h3>
           <p className="text-sm text-gray-400 mt-1">
             {type === "teaser"
-              ? "Max 30 seconds • Required"
+              ? "Max 60 seconds • Required"
               : "Max 5 minutes • Required"}
           </p>
         </div>
@@ -181,7 +181,10 @@ const VideoPreviewCard = ({
               </Badge>
             )}
             {video.fileSize && (
-              <Badge variant="outline" className="text-gray-400 border-gray-600">
+              <Badge
+                variant="outline"
+                className="text-gray-400 border-gray-600"
+              >
                 {formatFileSize(video.fileSize)}
               </Badge>
             )}
@@ -289,7 +292,9 @@ const VideoPreviewCard = ({
                 </div>
                 <div>
                   <p className="text-white font-semibold text-lg">
-                    {type === "teaser" ? "Upload Teaser Video" : "Upload Content Video"}
+                    {type === "teaser"
+                      ? "Upload Teaser Video"
+                      : "Upload Content Video"}
                   </p>
                   <p className="text-gray-400 text-sm mt-1">
                     Drag & drop or click to browse
@@ -329,78 +334,82 @@ const VideoPreviewCard = ({
                   : "border-gray-600 bg-gray-800/50 hover:border-pink-500/50 hover:bg-gray-800 cursor-pointer"
               }`}
             >
-            <input {...getThumbnailInputProps()} />
-            {thumbnail ? (
-              <>
-                <img
-                  src={thumbnail.url || URL.createObjectURL(thumbnail.file)}
-                  alt="Thumbnail"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    {onThumbnailPreview && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="bg-black/70 hover:bg-black/90 text-glimz-primary backdrop-blur-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onThumbnailPreview("teaser");
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {onThumbnailRemove && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="bg-black/70 hover:bg-black/90 text-red-400 backdrop-blur-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onThumbnailRemove("teaser");
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="absolute bottom-3 left-3 flex flex-col gap-1">
-                    {thumbnail.width && thumbnail.height && (
-                      <Badge
-                        variant="outline"
-                        className="bg-black/70 text-white border-gray-600 backdrop-blur-sm"
-                      >
-                        {thumbnail.width}×{thumbnail.height}
-                      </Badge>
-                    )}
-                    <Badge className="bg-black/70 text-white backdrop-blur-sm border-0">
-                      <ImageLucide className="h-3 w-3 mr-1" />
-                      {thumbnail.fileName}
-                    </Badge>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-6">
-                {isThumbnailDragActive ? (
-                  <div className="text-center space-y-3 animate-pulse">
-                    <ImageIcon className="h-12 w-12 text-pink-500 mx-auto" />
-                    <p className="text-pink-500 font-semibold">Drop image here</p>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-2 p-4">
-                    <div className="relative mx-auto w-fit">
-                      <div className="absolute inset-0 bg-pink-500/20 rounded-full blur-xl"></div>
-                      <ImageIcon className="h-8 w-8 text-pink-500 relative z-10" />
+              <input {...getThumbnailInputProps()} />
+              {thumbnail ? (
+                <>
+                  <img
+                    src={thumbnail.url || URL.createObjectURL(thumbnail.file)}
+                    alt="Thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+                    <div className="absolute top-3 right-3 flex gap-2">
+                      {onThumbnailPreview && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bg-black/70 hover:bg-black/90 text-glimz-primary backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onThumbnailPreview("teaser");
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {onThumbnailRemove && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="bg-black/70 hover:bg-black/90 text-red-400 backdrop-blur-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onThumbnailRemove("teaser");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-                    <p className="text-white text-sm font-medium">Add Thumbnail</p>
-                    <p className="text-gray-400 text-xs">Click or drag</p>
+                    <div className="absolute bottom-3 left-3 flex flex-col gap-1">
+                      {thumbnail.width && thumbnail.height && (
+                        <Badge
+                          variant="outline"
+                          className="bg-black/70 text-white border-gray-600 backdrop-blur-sm"
+                        >
+                          {thumbnail.width}×{thumbnail.height}
+                        </Badge>
+                      )}
+                      <Badge className="bg-black/70 text-white backdrop-blur-sm border-0">
+                        <ImageLucide className="h-3 w-3 mr-1" />
+                        {thumbnail.fileName}
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6">
+                  {isThumbnailDragActive ? (
+                    <div className="text-center space-y-3 animate-pulse">
+                      <ImageIcon className="h-12 w-12 text-pink-500 mx-auto" />
+                      <p className="text-pink-500 font-semibold">
+                        Drop image here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-2 p-4">
+                      <div className="relative mx-auto w-fit">
+                        <div className="absolute inset-0 bg-pink-500/20 rounded-full blur-xl"></div>
+                        <ImageIcon className="h-8 w-8 text-pink-500 relative z-10" />
+                      </div>
+                      <p className="text-white text-sm font-medium">
+                        Add Thumbnail
+                      </p>
+                      <p className="text-gray-400 text-xs">Click or drag</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -432,7 +441,6 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
         : null,
     });
   }, [data.teaserThumbnail, data.teaserVideo, data.contentVideo]);
-
 
   const handleVideoUpload = useCallback(
     (type, videoData) => {
@@ -495,8 +503,9 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
     data.contentVideo,
   ].filter(Boolean).length;
 
-  const requiredCount = [data.teaserVideo, data.contentVideo].filter(Boolean)
-    .length;
+  const requiredCount = [data.teaserVideo, data.contentVideo].filter(
+    Boolean
+  ).length;
 
   return (
     <div className="space-y-6">
