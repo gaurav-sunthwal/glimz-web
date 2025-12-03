@@ -3,6 +3,7 @@
 
 import React, { useState } from "react";
 import type { CreatorUI, UploadedContentUI, PlaylistUI } from "./page"; // import shared types
+import { Header } from "@/components/Header";
 
 type Props = {
   creator: CreatorUI;
@@ -36,6 +37,7 @@ export default function CreatorDashboardClient({
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
+      <Header />
       {/* Top bar */}
       <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-4 md:px-10 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -52,7 +54,10 @@ export default function CreatorDashboardClient({
           </div>
         </div>
 
-        <button className="text-xs md:text-sm rounded-xl border border-slate-700 px-3 py-1.5 hover:bg-slate-900">
+        <button
+          onClick={() => (window.location.href = "/upload")}
+          className="text-xs md:text-sm rounded-xl border border-slate-700 px-3 py-1.5 hover:bg-slate-900"
+        >
           + Upload New Content
         </button>
       </header>
