@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Search,
-  User,
-  LogOut,
-  Settings,
-} from "lucide-react";
+import { Search, User, LogOut, Settings } from "lucide-react";
 import Logo from "./Logo";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -53,7 +48,6 @@ export const Header = () => {
     else if (path === "/orders") setActiveTab("orders");
     else if (path === "/chat") setActiveTab("chat");
     else if (path === "/profile") setActiveTab("profile");
-
   };
 
   const toggleMobileSearch = () => {
@@ -75,48 +69,62 @@ export const Header = () => {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
         // Check is_creator cookie to determine which endpoint to call
-        const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
-          const [key, value] = cookie.split('=');
+        const cookies = document.cookie.split("; ").reduce((acc, cookie) => {
+          const [key, value] = cookie.split("=");
           acc[key] = decodeURIComponent(value);
           return acc;
         }, {});
-        
-        const isCreatorCookie = cookies['is_creator'];
-        
+
+        const isCreatorCookie = cookies["is_creator"];
+
         let endpoint;
-        if (isCreatorCookie === '1') {
-          endpoint = '/api/auth/get-creator-detail';
-        } else if (isCreatorCookie === '0') {
-          endpoint = '/api/auth/get-viewer-detail';
+        if (isCreatorCookie === "1") {
+          endpoint = "/api/auth/get-creator-detail";
+        } else if (isCreatorCookie === "0") {
+          endpoint = "/api/auth/get-viewer-detail";
         } else {
           // Fallback to original endpoint
-          endpoint = '/api/user/details';
+          endpoint = "/api/user/details";
         }
 
         // Make direct API call to verify authentication - this will return 401 if auth_token/uuid don't exist
-        const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
+        const resp = await fetch(endpoint, {
+          method: "GET",
+          credentials: "include",
+        });
         const response = await resp.json();
-        
+
         // Check if response indicates authentication error (401 Unauthorized or status: false)
-        const isAuthError = (!resp.ok && resp.status === 401) || !response || !response.status;
-        
+        const isAuthError =
+          (!resp.ok && resp.status === 401) || !response || !response.status;
+
         if (!isAuthError && response && response.status) {
           setIsAuthenticated(true);
-          setIsCreator(isCreatorCookie === '1');
-          
+          setIsCreator(isCreatorCookie === "1");
+
           // Get profile data
-          const userData = response.CreatorDetail || response.ViewerDetail || response.creatorDetail || response.data;
+          const userData =
+            response.CreatorDetail ||
+            response.ViewerDetail ||
+            response.creatorDetail ||
+            response.data;
           setProfileData(userData);
         } else {
           // Not authenticated - no valid auth_token/uuid
           // Clear any stale cookies that might exist
-          if (isAuthError && (resp.status === 401 || !response || !response.status)) {
+          if (
+            isAuthError &&
+            (resp.status === 401 || !response || !response.status)
+          ) {
             // Clear cookies to prevent middleware from redirecting
-            document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-            document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            document.cookie =
+              "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie =
+              "uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.cookie =
+              "is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
           }
           setIsAuthenticated(false);
           setIsCreator(false);
@@ -139,8 +147,8 @@ export const Header = () => {
       checkAuth();
     };
 
-    window.addEventListener('auth-changed', handleAuthChange);
-    return () => window.removeEventListener('auth-changed', handleAuthChange);
+    window.addEventListener("auth-changed", handleAuthChange);
+    return () => window.removeEventListener("auth-changed", handleAuthChange);
   }, []);
 
   const handleLogout = async () => {
@@ -149,7 +157,7 @@ export const Header = () => {
       setIsAuthenticated(false);
       setIsCreator(false);
       setProfileData(null);
-      router.push('/');
+      router.push("/");
     } catch (error) {
       console.error("Error during logout:", error);
     }
@@ -166,7 +174,12 @@ export const Header = () => {
 
   const getUserName = () => {
     if (!profileData) return "User";
-    return profileData.name || profileData.username || profileData.first_name || "User";
+    return (
+      profileData.name ||
+      profileData.username ||
+      profileData.first_name ||
+      "User"
+    );
   };
 
   const getUserEmail = () => {
@@ -176,7 +189,7 @@ export const Header = () => {
 
   const navItems = [
     { label: "Home", href: "/" },
-    { label: "Movies", href: "/movies" },
+    // { label: "Movies", href: "/movies" },
     { label: "My List", href: "/my-list" },
   ];
 
@@ -197,7 +210,10 @@ export const Header = () => {
               </button> */}
 
               <div className="flex items-center">
-                <Logo className="h-8 w-8 sm:h-10 sm:w-10 mr-2 drop-shadow-lg" />
+                <Logo
+                  className="h-8 w-8 sm:h-10 sm:w-10 mr-2 drop-shadow-lg"
+                  onClick={() => (window.location.href = "/")}
+                />
               </div>
 
               {/* Desktop Navigation */}
@@ -259,10 +275,13 @@ export const Header = () => {
                 <Button
                   onClick={() => {
                     // Clear any stale cookies before navigating to auth page
-                    document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                    router.push('/auth?redirect=/');
+                    document.cookie =
+                      "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    document.cookie =
+                      "uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    document.cookie =
+                      "is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    router.push("/auth?redirect=/");
                   }}
                   className="bg-glimz-primary hover:bg-glimz-primary/90 text-white"
                   size="sm"
@@ -286,12 +305,9 @@ export const Header = () => {
                 size="sm"
                 onClick={toggleMobileMenu}
                 className="hidden sm:flex lg:hidden btn-glimz-ghost"
-              >
-                
-              </Button>
+              ></Button>
             </div>
           </div>
-
         </div>
       </header>
 
