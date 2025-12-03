@@ -4,7 +4,12 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "../lib/authService";
 import { useAuthStore } from "../store/authStore";
-import { isAuthenticated as checkAuthCookies, getAuthToken, getUserUuid } from "../lib/authUtils";
+import {
+  isAuthenticated as checkAuthCookies,
+  clearAuthData,
+  getAuthToken,
+  getUserUuid,
+} from "../lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Phone, Shield, User, Video, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Shield,
+  User,
+  Video,
+  CheckCircle2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,7 +36,7 @@ export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState("mobile");
-  
+
   // Get redirect URL from query params
   const getRedirectUrl = () => {
     const redirect = searchParams.get("redirect");
@@ -69,12 +81,15 @@ export default function AuthPage() {
   useEffect(() => {
     // Check actual cookies instead of store state (store might have stale data)
     const isAuthFromCookies = checkAuthCookies();
-    
+
     if (isAuthFromCookies) {
       // User is authenticated (has both auth_token and uuid), redirect to home or redirect URL
       const redirect = searchParams.get("redirect");
       const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
       router.push(redirectUrl);
+    } else {
+      // User is NOT authenticated → clear all cached auth data
+      clearAuthData();
     }
   }, [router, searchParams]);
 
@@ -207,8 +222,7 @@ export default function AuthPage() {
           // User is already a viewer, check if profile exists
           try {
             const viewerDetail = await authService.getViewerDetail();
-            const profileData =
-              viewerDetail.data || viewerDetail.ViewerDetail;
+            const profileData = viewerDetail.data || viewerDetail.ViewerDetail;
             if (viewerDetail.status && profileData) {
               // Viewer profile exists, login complete
               setAuthentication(true, "user", profileData, auth_token, uuid);
@@ -653,12 +667,18 @@ export default function AuthPage() {
           {userType === "creator" && (
             <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
           )}
-          <div className={`p-3 rounded-full mb-3 ${
-            userType === "creator" ? "bg-primary/20" : "bg-muted"
-          }`}>
-            <Video className={`h-6 w-6 ${
-              userType === "creator" ? "text-primary" : "text-muted-foreground"
-            }`} />
+          <div
+            className={`p-3 rounded-full mb-3 ${
+              userType === "creator" ? "bg-primary/20" : "bg-muted"
+            }`}
+          >
+            <Video
+              className={`h-6 w-6 ${
+                userType === "creator"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+            />
           </div>
           <span
             className={`text-lg font-semibold ${
@@ -683,12 +703,16 @@ export default function AuthPage() {
           {userType === "user" && (
             <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
           )}
-          <div className={`p-3 rounded-full mb-3 ${
-            userType === "user" ? "bg-primary/20" : "bg-muted"
-          }`}>
-            <User className={`h-6 w-6 ${
-              userType === "user" ? "text-primary" : "text-muted-foreground"
-            }`} />
+          <div
+            className={`p-3 rounded-full mb-3 ${
+              userType === "user" ? "bg-primary/20" : "bg-muted"
+            }`}
+          >
+            <User
+              className={`h-6 w-6 ${
+                userType === "user" ? "text-primary" : "text-muted-foreground"
+              }`}
+            />
           </div>
           <span
             className={`text-lg font-semibold ${
@@ -938,7 +962,10 @@ export default function AuthPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contentLength" className="text-sm font-semibold">
+                <Label
+                  htmlFor="contentLength"
+                  className="text-sm font-semibold"
+                >
                   Content Length *
                 </Label>
                 <Select

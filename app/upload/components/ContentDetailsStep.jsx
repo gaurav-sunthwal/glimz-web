@@ -262,7 +262,7 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
 
       {/* Thumbnail Preview */}
       {getThumbnailUri() && (
-        <div className="relative aspect-[4/5] max-w-xs mx-auto rounded-lg overflow-hidden">
+        <div className="relative aspect-[1/5] max-w-xs mx-auto rounded-lg overflow-hidden">
           <img
             src={getThumbnailUri()}
             alt="Thumbnail"
@@ -447,7 +447,10 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
       </Card>
 
       {/* Description Modal */}
-      <Dialog open={showDescriptionModal} onOpenChange={setShowDescriptionModal}>
+      <Dialog
+        open={showDescriptionModal}
+        onOpenChange={setShowDescriptionModal}
+      >
         <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add description</DialogTitle>
