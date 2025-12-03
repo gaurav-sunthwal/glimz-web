@@ -1122,8 +1122,17 @@ export default function AuthPage() {
             </div>
             {step !== "userDetails" && (
               <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                  Welcome to <span className="text-primary">Glimz</span>
+                <h1 className="text-4xl font-bold text-center">
+                  Welcome to{" "}
+                  <span
+                    className="bg-clip-text text-transparent"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(90deg, #201067, #B3073A)",
+                    }}
+                  >
+                    Glimz Now
+                  </span>
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   Your gateway to amazing content
