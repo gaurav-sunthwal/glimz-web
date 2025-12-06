@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "../lib/authService";
 import { useAuthStore } from "../store/authStore";
-import { isAuthenticated as checkAuthCookies, getAuthToken, getUserUuid } from "../lib/authUtils";
+import { isAuthenticated as checkAuthCookies, getAuthToken, getUserUuid, hasIsCreatorCookie, clearAllCookies } from "../lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,15 +67,57 @@ export default function AuthPage() {
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
-    // Check actual cookies instead of store state (store might have stale data)
-    const isAuthFromCookies = checkAuthCookies();
+    const checkSession = async () => {
+      try {
+        // Check session completeness via API (since cookies might be HttpOnly)
+        const response = await fetch('/api/auth/check-session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        
+        // Check if auth_token and uuid exist but is_creator cookie is missing
+        if (data.isIncompleteSession) {
+          // Show alert first
+          alert("Your session is incomplete. Please login again.");
+          
+          // Clear all cookies via API (including HttpOnly cookies)
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include',
+            });
+          } catch (error) {
+            console.error("Error clearing session:", error);
+          }
+          
+          // Also clear client-side cookies as fallback
+          clearAllCookies();
+          
+          // Stay on auth page to allow user to login
+          return;
+        }
+        
+        // Check if user is authenticated (has both auth_token and uuid)
+        if (data.hasAuthToken && data.hasUuid && data.hasIsCreator) {
+          // User is authenticated, redirect to home or redirect URL
+          const redirect = searchParams.get("redirect");
+          const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
+          router.push(redirectUrl);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        // Fallback to client-side check if API fails
+        const isAuthFromCookies = checkAuthCookies();
+        if (isAuthFromCookies) {
+          const redirect = searchParams.get("redirect");
+          const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
+          router.push(redirectUrl);
+        }
+      }
+    };
     
-    if (isAuthFromCookies) {
-      // User is authenticated (has both auth_token and uuid), redirect to home or redirect URL
-      const redirect = searchParams.get("redirect");
-      const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
-      router.push(redirectUrl);
-    }
+    checkSession();
   }, [router, searchParams]);
 
   // Countdown timer effect
