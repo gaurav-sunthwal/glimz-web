@@ -19,7 +19,6 @@ import {
   AlertCircle,
   FileVideo,
   Image as ImageLucide,
-  Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/app/hooks/use-toast";
@@ -30,35 +29,31 @@ const THUMBNAIL_DIMENSIONS = {
   aspectRatio: 0.8, // 4:5 aspect ratio
 };
 
+const formatFileSize = (bytes) => {
+  if (!bytes) return "0 MB";
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+/* ----------------------- VIDEO CARD (Teaser / Content) ----------------------- */
+
 const VideoPreviewCard = ({
   video,
-  thumbnail,
   type,
   onUpload,
   onRemove,
-  onThumbnailUpload,
-  onThumbnailRemove,
-  onThumbnailPreview,
   onVideoPreview,
 }) => {
   const { toast } = useToast();
   const [paused, setPaused] = useState(true);
-  const [isDragging, setIsDragging] = useState(false);
   const videoRef = useRef(null);
 
   const formatTime = (seconds) => {
-    if (!seconds) return "0:00";
+    if (seconds === undefined || seconds === null) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const formatFileSize = (bytes) => {
-    if (!bytes) return "0 MB";
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Video dropzone
   const {
     getRootProps: getVideoRootProps,
     getInputProps: getVideoInputProps,
@@ -112,18 +107,14 @@ const VideoPreviewCard = ({
           }
 
           const videoData = {
-            file: file,
+            file,
             url: URL.createObjectURL(file),
-            duration: duration,
+            duration,
             fileName: file.name,
             fileSize: file.size,
           };
 
-          if (type === "teaser") {
-            onUpload("teaser", videoData);
-          } else {
-            onUpload("content", videoData);
-          }
+          onUpload(type, videoData);
         };
         video.onerror = () => {
           toast({
@@ -132,7 +123,7 @@ const VideoPreviewCard = ({
             variant: "destructive",
           });
         };
-        video.src = URL.createObjectURL(file);
+        tempVideo.src = URL.createObjectURL(file);
       }
     },
     disabled: !!video,
@@ -196,7 +187,8 @@ const VideoPreviewCard = ({
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
+      {/* Top badges (duration + size) */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-white">
@@ -209,8 +201,8 @@ const VideoPreviewCard = ({
           </p>
         </div>
         {video && (
-          <div className="flex items-center gap-2">
-            {video.duration && (
+          <div className="flex items-center gap-2 ml-auto">
+            {video.duration != null && (
               <Badge
                 variant="outline"
                 className="text-glimz-primary border-glimz-primary bg-glimz-primary/10"
@@ -219,7 +211,10 @@ const VideoPreviewCard = ({
               </Badge>
             )}
             {video.fileSize && (
-              <Badge variant="outline" className="text-gray-400 border-gray-600">
+              <Badge
+                variant="outline"
+                className="text-gray-400 border-gray-600"
+              >
                 {formatFileSize(video.fileSize)}
               </Badge>
             )}
@@ -227,10 +222,9 @@ const VideoPreviewCard = ({
         )}
       </div>
 
-      {/* Video Upload Area */}
       <div
         {...getVideoRootProps()}
-        className={`relative aspect-video rounded-xl overflow-hidden border-2 border-dashed transition-all duration-300 ${
+        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${
           isVideoDragActive
             ? "border-glimz-primary bg-glimz-primary/10 scale-[1.02]"
             : video
@@ -244,35 +238,33 @@ const VideoPreviewCard = ({
             <video
               ref={videoRef}
               src={video.url || URL.createObjectURL(video.file)}
-              className="w-full h-full object-cover"
-              onLoadedMetadata={(e) => {
-                if (!video.duration) {
-                  // Update duration if not set
-                }
-              }}
+              className="w-full h-full object-contain bg-black"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent">
               <div className="absolute inset-0 flex items-center justify-center">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full bg-black/70 hover:bg-black/90 text-white w-16 h-16 backdrop-blur-sm"
+                  className="rounded-full bg-black/70 hover:bg-black/90 text-white w-14 h-14 backdrop-blur-sm"
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPaused(!paused);
-                    if (videoRef.current) {
-                      if (paused) {
-                        videoRef.current.play();
-                      } else {
-                        videoRef.current.pause();
+                    setPaused((prev) => {
+                      const next = !prev;
+                      if (videoRef.current) {
+                        if (!next) {
+                          videoRef.current.play();
+                        } else {
+                          videoRef.current.pause();
+                        }
                       }
-                    }
+                      return next;
+                    });
                   }}
                 >
                   {paused ? (
-                    <Play className="h-8 w-8" />
+                    <Play className="h-7 w-7" />
                   ) : (
-                    <Pause className="h-8 w-8" />
+                    <Pause className="h-7 w-7" />
                   )}
                 </Button>
               </div>
@@ -303,178 +295,223 @@ const VideoPreviewCard = ({
                 </Button>
               </div>
               <div className="absolute bottom-3 left-3">
-                <Badge className="bg-black/70 text-white backdrop-blur-sm border-0">
+                <Badge className="bg-black/70 text-white backdrop-blur-sm border-0 max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap">
                   <FileVideo className="h-3 w-3 mr-1" />
-                  {video.fileName}
+                  <span className="truncate">{video.fileName}</span>
                 </Badge>
               </div>
             </div>
           </>
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-8">
+          <div className="w-full h-full flex flex-col items-center justify-center p-6">
             {isVideoDragActive ? (
               <div className="text-center space-y-3 animate-pulse">
-                <Upload className="h-16 w-16 text-glimz-primary mx-auto" />
-                <p className="text-glimz-primary font-semibold text-lg">
+                <Upload className="h-10 w-10 text-glimz-primary mx-auto" />
+                <p className="text-glimz-primary font-semibold text-sm">
                   Drop video here
                 </p>
               </div>
             ) : (
-              <div className="text-center space-y-3">
+              <div className="text-center space-y-2">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-glimz-primary/20 rounded-full blur-xl"></div>
-                  <Upload className="h-16 w-16 text-glimz-primary mx-auto relative z-10" />
+                  <div className="absolute inset-0 bg-glimz-primary/20 rounded-full blur-xl" />
+                  <Upload className="h-10 w-10 text-glimz-primary mx-auto relative z-10" />
                 </div>
-                <div>
-                  <p className="text-white font-semibold text-lg">
-                    {type === "teaser" ? "Upload Teaser Video" : "Upload Content Video"}
-                  </p>
-                  <p className="text-gray-400 text-sm mt-1">
-                    Drag & drop or click to browse
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500">
-                  <span>MP4, MOV, AVI</span>
-                  <span>•</span>
-                  <span>Max 500MB</span>
-                </div>
+                <p className="text-white font-semibold text-sm">
+                  {type === "teaser"
+                    ? "Upload Teaser Video"
+                    : "Upload Content Video"}
+                </p>
+                <p className="text-gray-400 text-xs mt-1">
+                  Drag & drop or click to browse
+                </p>
               </div>
             )}
           </div>
         )}
       </div>
-
-      {/* Thumbnail Section - Only for teaser */}
-      {type === "teaser" && (
-        <div className="space-y-2 ">
-          <div className="">
-            <h4 className="text-sm font-semibold text-white flex  gap-2">
-              <ImageLucide className="h-4 w-4 text-pink-500" />
-              Custom Thumbnail
-            </h4>
-            <p className="text-xs text-gray-400 mt-1">
-              Optional • Ideal: 1600×2000px (4:5 ratio)
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <div
-              {...getThumbnailRootProps()}
-              className={`relative aspect-[4/5] w-full h-[300px] rounded-lg overflow-hidden border-2 border-dashed transition-all duration-300 ${
-                isThumbnailDragActive
-                  ? "border-pink-500 bg-pink-500/10 scale-[1.05]"
-                  : thumbnail
-                  ? "border-gray-700 bg-gray-900"
-                  : "border-gray-600 bg-gray-800/50 hover:border-pink-500/50 hover:bg-gray-800 cursor-pointer"
-              }`}
-            >
-            <input {...getThumbnailInputProps()} />
-            {thumbnail ? (
-              <>
-                <img
-                  src={thumbnail.url || URL.createObjectURL(thumbnail.file)}
-                  alt="Thumbnail"
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
-                  <div className="absolute top-3 right-3 flex gap-2">
-                    {onThumbnailPreview && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="bg-black/70 hover:bg-black/90 text-glimz-primary backdrop-blur-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onThumbnailPreview("teaser");
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {onThumbnailRemove && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="bg-black/70 hover:bg-black/90 text-red-400 backdrop-blur-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onThumbnailRemove("teaser");
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="absolute bottom-3 left-3 flex flex-col gap-1">
-                    {thumbnail.width && thumbnail.height && (
-                      <Badge
-                        variant="outline"
-                        className="bg-black/70 text-white border-gray-600 backdrop-blur-sm"
-                      >
-                        {thumbnail.width}×{thumbnail.height}
-                      </Badge>
-                    )}
-                    <Badge className="bg-black/70 text-white backdrop-blur-sm border-0">
-                      <ImageLucide className="h-3 w-3 mr-1" />
-                      {thumbnail.fileName}
-                    </Badge>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-6">
-                {isThumbnailDragActive ? (
-                  <div className="text-center space-y-3 animate-pulse">
-                    <ImageIcon className="h-12 w-12 text-pink-500 mx-auto" />
-                    <p className="text-pink-500 font-semibold">Drop image here</p>
-                  </div>
-                ) : (
-                  <div className="text-center space-y-2 p-4">
-                    <div className="relative mx-auto w-fit">
-                      <div className="absolute inset-0 bg-pink-500/20 rounded-full blur-xl"></div>
-                      <ImageIcon className="h-8 w-8 text-pink-500 relative z-10" />
-                    </div>
-                    <p className="text-white text-sm font-medium">Add Thumbnail</p>
-                    <p className="text-gray-400 text-xs">Click or drag</p>
-                  </div>
-                )}
-              </div>
-            )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
+/* ----------------------- THUMBNAIL CARD (Separate) ----------------------- */
+
+const ThumbnailUploadCard = ({
+  thumbnail,
+  onThumbnailUpload,
+  onThumbnailRemove,
+  onThumbnailPreview,
+}) => {
+  const {
+    getRootProps: getThumbnailRootProps,
+    getInputProps: getThumbnailInputProps,
+    isDragActive: isThumbnailDragActive,
+  } = useDropzone({
+    accept: {
+      "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+    },
+    maxFiles: 1,
+    maxSize: 10 * 1024 * 1024, // 10MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        const rejection = rejectedFiles[0];
+        if (rejection.errors[0]?.code === "file-too-large") {
+          alert("Image file size must be less than 10MB");
+        } else {
+          alert("Invalid image file. Please select a valid image file.");
+        }
+        return;
+      }
+
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        const img = new Image();
+        img.onerror = () => {
+          alert("Failed to load image. Please try another file.");
+        };
+        img.onload = () => {
+          const thumbnailData = {
+            file,
+            url: URL.createObjectURL(file),
+            fileName: file.name,
+            fileSize: file.size,
+            width: img.width,
+            height: img.height,
+          };
+          onThumbnailUpload("teaser", thumbnailData);
+        };
+        img.src = URL.createObjectURL(file);
+      }
+    },
+    disabled: !!thumbnail,
+  });
+
+  return (
+    <div className="space-y-3">
+      {/* Top badges: dimensions + size (like video) */}
+      <div className="flex items-center justify-between">
+        {thumbnail && (
+          <div className="flex items-center gap-2 ml-auto">
+            {thumbnail.width && thumbnail.height && (
+              <Badge
+                variant="outline"
+                className="bg-black/70 text-white border-gray-600 backdrop-blur-sm"
+              >
+                {thumbnail.width}×{thumbnail.height}
+              </Badge>
+            )}
+            {thumbnail.fileSize && (
+              <Badge
+                variant="outline"
+                className="bg-black/70 text-white border-gray-600 backdrop-blur-sm"
+              >
+                {formatFileSize(thumbnail.fileSize)}
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div
+        {...getThumbnailRootProps()}
+        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${
+          isThumbnailDragActive
+            ? "border-pink-500 bg-pink-500/10 scale-[1.02]"
+            : thumbnail
+            ? "border-gray-700 bg-gray-900"
+            : "border-gray-600 bg-gray-800/50 hover:border-pink-500/50 hover:bg-gray-800 cursor-pointer"
+        }`}
+      >
+        <input {...getThumbnailInputProps()} />
+        {thumbnail ? (
+          <>
+            <img
+              src={thumbnail.url || URL.createObjectURL(thumbnail.file)}
+              alt="Thumbnail"
+              className="w-full h-full object-contain bg-black"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent">
+              <div className="absolute top-3 right-3 flex gap-2">
+                {onThumbnailPreview && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-black/70 hover:bg-black/90 text-glimz-primary backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onThumbnailPreview("teaser");
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                )}
+                {onThumbnailRemove && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-black/70 hover:bg-black/90 text-red-400 backdrop-blur-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onThumbnailRemove("teaser");
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="absolute bottom-3 left-3 flex flex-col gap-1">
+                <Badge className="bg-black/70 text-white backdrop-blur-sm border-0 max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap">
+                  <ImageLucide className="h-3 w-3 mr-1" />
+                  <span className="truncate">{thumbnail.fileName}</span>
+                </Badge>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center p-4">
+            {isThumbnailDragActive ? (
+              <div className="text-center space-y-3 animate-pulse">
+                <ImageIcon className="h-10 w-10 text-pink-500 mx-auto" />
+                <p className="text-pink-500 font-semibold text-sm">
+                  Drop image here
+                </p>
+              </div>
+            ) : (
+              <div className="text-center space-y-2">
+                <div className="relative mx-auto w-fit">
+                  <div className="absolute inset-0 bg-pink-500/20 rounded-full blur-xl" />
+                  <ImageIcon className="h-8 w-8 text-pink-500 relative z-10" />
+                </div>
+                <p className="text-white text-sm font-medium">Add Thumbnail</p>
+                <p className="text-gray-400 text-xs">Click or drag</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ----------------------- MAIN UPLOAD STEP ----------------------- */
+
+export const MediaUploadStep = ({ data, onDataChange }) => {
   const [previewModal, setPreviewModal] = useState({
     visible: false,
     type: null,
     url: null,
   });
 
-  // Debug: Log when thumbnail data changes
   useEffect(() => {
     console.log("📊 [MediaUpload] Current data state:", {
       teaserVideo: !!data.teaserVideo,
       teaserThumbnail: !!data.teaserThumbnail,
       contentVideo: !!data.contentVideo,
-      thumbnailDetails: data.teaserThumbnail
-        ? {
-            fileName: data.teaserThumbnail.fileName,
-            fileSize: data.teaserThumbnail.fileSize,
-            width: data.teaserThumbnail.width,
-            height: data.teaserThumbnail.height,
-          }
-        : null,
     });
   }, [data.teaserThumbnail, data.teaserVideo, data.contentVideo]);
 
-
   const handleVideoUpload = useCallback(
     (type, videoData) => {
-      console.log("🎥 [MediaUpload] Video uploaded:", type, videoData);
       if (type === "teaser") {
         onDataChange({ teaserVideo: videoData });
       } else {
@@ -486,7 +523,6 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
 
   const handleThumbnailUpload = useCallback(
     (type, thumbnailData) => {
-      console.log("🖼️ [MediaUpload] Thumbnail uploaded:", thumbnailData);
       onDataChange({ teaserThumbnail: thumbnailData });
     },
     [onDataChange]
@@ -533,22 +569,19 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
     data.contentVideo,
   ].filter(Boolean).length;
 
-  const requiredCount = [data.teaserVideo, data.contentVideo].filter(Boolean)
-    .length;
-
   return (
     <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-white">Upload Your Content</h2>
-        <p className="text-gray-400">
-          Upload your teaser, thumbnail, and content video. All items are
-          required.
+      {/* Page Heading */}
+      <div>
+        <h1 className="text-2xl font-bold text-white mb-1">Upload Media</h1>
+        <p className="text-sm text-gray-400">
+          Upload your teaser, thumbnail, and full content video to continue.
         </p>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
+      {/* Progress bar */}
+      <div className="space-y-2 rounded-xl border border-gray-800 bg-gray-950/80 p-4">
+        <div className="flex items-center justify-between text-xs md:text-sm">
           <span className="text-gray-400">
             Upload Progress: {uploadedCount} / 3 items
           </span>
@@ -557,7 +590,7 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
           </span>
         </div>
         <Progress value={(uploadedCount / 3) * 100} className="h-2" />
-        <div className="flex items-center gap-4 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-4 text-[11px] text-gray-500 mt-1">
           <div className="flex items-center gap-1">
             {data.teaserVideo ? (
               <CheckCircle2 className="h-3 w-3 text-green-500" />
@@ -585,46 +618,81 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
         </div>
       </div>
 
-      {/* Upload Sections in One Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Teaser Video Section */}
-        <Card className="bg-gray-900/80 backdrop-blur-xl border-gray-700">
-          <CardHeader>
+      {/* Wider cards: 2 columns on md+ */}
+      <div className="grid gap-8 md:grid-cols-2">
+        {/* Teaser Video Card */}
+        <Card className="bg-gray-900 border border-gray-700 rounded-2xl">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                <Video className="h-5 w-5 text-glimz-primary" />
+              <CardTitle className="text-white flex items-center gap-2 text-sm">
+                <Video className="h-4 w-4 text-glimz-primary" />
                 Teaser Video
               </CardTitle>
-              <Badge variant="destructive">Required</Badge>
+              <Badge
+                variant="outline"
+                className="text-pink-400 border-pink-500 text-[10px]"
+              >
+                Required
+              </Badge>
             </div>
-            <p className="text-gray-400 text-sm mt-2">
-              Upload your teaser video (max 30 seconds)
+            <p className="text-gray-400 text-xs mt-1">
+              Upload your teaser video (max 90 seconds).
             </p>
           </CardHeader>
           <CardContent>
             <VideoPreviewCard
               video={data.teaserVideo}
-              thumbnail={data.teaserThumbnail}
               type="teaser"
               onUpload={handleVideoUpload}
               onRemove={handleVideoRemove}
-              onThumbnailUpload={handleThumbnailUpload}
-              onThumbnailRemove={handleThumbnailRemove}
-              onThumbnailPreview={handleThumbnailPreview}
               onVideoPreview={handleVideoPreview}
             />
           </CardContent>
         </Card>
 
-        {/* Content Video Section */}
-        <Card className="bg-gray-900/80 backdrop-blur-xl border-gray-700">
-          <CardHeader>
+        {/* Thumbnail Card */}
+        <Card className="bg-gray-900 border border-gray-700 rounded-2xl">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-white flex items-center gap-2">
-                <FileVideo className="h-5 w-5 text-glimz-primary" />
+              <CardTitle className="text-white flex items-center gap-2 text-sm">
+                <ImageLucide className="h-4 w-4 text-pink-500" />
+                Thumbnail
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className="text-pink-400 border-pink-500 text-[10px]"
+              >
+                Required
+              </Badge>
+            </div>
+            <p className="text-gray-400 text-xs mt-1">
+              Ideal: 1600×2000px (4:5) for best in-app appearance.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ThumbnailUploadCard
+              thumbnail={data.teaserThumbnail}
+              onThumbnailUpload={handleThumbnailUpload}
+              onThumbnailRemove={handleThumbnailRemove}
+              onThumbnailPreview={handleThumbnailPreview}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Full Content Video Card */}
+        <Card className="bg-gray-900 border border-gray-700 rounded-2xl md:col-span-2">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center gap-2 text-sm">
+                <FileVideo className="h-4 w-4 text-glimz-primary" />
                 Full Content Video
               </CardTitle>
-              <Badge variant="destructive">Required</Badge>
+              <Badge
+                variant="outline"
+                className="text-pink-400 border-pink-500 text-[10px]"
+              >
+                Required
+              </Badge>
             </div>
             <p className="text-gray-400 text-sm mt-2">
               Upload your full content video (min 3 minutes)
@@ -633,7 +701,6 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
           <CardContent>
             <VideoPreviewCard
               video={data.contentVideo}
-              thumbnail={null}
               type="content"
               onUpload={handleVideoUpload}
               onRemove={handleVideoRemove}
@@ -643,10 +710,10 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
         </Card>
       </div>
 
-      {/* Preview Modal */}
+      {/* Preview Modal (Video / Image) */}
       {previewModal.visible && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() =>
             setPreviewModal({ visible: false, type: null, url: null })
           }
@@ -664,17 +731,17 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
             </Button>
             {previewModal.type === "video" ? (
               <video
-                src={previewModal.url}
+                src={previewModal.url || undefined}
                 controls
                 autoPlay
-                className="w-full h-auto max-h-[90vh] rounded-lg shadow-2xl"
+                className="w-full h-auto max-h-[90vh] rounded-lg shadow-2xl bg-black object-contain"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
               <img
-                src={previewModal.url}
+                src={previewModal.url || undefined}
                 alt="Preview"
-                className="w-full h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                className="w-full h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl bg-black"
                 onClick={(e) => e.stopPropagation()}
               />
             )}

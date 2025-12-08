@@ -10,17 +10,17 @@
  * @returns {boolean} True if user is a creator, false otherwise
  */
 export function isUserCreator(): boolean {
-  if (typeof document === 'undefined') {
+  if (typeof document === "undefined") {
     return false;
   }
 
   // Check is_creator cookie (non-httpOnly, so we can read it)
   const isCreatorCookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('is_creator='))
-    ?.split('=')[1];
+    .split("; ")
+    .find((row) => row.startsWith("is_creator="))
+    ?.split("=")[1];
 
-  return isCreatorCookie === '1';
+  return isCreatorCookie === "1";
 }
 
 /**
@@ -31,40 +31,79 @@ export function isUserCreator(): boolean {
  * @returns {boolean} True if user is authenticated (has both auth_token and uuid), false otherwise
  */
 export function isAuthenticated(): boolean {
-  if (typeof document === 'undefined') {
+  // SSR / non-browser safety
+  if (typeof document === "undefined") {
     return false;
   }
 
-  // Try to read cookies first (works if they're not httpOnly)
+  // 1️⃣ Try cookies first (if they're not httpOnly)
   const authToken = getAuthToken();
   const uuid = getUserUuid();
-  
-  // If we can read both cookies, user is authenticated
+
   if (authToken && uuid) {
+    // ✅ Auth via cookies
     return true;
   }
-  
-  // If cookies are httpOnly (can't read them), check localStorage as fallback
-  if (typeof window !== 'undefined' && window.localStorage) {
-    const authTokenInStorage = localStorage.getItem('auth_token');
-    const uuidInStorage = localStorage.getItem('uuid');
-    
-    // User is authenticated if both exist in localStorage
-    if (authTokenInStorage && uuidInStorage) {
-      return true;
-    }
+
+  // 2️⃣ Fallback: check localStorage (in case you stored auth there)
+  let authTokenInStorage: string | null = null;
+  let uuidInStorage: string | null = null;
+
+  if (typeof window !== "undefined" && window.localStorage) {
+    authTokenInStorage = localStorage.getItem("auth_token");
+    uuidInStorage = localStorage.getItem("uuid");
   }
-  
-  // If we can't find both auth_token and uuid in cookies or localStorage, user is not authenticated
+
+  if (authTokenInStorage && uuidInStorage) {
+    // ✅ Auth via localStorage
+    return true;
+  }
+
+  // 3️⃣ Nothing found → treat as not authenticated
+  //    and clean up any stale client-side data
+  clearAuthData();
+
   return false;
+}
+
+export function clearAuthData(): void {
+  try {
+    // Clear NON-httpOnly cookies (if any)
+    document.cookie =
+      "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    document.cookie = "uuid=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+    document.cookie =
+      "is_creator=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
+
+    // Clear domain-specific cookie variants (optional safety)
+    document.cookie = `auth_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+    document.cookie = `uuid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+    document.cookie = `is_creator=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname};`;
+
+    // Clear localStorage values
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("uuid");
+      localStorage.removeItem("user");
+    }
+
+    // Notify other tabs/components that auth changed
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth-changed"));
+    }
+
+    console.log("🧹 Auth data cleared");
+  } catch (error) {
+    console.error("❌ Failed to clear auth data:", error);
+  }
 }
 
 /**
  * Get the user type from cookies
  * @returns {'creator' | 'user' | null} User type or null if not authenticated
  */
-export function getUserType(): 'creator' | 'user' | null {
-  if (typeof document === 'undefined') {
+export function getUserType(): "creator" | "user" | null {
+  if (typeof document === "undefined") {
     return null;
   }
 
@@ -73,14 +112,14 @@ export function getUserType(): 'creator' | 'user' | null {
   }
 
   const isCreatorCookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('is_creator='))
-    ?.split('=')[1];
+    .split("; ")
+    .find((row) => row.startsWith("is_creator="))
+    ?.split("=")[1];
 
-  if (isCreatorCookie === '1') {
-    return 'creator';
-  } else if (isCreatorCookie === '0') {
-    return 'user';
+  if (isCreatorCookie === "1") {
+    return "creator";
+  } else if (isCreatorCookie === "0") {
+    return "user";
   }
 
   return null;
@@ -91,12 +130,12 @@ export function getUserType(): 'creator' | 'user' | null {
  * This function clears auth_token, uuid, and is_creator cookies
  */
 export function clearAllCookies(): void {
-  if (typeof document === 'undefined') {
+  if (typeof document === "undefined") {
     return;
   }
 
   // List of cookies to clear
-  const cookiesToClear = ['auth_token', 'uuid', 'is_creator'];
+  const cookiesToClear = ["auth_token", "uuid", "is_creator"];
 
   cookiesToClear.forEach((cookieName) => {
     // Clear cookie by setting it to expire in the past
@@ -106,8 +145,8 @@ export function clearAllCookies(): void {
   });
 
   // Dispatch event to notify other components
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('auth-changed'));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("auth-changed"));
   }
 }
 
@@ -116,14 +155,14 @@ export function clearAllCookies(): void {
  * @returns {string | null} Auth token or null if not found
  */
 export function getAuthToken(): string | null {
-  if (typeof document === 'undefined') {
+  if (typeof document === "undefined") {
     return null;
   }
 
   const authTokenCookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('auth_token='))
-    ?.split('=')[1];
+    .split("; ")
+    .find((row) => row.startsWith("auth_token="))
+    ?.split("=")[1];
 
   return authTokenCookie || null;
 }
@@ -133,14 +172,14 @@ export function getAuthToken(): string | null {
  * @returns {string | null} User UUID or null if not found
  */
 export function getUserUuid(): string | null {
-  if (typeof document === 'undefined') {
+  if (typeof document === "undefined") {
     return null;
   }
 
   const uuidCookie = document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('uuid='))
-    ?.split('=')[1];
+    .split("; ")
+    .find((row) => row.startsWith("uuid="))
+    ?.split("=")[1];
 
   return uuidCookie || null;
 }

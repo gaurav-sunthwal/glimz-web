@@ -16,7 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Phone, Shield, User, Video, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Shield,
+  User,
+  Video,
+  CheckCircle2,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useToast } from "@/app/hooks/use-toast";
@@ -26,7 +33,7 @@ export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState("mobile");
-  
+
   // Get redirect URL from query params
   const getRedirectUrl = () => {
     const redirect = searchParams.get("redirect");
@@ -277,8 +284,7 @@ export default function AuthPage() {
           // User is already a viewer, check if profile exists
           try {
             const viewerDetail = await authService.getViewerDetail();
-            const profileData =
-              viewerDetail.data || viewerDetail.ViewerDetail;
+            const profileData = viewerDetail.data || viewerDetail.ViewerDetail;
             if (viewerDetail.status && profileData) {
               // Viewer profile exists, login complete
               setAuthentication(true, "user", profileData, auth_token, uuid);
@@ -819,12 +825,18 @@ export default function AuthPage() {
           {userType === "creator" && (
             <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
           )}
-          <div className={`p-3 rounded-full mb-3 ${
-            userType === "creator" ? "bg-primary/20" : "bg-muted"
-          }`}>
-            <Video className={`h-6 w-6 ${
-              userType === "creator" ? "text-primary" : "text-muted-foreground"
-            }`} />
+          <div
+            className={`p-3 rounded-full mb-3 ${
+              userType === "creator" ? "bg-primary/20" : "bg-muted"
+            }`}
+          >
+            <Video
+              className={`h-6 w-6 ${
+                userType === "creator"
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+            />
           </div>
           <span
             className={`text-lg font-semibold ${
@@ -849,12 +861,16 @@ export default function AuthPage() {
           {userType === "user" && (
             <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
           )}
-          <div className={`p-3 rounded-full mb-3 ${
-            userType === "user" ? "bg-primary/20" : "bg-muted"
-          }`}>
-            <User className={`h-6 w-6 ${
-              userType === "user" ? "text-primary" : "text-muted-foreground"
-            }`} />
+          <div
+            className={`p-3 rounded-full mb-3 ${
+              userType === "user" ? "bg-primary/20" : "bg-muted"
+            }`}
+          >
+            <User
+              className={`h-6 w-6 ${
+                userType === "user" ? "text-primary" : "text-muted-foreground"
+              }`}
+            />
           </div>
           <span
             className={`text-lg font-semibold ${
@@ -1104,7 +1120,10 @@ export default function AuthPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contentLength" className="text-sm font-semibold">
+                <Label
+                  htmlFor="contentLength"
+                  className="text-sm font-semibold"
+                >
                   Content Length *
                 </Label>
                 <Select
@@ -1261,8 +1280,17 @@ export default function AuthPage() {
             </div>
             {step !== "userDetails" && (
               <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-transparent">
-                  Welcome to <span className="text-primary">Glimz</span>
+                <h1 className="text-4xl font-bold text-center">
+                  Welcome to{" "}
+                  <span
+                    className="bg-clip-text text-transparent"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(90deg, #201067, #B3073A)",
+                    }}
+                  >
+                    Glimz Now
+                  </span>
                 </h1>
                 <p className="text-sm text-muted-foreground">
                   Your gateway to amazing content

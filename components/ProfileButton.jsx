@@ -101,8 +101,6 @@ export const ProfileButton = ({
             <div className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-background" />
           </div>
 
-          
-
           {/* Chevron Icon */}
           <ChevronDown
             className={`h-4 w-4 text-white/50 transition-transform duration-200 hidden md:block ${
@@ -216,7 +214,9 @@ export const ProfileButton = ({
               <User className="h-4 w-4 text-glimz-primary" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-medium text-white">View Profile</span>
+              <span className="text-sm font-medium text-white">
+                View Profile
+              </span>
               <span className="text-xs text-white/60">Manage your account</span>
             </div>
           </DropdownMenuItem>
@@ -224,7 +224,7 @@ export const ProfileButton = ({
           {isCreator && (
             <DropdownMenuItem
               onClick={() => {
-                router.push("/upload");
+                router.push("/creator/dashboard");
                 setIsOpen(false);
               }}
               className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-white/10 rounded-md transition-colors"
