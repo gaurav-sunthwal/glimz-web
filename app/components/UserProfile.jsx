@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { secureApi } from "../lib/secureApi";
+import { Clock, Bookmark } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function UserProfile() {
   const [userData, setUserData] = useState(null);
@@ -188,8 +190,29 @@ export default function UserProfile() {
           )}
         </div>
 
-        
-        
+        <div className="space-y-4">
+          <h4 className="text-lg font-medium text-purple-400 border-b border-gray-700 pb-2">
+            Quick Links
+          </h4>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              onClick={() => router.push("/watch-history")}
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              Watch History
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start bg-gray-700 hover:bg-gray-600 text-white border-gray-600"
+              onClick={() => router.push("/my-list")}
+            >
+              <Bookmark className="h-4 w-4 mr-2" />
+              My Wishlists
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

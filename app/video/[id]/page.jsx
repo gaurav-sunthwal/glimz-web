@@ -29,7 +29,6 @@ export default function VideoDetailsPage() {
         });
         
         const data = await response.json();
-        console.log('Video details data:', data);
         
         if (data.status && data.data?.data) {
           const contentData = data.data.data;

@@ -33,6 +33,20 @@ export const VideoCard = ({
     router.push(`/video/${videoId}`);
   };
 
+  // Format numbers with K/M suffixes
+  const formatNumber = (num) => {
+    if (!num && num !== 0) return "";
+    const number = typeof num === "string" ? parseFloat(num.replace(/[^0-9.]/g, "")) : num;
+    if (isNaN(number)) return num;
+    
+    if (number >= 1000000) {
+      return `${(number / 1000000).toFixed(1)}M`;
+    } else if (number >= 1000) {
+      return `${(number / 1000).toFixed(1)}K`;
+    }
+    return number.toString();
+  };
+
   return (
     <div
       className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-20`}
@@ -127,12 +141,14 @@ export const VideoCard = ({
               {video.title}
             </h3>
 
-            <div className="flex items-center gap-1 bg-black/70 px-3 py-1 rounded-full">
-              <DollarSign size={14} className="text-blue-400" />
-              <span className="text-blue-400 text-xs font-semibold">
-                {isPaid || "Free"}
-              </span>
-            </div>
+            {(video.price || isPaid) && (
+              <div className="flex items-center gap-1 bg-black/70 px-3 py-1 rounded-full">
+                <DollarSign size={14} className="text-blue-400" />
+                <span className="text-blue-400 text-xs font-semibold">
+                  {video.price ? `₹${video.price}` : isPaid ? "Paid" : "Free"}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Metadata Row */}
@@ -156,7 +172,7 @@ export const VideoCard = ({
                 <>
                   <span className="text-white/60">•</span>
                   <span className="text-white/80 whitespace-nowrap">
-                    {video.views} views
+                    {formatNumber(video.views)} views
                   </span>
                 </>
               )}
@@ -168,7 +184,11 @@ export const VideoCard = ({
               {video.likes && (
                 <div className="flex items-center gap-1 text-white/80 text-xs">
                   <ThumbsUp className="h-3 w-3" />
-                  <span className="font-medium">{video.likes}%</span>
+                  <span className="font-medium">
+                    {typeof video.likes === "number" || (typeof video.likes === "string" && !video.likes.includes("%"))
+                      ? formatNumber(video.likes)
+                      : video.likes}
+                  </span>
                 </div>
               )}
 

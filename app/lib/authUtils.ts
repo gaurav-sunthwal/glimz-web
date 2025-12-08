@@ -183,3 +183,20 @@ export function getUserUuid(): string | null {
 
   return uuidCookie || null;
 }
+
+/**
+ * Check if is_creator cookie exists
+ * @returns {boolean} True if is_creator cookie exists (regardless of value), false otherwise
+ */
+export function hasIsCreatorCookie(): boolean {
+  if (typeof document === 'undefined') {
+    return false;
+  }
+
+  const isCreatorCookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('is_creator='));
+
+  return isCreatorCookie !== undefined;
+}
+

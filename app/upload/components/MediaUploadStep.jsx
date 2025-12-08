@@ -20,6 +20,8 @@ import {
   FileVideo,
   Image as ImageLucide,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/app/hooks/use-toast";
 
 const THUMBNAIL_DIMENSIONS = {
   width: 1600,
@@ -41,6 +43,7 @@ const VideoPreviewCard = ({
   onRemove,
   onVideoPreview,
 }) => {
+  const { toast } = useToast();
   const [paused, setPaused] = useState(true);
   const videoRef = useRef(null);
 
@@ -65,22 +68,41 @@ const VideoPreviewCard = ({
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
         if (rejection.errors[0]?.code === "file-too-large") {
-          alert("Video file size must be less than 500MB");
+          toast({
+            title: "File too large",
+            description: "Video file size must be less than 500MB",
+            variant: "destructive",
+          });
         } else {
-          alert("Invalid video file. Please select a valid video file.");
+          toast({
+            title: "Invalid file",
+            description: "Invalid video file. Please select a valid video file.",
+            variant: "destructive",
+          });
         }
         return;
       }
 
       if (acceptedFiles.length > 0) {
         const file = acceptedFiles[0];
-        const tempVideo = document.createElement("video");
-        tempVideo.preload = "metadata";
-        tempVideo.onloadedmetadata = () => {
-          const duration = tempVideo.duration;
-
-          if (type === "teaser" && duration > 90) {
-            alert("Teaser video must be 90 seconds or less");
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          const duration = video.duration;
+          if (type === "teaser" && duration > 30) {
+            toast({
+              title: "Invalid duration",
+              description: "Teaser video must be 30 seconds or less",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (type === "content" && duration < 180) {
+            toast({
+              title: "Invalid duration",
+              description: "Full content video must be at least 3 minutes long",
+              variant: "destructive",
+            });
             return;
           }
 
@@ -94,8 +116,12 @@ const VideoPreviewCard = ({
 
           onUpload(type, videoData);
         };
-        tempVideo.onerror = () => {
-          alert("Failed to load video. Please try another file.");
+        video.onerror = () => {
+          toast({
+            title: "Error",
+            description: "Failed to load video. Please try another file.",
+            variant: "destructive",
+          });
         };
         tempVideo.src = URL.createObjectURL(file);
       }
@@ -103,10 +129,77 @@ const VideoPreviewCard = ({
     disabled: !!video,
   });
 
+  // Thumbnail dropzone
+  const {
+    getRootProps: getThumbnailRootProps,
+    getInputProps: getThumbnailInputProps,
+    isDragActive: isThumbnailDragActive,
+  } = useDropzone({
+    accept: {
+      "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+    },
+    maxFiles: 1,
+    maxSize: 10 * 1024 * 1024, // 10MB
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      if (rejectedFiles.length > 0) {
+        const rejection = rejectedFiles[0];
+        if (rejection.errors[0]?.code === "file-too-large") {
+          toast({
+            title: "File too large",
+            description: "Image file size must be less than 10MB",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Invalid file",
+            description: "Invalid image file. Please select a valid image file.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      if (acceptedFiles.length > 0) {
+        const file = acceptedFiles[0];
+        const img = new Image();
+        img.onerror = () => {
+          toast({
+            title: "Error",
+            description: "Failed to load image. Please try another file.",
+            variant: "destructive",
+          });
+        };
+        img.onload = () => {
+          const thumbnailData = {
+            file: file,
+            url: URL.createObjectURL(file),
+            fileName: file.name,
+            fileSize: file.size,
+            width: img.width,
+            height: img.height,
+          };
+          onThumbnailUpload && onThumbnailUpload("teaser", thumbnailData);
+        };
+        img.src = URL.createObjectURL(file);
+      }
+    },
+    disabled: !!thumbnail,
+  });
+
   return (
     <div className="space-y-3">
       {/* Top badges (duration + size) */}
       <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-white">
+            {type === "teaser" ? "Teaser Video" : "Full Content"}
+          </h3>
+          <p className="text-sm text-gray-400 mt-1">
+            {type === "teaser"
+              ? "Max 30 seconds • Required"
+              : "Min 3 minutes • Required"}
+          </p>
+        </div>
         {video && (
           <div className="flex items-center gap-2 ml-auto">
             {video.duration != null && (
@@ -601,8 +694,8 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                 Required
               </Badge>
             </div>
-            <p className="text-gray-400 text-xs mt-1">
-              Upload your full content video.
+            <p className="text-gray-400 text-sm mt-2">
+              Upload your full content video (min 3 minutes)
             </p>
           </CardHeader>
           <CardContent>

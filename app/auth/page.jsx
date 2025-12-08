@@ -4,12 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "../lib/authService";
 import { useAuthStore } from "../store/authStore";
-import {
-  isAuthenticated as checkAuthCookies,
-  clearAuthData,
-  getAuthToken,
-  getUserUuid,
-} from "../lib/authUtils";
+import { isAuthenticated as checkAuthCookies, getAuthToken, getUserUuid, hasIsCreatorCookie, clearAllCookies } from "../lib/authUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,8 +26,10 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useToast } from "@/app/hooks/use-toast";
 
 export default function AuthPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState("mobile");
@@ -79,18 +76,61 @@ export default function AuthPage() {
 
   // Check if user is already authenticated and redirect
   useEffect(() => {
-    // Check actual cookies instead of store state (store might have stale data)
-    const isAuthFromCookies = checkAuthCookies();
-
-    if (isAuthFromCookies) {
-      // User is authenticated (has both auth_token and uuid), redirect to home or redirect URL
-      const redirect = searchParams.get("redirect");
-      const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
-      router.push(redirectUrl);
-    } else {
-      // User is NOT authenticated → clear all cached auth data
-      clearAuthData();
-    }
+    const checkSession = async () => {
+      try {
+        // Check session completeness via API (since cookies might be HttpOnly)
+        const response = await fetch('/api/auth/check-session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const data = await response.json();
+        
+        // Check if auth_token and uuid exist but is_creator cookie is missing
+        if (data.isIncompleteSession) {
+          // Show toast first
+          toast({
+            title: "Session Incomplete",
+            description: "Your session is incomplete. Please login again.",
+            variant: "destructive",
+          });
+          
+          // Clear all cookies via API (including HttpOnly cookies)
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include',
+            });
+          } catch (error) {
+            console.error("Error clearing session:", error);
+          }
+          
+          // Also clear client-side cookies as fallback
+          clearAllCookies();
+          
+          // Stay on auth page to allow user to login
+          return;
+        }
+        
+        // Check if user is authenticated (has both auth_token and uuid)
+        if (data.hasAuthToken && data.hasUuid && data.hasIsCreator) {
+          // User is authenticated, redirect to home or redirect URL
+          const redirect = searchParams.get("redirect");
+          const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
+          router.push(redirectUrl);
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
+        // Fallback to client-side check if API fails
+        const isAuthFromCookies = checkAuthCookies();
+        if (isAuthFromCookies) {
+          const redirect = searchParams.get("redirect");
+          const redirectUrl = redirect && redirect.startsWith("/") ? redirect : "/";
+          router.push(redirectUrl);
+        }
+      }
+    };
+    
+    checkSession();
   }, [router, searchParams]);
 
   // Countdown timer effect
@@ -141,7 +181,11 @@ export default function AuthPage() {
 
   const handleMobileSubmit = async () => {
     if (mobileNumber.length < 10) {
-      alert("Please enter a valid 10-digit mobile number");
+      toast({
+        title: "Invalid Mobile Number",
+        description: "Please enter a valid 10-digit mobile number",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -155,13 +199,24 @@ export default function AuthPage() {
         setStoreMobileNumber(mobileNumber);
         setStep("otp");
         setCountdown(30);
-        alert(`Verification code sent to ${mobileNumber}`);
+        toast({
+          title: "OTP Sent",
+          description: `Verification code sent to ${mobileNumber}`,
+        });
       } else {
-        alert(response.message || "Failed to send OTP");
+        toast({
+          title: "Error",
+          description: response.message || "Failed to send OTP",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert(error.message || "Failed to send OTP. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send OTP. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -170,7 +225,11 @@ export default function AuthPage() {
   const handleOtpSubmit = useCallback(async () => {
     const otpString = otp.join("");
     if (otpString.length < 4) {
-      alert("Please enter the complete 4-digit OTP");
+      toast({
+        title: "Incomplete OTP",
+        description: "Please enter the complete 4-digit OTP",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -202,7 +261,10 @@ export default function AuthPage() {
               // Creator profile exists, login complete
               setAuthentication(true, "creator", profileData, auth_token, uuid);
               const redirectUrl = getRedirectUrl();
-              alert("Welcome back! Login successful.");
+              toast({
+                title: "Welcome back!",
+                description: "Login successful.",
+              });
               window.dispatchEvent(new Event("auth-changed"));
               router.push(redirectUrl);
               return;
@@ -227,7 +289,10 @@ export default function AuthPage() {
               // Viewer profile exists, login complete
               setAuthentication(true, "user", profileData, auth_token, uuid);
               const redirectUrl = getRedirectUrl();
-              alert("Welcome back! Login successful.");
+              toast({
+                title: "Welcome back!",
+                description: "Login successful.",
+              });
               window.dispatchEvent(new Event("auth-changed"));
               router.push(redirectUrl);
               return;
@@ -249,11 +314,19 @@ export default function AuthPage() {
           setStep("userDetails");
         }
       } else {
-        alert(response.message || "Invalid OTP");
+        toast({
+          title: "Error",
+          description: response.message || "Invalid OTP",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("OTP verification error:", error);
-      alert(error.message || "OTP verification failed. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "OTP verification failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -329,22 +402,38 @@ export default function AuthPage() {
 
   const handleUserSignup = async () => {
     if (!userDetails.firstName.trim() || !userDetails.lastName.trim()) {
-      alert("Please enter your full name");
+      toast({
+        title: "Validation Error",
+        description: "Please enter your full name",
+        variant: "destructive",
+      });
       return;
     }
     if (!userDetails.username.trim()) {
-      alert("Please enter a username");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a username",
+        variant: "destructive",
+      });
       return;
     }
     if (!isValidEmail(userDetails.email)) {
-      alert("Please enter a valid email address");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
       return;
     }
     if (
       !userAgreementsAccepted.userAgreement ||
       !userAgreementsAccepted.privacyPolicy
     ) {
-      alert("Please accept all agreements");
+      toast({
+        title: "Validation Error",
+        description: "Please accept all agreements",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -371,15 +460,26 @@ export default function AuthPage() {
           userUuid || undefined
         );
         const redirectUrl = getRedirectUrl();
-        alert("Welcome to Glimz! Profile created successfully!");
+        toast({
+          title: "Welcome to Glimz!",
+          description: "Profile created successfully!",
+        });
         window.dispatchEvent(new Event("auth-changed"));
         router.push(redirectUrl);
       } else {
-        alert(response.message || "Failed to create profile");
+        toast({
+          title: "Error",
+          description: response.message || "Failed to create profile",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("User signup error:", error);
-      alert(error.message || "Profile creation failed. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "Profile creation failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -387,35 +487,67 @@ export default function AuthPage() {
 
   const handleCreatorSignup = async () => {
     if (!userDetails.firstName.trim() || !userDetails.lastName.trim()) {
-      alert("Please enter your full name");
+      toast({
+        title: "Validation Error",
+        description: "Please enter your full name",
+        variant: "destructive",
+      });
       return;
     }
     if (!userDetails.username.trim()) {
-      alert("Please enter a username");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a username",
+        variant: "destructive",
+      });
       return;
     }
     if (!isValidEmail(userDetails.email)) {
-      alert("Please enter a valid email address");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
       return;
     }
     if (!creatorDetails.youtubeChannelName.trim()) {
-      alert("Please enter your YouTube channel name");
+      toast({
+        title: "Validation Error",
+        description: "Please enter your YouTube channel name",
+        variant: "destructive",
+      });
       return;
     }
     if (!isValidYouTubeLink(creatorDetails.youtubeChannelLink)) {
-      alert("Please enter a valid YouTube channel link");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid YouTube channel link",
+        variant: "destructive",
+      });
       return;
     }
     if (!creatorDetails.subscribers) {
-      alert("Please enter your subscriber count");
+      toast({
+        title: "Validation Error",
+        description: "Please enter your subscriber count",
+        variant: "destructive",
+      });
       return;
     }
     if (!creatorDetails.contentLength) {
-      alert("Please select your content length");
+      toast({
+        title: "Validation Error",
+        description: "Please select your content length",
+        variant: "destructive",
+      });
       return;
     }
     if (!creatorAgreementAccepted) {
-      alert("Please accept the Content Creator Agreement");
+      toast({
+        title: "Validation Error",
+        description: "Please accept the Content Creator Agreement",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -446,15 +578,26 @@ export default function AuthPage() {
           userUuid || undefined
         );
         const redirectUrl = getRedirectUrl();
-        alert("Welcome to Glimz Creator! Profile created successfully!");
+        toast({
+          title: "Welcome to Glimz Creator!",
+          description: "Profile created successfully!",
+        });
         window.dispatchEvent(new Event("auth-changed"));
         router.push(redirectUrl);
       } else {
-        alert(response.message || "Failed to create creator profile");
+        toast({
+          title: "Error",
+          description: response.message || "Failed to create creator profile",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Creator signup error:", error);
-      alert(error.message || "Creator registration failed. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "Creator registration failed. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }
@@ -467,7 +610,11 @@ export default function AuthPage() {
       if (validateCurrentStep(detailStep)) {
         setDetailStep(detailStep + 1);
       } else {
-        alert("Please fill all required fields");
+        toast({
+          title: "Validation Error",
+          description: "Please fill all required fields",
+          variant: "destructive",
+        });
       }
     } else {
       // Last step - submit
@@ -499,13 +646,24 @@ export default function AuthPage() {
 
       if (response.status) {
         setCountdown(30);
-        alert(`New verification code sent to ${mobileNumber}`);
+        toast({
+          title: "OTP Resent",
+          description: `New verification code sent to ${mobileNumber}`,
+        });
       } else {
-        alert(response.message || "Failed to resend OTP");
+        toast({
+          title: "Error",
+          description: response.message || "Failed to resend OTP",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error("Resend OTP error:", error);
-      alert(error.message || "Failed to resend OTP. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend OTP. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setAuthLoading(false);
     }

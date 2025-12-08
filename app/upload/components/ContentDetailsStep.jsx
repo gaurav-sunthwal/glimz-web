@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -25,6 +26,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/app/hooks/use-toast";
 
 const categories = [
   "Comedy",
@@ -107,6 +109,7 @@ const TagInput = ({ tags, onAddTag, onRemoveTag }) => {
 };
 
 export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
+  const { toast } = useToast();
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [showAgeRestrictionModal, setShowAgeRestrictionModal] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
@@ -144,7 +147,11 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
 
   const handleCreatePlaylist = async () => {
     if (!newPlaylistTitle.trim()) {
-      alert("Please enter a playlist title");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a playlist title",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -174,12 +181,23 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
             },
           });
         }
-        alert("Playlist created successfully!");
+        toast({
+          title: "Success",
+          description: "Playlist created successfully!",
+        });
       } else {
-        alert(result.message || "Failed to create playlist");
+        toast({
+          title: "Error",
+          description: result.message || "Failed to create playlist",
+          variant: "destructive",
+        });
       }
     } catch (err) {
-      alert("Failed to create playlist");
+      toast({
+        title: "Error",
+        description: "Failed to create playlist",
+        variant: "destructive",
+      });
       console.error("Create playlist error:", err);
     } finally {
       setCreatingPlaylist(false);
@@ -454,6 +472,9 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
         <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add description</DialogTitle>
+            <DialogDescription>
+              Provide a detailed description for your content to help viewers understand what it's about.
+            </DialogDescription>
           </DialogHeader>
           <Textarea
             value={tempDescription}
@@ -484,6 +505,9 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
         <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add to Playlist</DialogTitle>
+            <DialogDescription>
+              Select an existing playlist or create a new one to organize your content.
+            </DialogDescription>
           </DialogHeader>
           {showCreatePlaylist ? (
             <div className="space-y-4">
@@ -579,6 +603,9 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
         <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>Age Restriction</DialogTitle>
+            <DialogDescription>
+              Select the appropriate age rating for your content based on its content.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {ageRestrictions.map((restriction) => (

@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/app/hooks/use-toast";
 
 // Types matching the React Native app
 export const CONTENT_CREATION_STEPS = {
@@ -29,6 +30,7 @@ const STEP_NAMES = [
 ];
 
 export default function UploadPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(CONTENT_CREATION_STEPS.MEDIA_UPLOAD);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,42 @@ export default function UploadPage() {
       
       try {
         setIsLoading(true);
+        
+        // First check if session is incomplete via API (since cookies might be HttpOnly)
+        const sessionCheck = await fetch('/api/auth/check-session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const sessionData = await sessionCheck.json();
+        console.log("🔍 [Upload Page] Session check:", sessionData);
+        
+        // Check if auth_token and uuid exist but is_creator cookie is missing
+        if (sessionData.isIncompleteSession) {
+          // Show toast first
+          toast({
+            title: "Session Incomplete",
+            description: "Your session is incomplete. Please login again.",
+            variant: "destructive",
+          });
+          
+          // Clear all cookies via API (including HttpOnly cookies)
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include',
+            });
+          } catch (error) {
+            console.error("Error clearing session:", error);
+          }
+          
+          // Also clear client-side cookies as fallback
+          document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          
+          router.push("/auth");
+          return;
+        }
         
         // Check is_creator cookie to determine which endpoint to call (same as Header.jsx)
         const cookies = typeof document !== 'undefined' 
@@ -320,9 +358,9 @@ export default function UploadPage() {
           <div className="flex items-center gap-2 mb-8">
             {STEP_NAMES.map((name, index) => (
               <div key={index} className="flex items-center flex-1">
-                <div className="flex items-center flex-1">
+                <div className="flex items-center">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
+                    className={`flex items-center justify-center w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] max-w-[2.5rem] max-h-[2.5rem] rounded-full border-2 transition-all shrink-0 ${
                       index === currentStep
                         ? "border-glimz-primary bg-glimz-primary text-white"
                         : index < currentStep
@@ -349,7 +387,7 @@ export default function UploadPage() {
                     )}
                   </div>
                   <span
-                    className={`ml-2 text-sm font-medium ${
+                    className={`ml-2 text-sm font-medium whitespace-nowrap ${
                       index === currentStep
                         ? "text-white"
                         : index < currentStep

@@ -17,8 +17,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { secureApi } from "@/app/lib/secureApi";
 import { ProfileButton } from "./ProfileButton";
+import { useToast } from "@/app/hooks/use-toast";
 
 export const Header = () => {
+  const { toast } = useToast();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,7 +71,42 @@ export const Header = () => {
     const checkAuth = async () => {
       try {
         setLoading(true);
-
+        
+        // First check if session is incomplete via API (since cookies might be HttpOnly)
+        const sessionCheck = await fetch('/api/auth/check-session', {
+          method: 'GET',
+          credentials: 'include',
+        });
+        const sessionData = await sessionCheck.json();
+        
+        // Check if auth_token and uuid exist but is_creator cookie is missing
+        if (sessionData.isIncompleteSession) {
+          // Show toast first
+          toast({
+            title: "Session Incomplete",
+            description: "Your session is incomplete. Please login again.",
+            variant: "destructive",
+          });
+          
+          // Clear all cookies via API (including HttpOnly cookies)
+          try {
+            await fetch('/api/auth/logout', {
+              method: 'POST',
+              credentials: 'include',
+            });
+          } catch (error) {
+            console.error("Error clearing session:", error);
+          }
+          
+          // Also clear client-side cookies as fallback
+          document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+          
+          router.push("/auth");
+          return;
+        }
+        
         // Check is_creator cookie to determine which endpoint to call
         const cookies = document.cookie.split("; ").reduce((acc, cookie) => {
           const [key, value] = cookie.split("=");
@@ -191,6 +228,7 @@ export const Header = () => {
     { label: "Home", href: "/" },
     // { label: "Movies", href: "/movies" },
     { label: "My List", href: "/my-list" },
+    { label: "Watch History", href: "/watch-history" },
   ];
 
   return (

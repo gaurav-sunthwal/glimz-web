@@ -34,7 +34,8 @@ export const WishlistDialog = ({
     if (open) {
       fetchWishlists();
     }
-  }, [open]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, contentId]);
 
   const fetchWishlists = async () => {
     try {
@@ -56,10 +57,33 @@ export const WishlistDialog = ({
             allWishlists.push(...item.wishlists);
           }
         });
-        setWishlists(allWishlists);
+        // Check if content is already in each wishlist
+        const wishlistsWithStatus = allWishlists.map((wishlist) => {
+          const isInWishlist = wishlist.items?.some(
+            (item) => item.content_id?.toString() === contentId?.toString()
+          ) || wishlist.content?.some(
+            (item) => item.content_id?.toString() === contentId?.toString()
+          );
+          return {
+            ...wishlist,
+            isInWishlist,
+          };
+        });
+        setWishlists(wishlistsWithStatus);
       } else if (data.status && data.data?.wishlists) {
         // Fallback for different structure
-        setWishlists(data.data.wishlists);
+        const wishlistsWithStatus = data.data.wishlists.map((wishlist) => {
+          const isInWishlist = wishlist.items?.some(
+            (item) => item.content_id?.toString() === contentId?.toString()
+          ) || wishlist.content?.some(
+            (item) => item.content_id?.toString() === contentId?.toString()
+          );
+          return {
+            ...wishlist,
+            isInWishlist,
+          };
+        });
+        setWishlists(wishlistsWithStatus);
       }
     } catch (error) {
       console.error("Error fetching wishlists:", error);
@@ -121,6 +145,52 @@ export const WishlistDialog = ({
     }
   };
 
+  const handleRemoveFromWishlist = async (wishlistId) => {
+    if (!contentId) return;
+
+    try {
+      setAdding(wishlistId);
+      const response = await fetch("/api/user/remove-content/wishlist", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          wishlist_id: wishlistId.toString(),
+          content_ids: [contentId.toString()],
+        }),
+      });
+
+      const data = await response.json();
+      if (data.status) {
+        const wishlistName =
+          wishlists.find((w) => (w.wishlist_id || w.id) === wishlistId)
+            ?.wishlist_name || "wishlist";
+        toast({
+          title: "Success",
+          description: `Removed from "${wishlistName}" successfully!`,
+        });
+        onSuccess?.();
+        await fetchWishlists(); // Refresh to update status
+      } else {
+        toast({
+          title: "Error",
+          description:
+            data.message || "Failed to remove from wishlist. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error removing from wishlist:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove from wishlist. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdding(null);
+    }
+  };
+
   const handleAddToWishlist = async (wishlistId) => {
     if (!contentId) return;
 
@@ -146,7 +216,7 @@ export const WishlistDialog = ({
           description: `Added to "${wishlistName}" successfully!`,
         });
         onSuccess?.();
-        onOpenChange(false);
+        await fetchWishlists(); // Refresh to update status
       } else {
         toast({
           title: "Error",
@@ -167,13 +237,22 @@ export const WishlistDialog = ({
     }
   };
 
+  const handleToggleWishlist = async (wishlist) => {
+    const wishlistId = wishlist.wishlist_id || wishlist.id;
+    if (wishlist.isInWishlist) {
+      await handleRemoveFromWishlist(wishlistId);
+    } else {
+      await handleAddToWishlist(wishlistId);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add to Wishlist</DialogTitle>
+          <DialogTitle>Manage Wishlist</DialogTitle>
           <DialogDescription>
-            Select a wishlist or create a new one to save this content.
+            Add or remove this content from your wishlists.
           </DialogDescription>
         </DialogHeader>
 
@@ -192,38 +271,48 @@ export const WishlistDialog = ({
                         No wishlists yet. Create your first one!
                       </p>
                     ) : (
-                      wishlists.map((wishlist) => (
-                        <Button
-                          key={wishlist.wishlist_id || wishlist.id}
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={() =>
-                            handleAddToWishlist(
-                              wishlist.wishlist_id || wishlist.id
-                            )
-                          }
-                          disabled={
-                            adding === (wishlist.wishlist_id || wishlist.id)
-                          }
-                        >
-                          {adding === (wishlist.wishlist_id || wishlist.id) ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <span className="mr-2">📋</span>
-                          )}
-                          {wishlist.wishlist_name || wishlist.name}
-                          {(wishlist.no_of_videos !== undefined ||
-                            wishlist.content_count) && (
-                            <span className="ml-auto text-xs text-muted-foreground">
-                              (
-                              {wishlist.no_of_videos ||
-                                wishlist.content_count ||
-                                0}{" "}
-                              items)
-                            </span>
-                          )}
-                        </Button>
-                      ))
+                      wishlists.map((wishlist) => {
+                        const wishlistId = wishlist.wishlist_id || wishlist.id;
+                        const isInWishlist = wishlist.isInWishlist;
+                        return (
+                          <Button
+                            key={wishlistId}
+                            variant={isInWishlist ? "default" : "outline"}
+                            className={`w-full justify-start ${
+                              isInWishlist
+                                ? "bg-red-600 hover:bg-red-700 text-white"
+                                : ""
+                            }`}
+                            onClick={() => handleToggleWishlist(wishlist)}
+                            disabled={adding === wishlistId}
+                          >
+                            {adding === wishlistId ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <span className="mr-2">
+                                {isInWishlist ? "✓" : "📋"}
+                              </span>
+                            )}
+                            {wishlist.wishlist_name || wishlist.name}
+                            {(wishlist.no_of_videos !== undefined ||
+                              wishlist.content_count) && (
+                              <span
+                                className={`ml-auto text-xs ${
+                                  isInWishlist
+                                    ? "text-white/80"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                (
+                                {wishlist.no_of_videos ||
+                                  wishlist.content_count ||
+                                  0}{" "}
+                                items)
+                              </span>
+                            )}
+                          </Button>
+                        );
+                      })
                     )}
                   </div>
 

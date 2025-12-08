@@ -4,10 +4,24 @@ export async function POST() {
   try {
     const nextResponse = NextResponse.json({ status: true, message: 'Logged out successfully' });
 
-    // Clear all auth cookies
-    nextResponse.cookies.delete('auth_token');
-    nextResponse.cookies.delete('uuid');
-    nextResponse.cookies.delete('is_creator');
+    // Clear all auth cookies by setting them to expire in the past
+    // This ensures HttpOnly cookies are also cleared
+    const cookiesToClear = ['auth_token', 'uuid', 'is_creator'];
+    const expiredDate = new Date(0).toUTCString();
+    
+    cookiesToClear.forEach(cookieName => {
+      // Delete the cookie
+      nextResponse.cookies.delete(cookieName);
+      
+      // Also set it with expired date to ensure it's cleared
+      nextResponse.cookies.set(cookieName, '', {
+        expires: new Date(0),
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+      });
+    });
 
     return nextResponse;
   } catch (error: unknown) {

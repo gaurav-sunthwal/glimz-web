@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Glimz Streaming Platform Design System */
+
+
+@layer base {
+  :root {
+    /* Glimz Dark Theme */
+    --background: 219 39% 11%;
+    --background-secondary: 217 33% 17%;
+    --background-tertiary: 215 28% 23%;
+    --foreground: 213 31% 91%;
+    --foreground-muted: 215 20% 65%;
+
+    /* Glimz Brand Colors */
+    --glimz-primary: 291 84% 61%;
+    --glimz-primary-dark: 285 84% 52%;
+    --glimz-secondary: 320 91% 65%;
+    --glimz-accent: 260 100% 75%;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--glimz-primary)) 0%, hsl(var(--glimz-secondary)) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(var(--background-secondary)), hsl(var(--background-tertiary)));
+    --gradient-overlay: linear-gradient(0deg, hsl(var(--background)) 0%, transparent 100%);
+    
+    /* UI Elements */
+    --card: var(--background-secondary);
+    --card-foreground: var(--foreground);
+    --card-hover: var(--background-tertiary);
+    
+    --border: 215 28% 25%;
+    --input: var(--background-tertiary);
+    --input-border: 215 28% 35%;
+    --ring: var(--glimz-primary);
+    
+    /* Shadows */
+    --shadow-glow: 0 0 30px hsl(var(--glimz-primary) / 0.3);
+    --shadow-card: 0 8px 32px hsl(var(--background) / 0.8);
+    --shadow-hero: 0 25px 60px hsl(var(--background) / 0.9);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    
+    --radius: 0.75rem;
+    --radius-card: 1rem;
+    --radius-button: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-inter antialiased overflow-x-hidden;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-background-tertiary rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--glimz-primary) / 0.7);
+  }
+}
+
+@layer components {
+  /* Glimz Button Variants */
+  .btn-glimz-primary {
+    @apply bg-gradient-to-r from-glimz-primary to-glimz-secondary text-white font-semibold px-6 py-3 rounded-button;
+    @apply hover:from-glimz-primary-dark hover:to-glimz-primary transition-all duration-300;
+    @apply focus:ring-2 focus:ring-glimz-primary focus:ring-offset-2 focus:ring-offset-background;
+    @apply shadow-lg hover:shadow-glow;
+  }
+
+  .btn-glimz-secondary {
+    @apply bg-white/10 backdrop-blur-sm text-white font-medium px-6 py-3 rounded-button;
+    @apply hover:bg-white/20 transition-all duration-300 border border-white/20;
+    @apply focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-background;
+  }
+
+  .btn-glimz-ghost {
+    @apply text-foreground-muted hover:text-foreground transition-colors duration-200;
+    @apply hover:bg-white/5 px-4 py-2 rounded-button;
+  }
+
+  /* Video Card Effects */
+  .video-card {
+    @apply bg-card rounded-card overflow-hidden transition-all duration-300;
+    @apply hover:scale-105 hover:shadow-card cursor-pointer;
+    @apply border border-transparent hover:border-white/10;
+  }
+
+  .video-card-overlay {
+    @apply absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent;
+    @apply opacity-0 hover:opacity-100 transition-opacity duration-300;
+  }
+
+  /* Hero Section */
+  .hero-gradient {
+    background: var(--gradient-hero);
+  }
+
+  .hero-overlay {
+    background: var(--gradient-overlay);
+  }
+
+  /* Carousel Styles */
+  .carousel-container {
+    @apply relative px-4 sm:px-6 lg:px-8;
+  }
+
+  .carousel-track {
+    @apply flex gap-4 overflow-x-auto scrollbar-hide snap-x snap-mandatory;
+    scroll-behavior: smooth;
+  }
+
+  .carousel-item {
+    @apply flex-none snap-start;
+  }
+
+  /* Search Input */
+  .search-input {
+    @apply bg-input border border-input-border text-foreground placeholder:text-foreground-muted;
+    @apply focus:border-glimz-primary focus:ring-1 focus:ring-glimz-primary;
+    @apply rounded-button px-4 py-2 transition-all duration-200;
+  }
+
+  /* Genre Tags */
+  .genre-tag {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+    @apply bg-white/10 text-white/80 backdrop-blur-sm;
+  }
+
+  /* Like Badge */
+  .like-badge {
+    @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+    @apply bg-green-500/20 text-green-300 backdrop-blur-sm;
+  }
+
+  /* Custom Animations */
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--glimz-primary) / 0.4); }
+    50% { box-shadow: 0 0 40px hsl(var(--glimz-primary) / 0.8); }
+  }
+
+  .animate-glow {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
