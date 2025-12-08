@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/app/hooks/use-toast";
 
 // Types matching the React Native app
 export const CONTENT_CREATION_STEPS = {
@@ -29,6 +30,7 @@ const STEP_NAMES = [
 ];
 
 export default function UploadPage() {
+  const { toast } = useToast();
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(CONTENT_CREATION_STEPS.MEDIA_UPLOAD);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,8 +73,12 @@ export default function UploadPage() {
         
         // Check if auth_token and uuid exist but is_creator cookie is missing
         if (sessionData.isIncompleteSession) {
-          // Show alert first
-          alert("Your session is incomplete. Please login again.");
+          // Show toast first
+          toast({
+            title: "Session Incomplete",
+            description: "Your session is incomplete. Please login again.",
+            variant: "destructive",
+          });
           
           // Clear all cookies via API (including HttpOnly cookies)
           try {

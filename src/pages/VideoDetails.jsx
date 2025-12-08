@@ -158,3 +158,5 @@ export const VideoDetails = ({ videoId, onBack, onPlay }) => {
     </div>
   );
 };
+
+export default VideoDetails;

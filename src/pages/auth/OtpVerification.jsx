@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 
 
 const OtpVerification = () => {
   const [otp, setOtp] = useState('');
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { mobileNumber, userType } = location.state || {};
+  const router = useRouter();
+  const { mobileNumber, userType } = router.query || {};
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -14,7 +13,7 @@ const OtpVerification = () => {
       // Hardcoded OTP verification
       // Redirect to the appropriate details page
       const destination = userType === 'creator' ? '/signup/creator' : '/signup/user';
-      navigate(destination, { state: { mobileNumber } });
+      router.push({ pathname: destination, query: { mobileNumber } });
     } else {
       alert('Invalid OTP');
     }

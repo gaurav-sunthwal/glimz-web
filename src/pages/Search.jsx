@@ -207,3 +207,5 @@ export const Search = ({ onBack, onPlay, onViewDetails, initialQuery = '' }) => 
     </div>
   );
 };
+
+export default Search;

@@ -34,7 +34,37 @@ export async function POST(request) {
     }
 
     // Get FormData from request
-    const formData = await request.formData();
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (formDataError) {
+      console.error("Error parsing form data:", formDataError);
+      return NextResponse.json(
+        {
+          status: false,
+          code: 400,
+          message: "Invalid form data",
+          error: formDataError.message,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate required fields
+    const video = formData.get("video");
+    const teaser = formData.get("teaser");
+    const title = formData.get("title");
+
+    if (!video || !teaser || !title) {
+      return NextResponse.json(
+        {
+          status: false,
+          code: 400,
+          message: "Missing required fields: video, teaser, and title are required",
+        },
+        { status: 400 }
+      );
+    }
 
     // Build headers with authentication
     const headers = {
@@ -65,34 +95,71 @@ export async function POST(request) {
 
     // Handle non-ok response
     if (!response.ok) {
+      let errorText;
       let errorData;
+      
       try {
-        errorData = await response.json();
-      } catch {
+        errorText = await response.text();
+        // Try to parse as JSON
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          // If not JSON, create error object from text
+          errorData = {
+            status: false,
+            code: response.status,
+            message: errorText || "Failed to upload content",
+            error: errorText || "Could not read error response",
+          };
+        }
+      } catch (readError) {
+        console.error("Error reading error response:", readError);
         errorData = {
           status: false,
           code: response.status,
-          message: "Failed to upload content",
+          message: `Upload failed with status ${response.status}`,
           error: "Could not read error response",
         };
       }
 
+      console.error("Upload API error:", errorData);
       return NextResponse.json(errorData, { status: response.status });
     }
 
     // Parse successful response
-    const data = await response.json();
+    let data;
+    try {
+      const responseText = await response.text();
+      if (responseText) {
+        data = JSON.parse(responseText);
+      } else {
+        data = { status: true, message: "Upload successful" };
+      }
+    } catch (parseError) {
+      console.error("Error parsing response:", parseError);
+      return NextResponse.json(
+        {
+          status: false,
+          code: 500,
+          message: "Failed to parse server response",
+          error: parseError.message,
+        },
+        { status: 500 }
+      );
+    }
 
     // Return the response as-is from the external API
     return NextResponse.json(data, { status: 200 });
   } catch (error) {
     console.error("Error in POST /api/creator/content/upload:", error);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
       {
         status: false,
         code: 500,
         message: "Internal server error",
         error: error.message,
+        details: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
     );

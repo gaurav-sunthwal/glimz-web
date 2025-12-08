@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/router';
 import Cookies from 'js-cookie';
 
 const UserSignup = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { mobileNumber } = location.state || {};
+  const router = useRouter();
+  const mobileNumber = Cookies.get('mobileNumber') || null;
 
   const [formData, setFormData] = useState({
     name: '',
@@ -24,7 +23,7 @@ const UserSignup = () => {
     Cookies.set('userSession', JSON.stringify(finalUserData), { expires: 7 });
 
     // Redirect to home page
-    navigate('/');
+    router.push('/');
   };
 
   return (

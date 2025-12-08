@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/app/hooks/use-toast";
 
 // Mock data - in a real app this would come from your API/store
 const mockCreators = [
@@ -686,6 +687,7 @@ const VideoCard = ({
 };
 
 export default function VideoFeed() {
+  const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [watchlist, setWatchlist] = useState([]);
   const [likedVideos, setLikedVideos] = useState([]);
@@ -762,7 +764,10 @@ export default function VideoFeed() {
       } catch (error) {
         // Fallback for browsers that don't support Web Share API
         navigator.clipboard.writeText(window.location.href);
-        alert("Link copied to clipboard!");
+        toast({
+          title: "Link Copied",
+          description: "Link copied to clipboard!",
+        });
       }
     }
   };
@@ -770,8 +775,11 @@ export default function VideoFeed() {
   const handleNavigateToVideo = (videoId) => {
     console.log("Navigate to video:", videoId);
     // Here you would typically use react-router or your navigation method
-    // For now, we'll just log it and show an alert
-    alert(`Navigating to video: ${videoId}`);
+    // For now, we'll just log it and show a toast
+    toast({
+      title: "Navigating",
+      description: `Navigating to video: ${videoId}`,
+    });
     // Example: history.push(`/video/${videoId}`);
   };
 

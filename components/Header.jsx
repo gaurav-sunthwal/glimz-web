@@ -22,8 +22,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { secureApi } from "@/app/lib/secureApi";
 import { ProfileButton } from "./ProfileButton";
+import { useToast } from "@/app/hooks/use-toast";
 
 export const Header = () => {
+  const { toast } = useToast();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -85,8 +87,12 @@ export const Header = () => {
         
         // Check if auth_token and uuid exist but is_creator cookie is missing
         if (sessionData.isIncompleteSession) {
-          // Show alert first
-          alert("Your session is incomplete. Please login again.");
+          // Show toast first
+          toast({
+            title: "Session Incomplete",
+            description: "Your session is incomplete. Please login again.",
+            variant: "destructive",
+          });
           
           // Clear all cookies via API (including HttpOnly cookies)
           try {
@@ -209,6 +215,7 @@ export const Header = () => {
     { label: "Home", href: "/" },
     { label: "Movies", href: "/movies" },
     { label: "My List", href: "/my-list" },
+    { label: "Watch History", href: "/watch-history" },
   ];
 
   return (

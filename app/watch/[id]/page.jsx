@@ -29,7 +29,7 @@ export default function WatchPage() {
                 });
                 
                 const data = await response.json();
-                console.log('Watch page video data:', data);
+                // console.log('Watch page video data:', data);
                 
                 if (data.status && data.data?.data) {
                     const contentData = data.data.data;

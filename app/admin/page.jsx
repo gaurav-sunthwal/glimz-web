@@ -757,7 +757,9 @@ export default function AdminPage() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Scheduled Notification</DialogTitle>
-                    <DialogDescription></DialogDescription>
+                    <DialogDescription>
+                      View details of the scheduled notification.
+                    </DialogDescription>
                   </DialogHeader>
                   {viewLoading ? (
                     <div className="text-sm text-muted-foreground">Loading...</div>

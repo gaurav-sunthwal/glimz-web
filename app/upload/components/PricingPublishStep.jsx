@@ -20,10 +20,12 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/app/hooks/use-toast";
 
 const ContentPreview = ({ data }) => {
   const getThumbnailUrl = () => {
@@ -107,6 +109,7 @@ const ContentPreview = ({ data }) => {
 };
 
 export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
+  const { toast } = useToast();
   const router = useRouter();
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [uploadStage, setUploadStage] = useState({
@@ -177,19 +180,31 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
     
     if (!data.teaserVideo || !data.contentVideo) {
       console.log("❌ [Upload Page] Validation failed: Missing videos");
-      alert("Please upload both teaser and content videos");
+      toast({
+        title: "Validation Error",
+        description: "Please upload both teaser and content videos",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!data.contentData.title.trim()) {
       console.log("❌ [Upload Page] Validation failed: Missing title");
-      alert("Please enter a title");
+      toast({
+        title: "Validation Error",
+        description: "Please enter a title",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!data.contentData.category) {
       console.log("❌ [Upload Page] Validation failed: Missing category");
-      alert("Please select a category");
+      toast({
+        title: "Validation Error",
+        description: "Please select a category",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -198,7 +213,11 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
       (!data.contentData.price || data.contentData.price <= 0)
     ) {
       console.log("❌ [Upload Page] Validation failed: Invalid price for premium content");
-      alert("Please set a valid price for premium content");
+      toast({
+        title: "Validation Error",
+        description: "Please set a valid price for premium content",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -271,20 +290,30 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
               const response = JSON.parse(xhr.responseText);
               resolve(response);
             } catch (e) {
+              console.warn("Response is not JSON, treating as success:", xhr.responseText);
               resolve({ status: true, data: xhr.responseText });
             }
           } else {
+            let errorMessage = `Upload failed with status ${xhr.status}`;
             try {
               const error = JSON.parse(xhr.responseText);
-              reject(new Error(error.message || "Upload failed"));
+              errorMessage = error.message || error.error || errorMessage;
+              console.error("Upload API error response:", error);
             } catch (e) {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
+              const responseText = xhr.responseText || "";
+              errorMessage = responseText || errorMessage;
+              console.error("Upload failed, response text:", responseText);
             }
+            reject(new Error(errorMessage));
           }
         });
 
         xhr.addEventListener("error", () => {
-          reject(new Error("Network error during upload"));
+          reject(new Error("Network error during upload. Please check your connection."));
+        });
+
+        xhr.addEventListener("abort", () => {
+          reject(new Error("Upload was cancelled or timed out."));
         });
 
         xhr.open("POST", "/api/creator/content/upload");
@@ -323,7 +352,11 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
         message: error.message || "Failed to publish content. Please try again.",
         progress: 0,
       });
-      alert(error.message || "Failed to publish content. Please try again.");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to publish content. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploading(false);
       console.log("🏁 [Upload Page] Upload process finished");
@@ -447,6 +480,11 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
                 ? "Upload Complete!"
                 : "Uploading Content..."}
             </DialogTitle>
+            <DialogDescription>
+              {uploadStage.stage === "completed"
+                ? "Your content has been successfully uploaded and published."
+                : "Please wait while we upload your content. This may take a few minutes."}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

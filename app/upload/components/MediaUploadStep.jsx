@@ -22,6 +22,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/app/hooks/use-toast";
 
 const THUMBNAIL_DIMENSIONS = {
   width: 1600,
@@ -40,6 +41,7 @@ const VideoPreviewCard = ({
   onThumbnailPreview,
   onVideoPreview,
 }) => {
+  const { toast } = useToast();
   const [paused, setPaused] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const videoRef = useRef(null);
@@ -71,9 +73,17 @@ const VideoPreviewCard = ({
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
         if (rejection.errors[0]?.code === "file-too-large") {
-          alert("Video file size must be less than 500MB");
+          toast({
+            title: "File too large",
+            description: "Video file size must be less than 500MB",
+            variant: "destructive",
+          });
         } else {
-          alert("Invalid video file. Please select a valid video file.");
+          toast({
+            title: "Invalid file",
+            description: "Invalid video file. Please select a valid video file.",
+            variant: "destructive",
+          });
         }
         return;
       }
@@ -85,7 +95,19 @@ const VideoPreviewCard = ({
         video.onloadedmetadata = () => {
           const duration = video.duration;
           if (type === "teaser" && duration > 30) {
-            alert("Teaser video must be 30 seconds or less");
+            toast({
+              title: "Invalid duration",
+              description: "Teaser video must be 30 seconds or less",
+              variant: "destructive",
+            });
+            return;
+          }
+          if (type === "content" && duration < 180) {
+            toast({
+              title: "Invalid duration",
+              description: "Full content video must be at least 3 minutes long",
+              variant: "destructive",
+            });
             return;
           }
 
@@ -104,7 +126,11 @@ const VideoPreviewCard = ({
           }
         };
         video.onerror = () => {
-          alert("Failed to load video. Please try another file.");
+          toast({
+            title: "Error",
+            description: "Failed to load video. Please try another file.",
+            variant: "destructive",
+          });
         };
         video.src = URL.createObjectURL(file);
       }
@@ -127,9 +153,17 @@ const VideoPreviewCard = ({
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
         if (rejection.errors[0]?.code === "file-too-large") {
-          alert("Image file size must be less than 10MB");
+          toast({
+            title: "File too large",
+            description: "Image file size must be less than 10MB",
+            variant: "destructive",
+          });
         } else {
-          alert("Invalid image file. Please select a valid image file.");
+          toast({
+            title: "Invalid file",
+            description: "Invalid image file. Please select a valid image file.",
+            variant: "destructive",
+          });
         }
         return;
       }
@@ -138,7 +172,11 @@ const VideoPreviewCard = ({
         const file = acceptedFiles[0];
         const img = new Image();
         img.onerror = () => {
-          alert("Failed to load image. Please try another file.");
+          toast({
+            title: "Error",
+            description: "Failed to load image. Please try another file.",
+            variant: "destructive",
+          });
         };
         img.onload = () => {
           const thumbnailData = {
@@ -167,7 +205,7 @@ const VideoPreviewCard = ({
           <p className="text-sm text-gray-400 mt-1">
             {type === "teaser"
               ? "Max 30 seconds • Required"
-              : "Max 5 minutes • Required"}
+              : "Min 3 minutes • Required"}
           </p>
         </div>
         {video && (
@@ -589,7 +627,7 @@ export const MediaUploadStep = ({ data, onDataChange, onNext }) => {
               <Badge variant="destructive">Required</Badge>
             </div>
             <p className="text-gray-400 text-sm mt-2">
-              Upload your full content video (max 5 minutes)
+              Upload your full content video (min 3 minutes)
             </p>
           </CardHeader>
           <CardContent>

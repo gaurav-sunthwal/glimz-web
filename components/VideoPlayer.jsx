@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { 
-  Play, 
-  Pause, 
-  Volume2, 
-  VolumeX, 
-  Maximize, 
-  Minimize, 
-  Settings, 
-  X, 
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import {
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
+  Settings,
+  X,
   RotateCcw,
   SkipBack,
   SkipForward,
@@ -23,44 +23,57 @@ import {
   Check,
   Monitor,
   Zap,
-  Gauge
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+  Gauge,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 // Network speed detection utility
 const detectNetworkSpeed = async () => {
   return new Promise((resolve) => {
     // Use Network Information API if available
-    if ('connection' in navigator) {
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if ("connection" in navigator) {
+      const connection =
+        navigator.connection ||
+        navigator.mozConnection ||
+        navigator.webkitConnection;
       if (connection) {
         const effectiveType = connection.effectiveType;
         const downlink = connection.downlink;
-        
+
         // Map effectiveType to quality
         const speedMap = {
-          'slow-2g': { speed: 'slow', quality: '360p', mbps: 0.5 },
-          '2g': { speed: 'slow', quality: '360p', mbps: 0.5 },
-          '3g': { speed: 'medium', quality: '480p', mbps: 1.5 },
-          '4g': { speed: 'fast', quality: '720p', mbps: 10 },
+          "slow-2g": { speed: "slow", quality: "360p", mbps: 0.5 },
+          "2g": { speed: "slow", quality: "360p", mbps: 0.5 },
+          "3g": { speed: "medium", quality: "480p", mbps: 1.5 },
+          "4g": { speed: "fast", quality: "720p", mbps: 10 },
         };
-        
-        const networkInfo = speedMap[effectiveType] || { speed: 'fast', quality: '720p', mbps: downlink || 10 };
+
+        const networkInfo = speedMap[effectiveType] || {
+          speed: "fast",
+          quality: "720p",
+          mbps: downlink || 10,
+        };
         resolve({
           speed: networkInfo.speed,
           recommendedQuality: networkInfo.quality,
           mbps: networkInfo.mbps,
-          effectiveType
+          effectiveType,
         });
         return;
       }
     }
-    
+
     // Fallback: Test with a small image
     const testImage = new Image();
     const startTime = Date.now();
@@ -70,53 +83,53 @@ const detectNetworkSpeed = async () => {
       // Approximate size in bytes (1KB test)
       const sizeInBytes = 1024;
       const speedMbps = (sizeInBytes * 8) / (duration * 1000000);
-      
-      let recommendedQuality = '720p';
-      let speed = 'fast';
-      
+
+      let recommendedQuality = "720p";
+      let speed = "fast";
+
       if (speedMbps < 1) {
-        recommendedQuality = '360p';
-        speed = 'slow';
+        recommendedQuality = "360p";
+        speed = "slow";
       } else if (speedMbps < 3) {
-        recommendedQuality = '480p';
-        speed = 'medium';
+        recommendedQuality = "480p";
+        speed = "medium";
       } else if (speedMbps < 8) {
-        recommendedQuality = '720p';
-        speed = 'medium';
+        recommendedQuality = "720p";
+        speed = "medium";
       } else {
-        recommendedQuality = '1080p';
-        speed = 'fast';
+        recommendedQuality = "1080p";
+        speed = "fast";
       }
-      
+
       resolve({
         speed,
         recommendedQuality,
         mbps: speedMbps,
-        effectiveType: 'unknown'
+        effectiveType: "unknown",
       });
     };
-    
+
     testImage.onerror = () => {
       // Default to medium quality if test fails
       resolve({
-        speed: 'medium',
-        recommendedQuality: '720p',
+        speed: "medium",
+        recommendedQuality: "720p",
         mbps: 5,
-        effectiveType: 'unknown'
+        effectiveType: "unknown",
       });
     };
-    
+
     // Use a small transparent pixel with cache busting
     testImage.src = `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7?t=${Date.now()}`;
   });
 };
 
-const VideoPlayer = ({ 
-  video, 
-  onClose, 
+const VideoPlayer = ({
+  video,
+  onClose,
   autoPlay = false,
   isFullscreen = false,
-  onFullscreenChange 
+  onFullscreenChange,
 }) => {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -126,99 +139,127 @@ const VideoPlayer = ({
   const qualityChangeTimeoutRef = useRef(null);
   const isInitialLoadRef = useRef(true);
   const lastQualityRef = useRef(null);
-  
+  const watchHistoryUpdateTimeoutRef = useRef(null);
+  const lastWatchHistoryUpdateRef = useRef(0);
+  const lastSavedTimeRef = useRef(0);
+
+  // Session storage keys
+  const SESSION_VOLUME_KEY = "glimz_volume"; // stores { volume, muted }
+  const SESSION_PLAY_PREFIX = "glimz_play_"; // per-video prefix + contentId
+
   // Player state
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(SESSION_VOLUME_KEY.muted || false);
+  
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [buffered, setBuffered] = useState(0);
   const [networkSpeed, setNetworkSpeed] = useState(null);
   const [isChangingQuality, setIsChangingQuality] = useState(false);
-  
+
   // Settings state
   const [showSettings, setShowSettings] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [videoQuality, setVideoQuality] = useState('auto');
+  const [videoQuality, setVideoQuality] = useState("auto");
   const [userSelectedQuality, setUserSelectedQuality] = useState(null); // null means auto
   const [showSubtitles, setShowSubtitles] = useState(false);
-  const [subtitleLanguage, setSubtitleLanguage] = useState('en');
+  const [subtitleLanguage, setSubtitleLanguage] = useState("en");
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
-  
+
   // Security state
   const [securityWarning, setSecurityWarning] = useState(false);
   const [rightClickDisabled, setRightClickDisabled] = useState(false);
   const [devToolsWarning, setDevToolsWarning] = useState(false);
-  
+
   // Context menu state
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const [isLooping, setIsLooping] = useState(false);
-  
+
   // Volume status bar
   const [showVolumeStatus, setShowVolumeStatus] = useState(false);
   const [volumeStatusTimeout, setVolumeStatusTimeout] = useState(null);
-  
+
   // YouTube-style panels
   const [showSpeedPanel, setShowSpeedPanel] = useState(false);
   const [showQualityPanel, setShowQualityPanel] = useState(false);
   const [showSubtitlePanel, setShowSubtitlePanel] = useState(false);
-  
+
   // Extract available qualities from video variants
   const availableQualities = useMemo(() => {
     if (!video?.video?.variants) {
-      return [{ value: 'auto', label: 'Auto' }];
+      return [{ value: "auto", label: "Auto" }];
     }
-    
+
     const variants = video.video.variants;
-    const qualityOrder = ['1080p', '720p', '480p', '360p', '240p'];
-    const qualities = [{ value: 'auto', label: 'Auto' }];
-    
-    qualityOrder.forEach(quality => {
+    const qualityOrder = ["1080p", "720p", "480p", "360p", "240p"];
+    const qualities = [{ value: "auto", label: "Auto" }];
+
+    qualityOrder.forEach((quality) => {
       if (variants[quality]) {
         qualities.push({ value: quality, label: quality });
       }
     });
-    
+
     // Add any other variants not in the standard list
-    Object.keys(variants).forEach(key => {
-      if (key !== 'auto' && !qualityOrder.includes(key) && !qualities.find(q => q.value === key)) {
+    Object.keys(variants).forEach((key) => {
+      if (
+        key !== "auto" &&
+        !qualityOrder.includes(key) &&
+        !qualities.find((q) => q.value === key)
+      ) {
         qualities.push({ value: key, label: key });
       }
     });
-    
+
     return qualities;
   }, [video?.video?.variants]);
-  
+
   // Get current video URL based on quality selection
-  const getVideoUrl = useCallback((quality) => {
-    if (!video?.video?.variants) return video?.videoUrl || '';
-    
-    const variants = video.video.variants;
-    
-    if (quality === 'auto' || !quality) {
-      // Auto mode: use network speed recommendation or fallback
-      if (networkSpeedRef.current?.recommendedQuality && variants[networkSpeedRef.current.recommendedQuality]) {
-        return variants[networkSpeedRef.current.recommendedQuality];
+  const getVideoUrl = useCallback(
+    (quality) => {
+      if (!video?.video?.variants) return video?.videoUrl || "";
+
+      const variants = video.video.variants;
+
+      if (quality === "auto" || !quality) {
+        // Auto mode: use network speed recommendation or fallback
+        if (
+          networkSpeedRef.current?.recommendedQuality &&
+          variants[networkSpeedRef.current.recommendedQuality]
+        ) {
+          return variants[networkSpeedRef.current.recommendedQuality];
+        }
+        // Fallback order
+        return (
+          variants.auto ||
+          variants["720p"] ||
+          variants["480p"] ||
+          variants["360p"] ||
+          Object.values(variants)[0] ||
+          ""
+        );
       }
-      // Fallback order
-      return variants.auto || variants['720p'] || variants['480p'] || variants['360p'] || Object.values(variants)[0] || '';
-    }
-    
-    return variants[quality] || variants.auto || video?.videoUrl || '';
-  }, [video]);
-  
+
+      return variants[quality] || variants.auto || video?.videoUrl || "";
+    },
+    [video]
+  );
+
   // Detect network speed on mount
   useEffect(() => {
     const checkNetworkSpeed = async () => {
       const speedInfo = await detectNetworkSpeed();
       networkSpeedRef.current = speedInfo;
       setNetworkSpeed(speedInfo);
-      
+
       // Auto-select quality if user hasn't manually selected
       if (!userSelectedQuality && video?.video?.variants) {
         const recommended = speedInfo.recommendedQuality;
@@ -227,38 +268,97 @@ const VideoPlayer = ({
         }
       }
     };
-    
+
     checkNetworkSpeed();
-    
+
     // Monitor network changes
-    if ('connection' in navigator) {
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if ("connection" in navigator) {
+      const connection =
+        navigator.connection ||
+        navigator.mozConnection ||
+        navigator.webkitConnection;
       if (connection) {
         const handleConnectionChange = async () => {
           const speedInfo = await detectNetworkSpeed();
           networkSpeedRef.current = speedInfo;
           setNetworkSpeed(speedInfo);
-          
+
           // Auto-adjust quality if in auto mode
           if (!userSelectedQuality && video?.video?.variants) {
             const recommended = speedInfo.recommendedQuality;
-            if (video.video.variants[recommended] && videoQuality !== recommended) {
+            if (
+              video.video.variants[recommended] &&
+              videoQuality !== recommended
+            ) {
               setVideoQuality(recommended);
             }
           }
         };
-        
-        connection.addEventListener('change', handleConnectionChange);
-        return () => connection.removeEventListener('change', handleConnectionChange);
+
+        connection.addEventListener("change", handleConnectionChange);
+        return () =>
+          connection.removeEventListener("change", handleConnectionChange);
       }
     }
   }, [video, userSelectedQuality, videoQuality]);
-  
+
+  // Restore per-video playback position when video changes
+  useEffect(() => {
+    if (!video) return;
+
+    const contentId = video.id || video.content_id;
+    if (!contentId) return;
+
+    try {
+      const key = SESSION_PLAY_PREFIX + String(contentId);
+      const raw = sessionStorage.getItem(key);
+      const saved = raw ? Number(raw) : 0;
+
+      const tryRestore = () => {
+        if (!videoRef.current) return;
+        if (!saved || isNaN(saved)) return;
+        const duration = videoRef.current.duration || 0;
+        // only restore if saved time is within duration
+        if (duration > 0 && saved > 0 && saved < duration - 1) {
+          videoRef.current.currentTime = Math.min(saved, duration - 1);
+          setCurrentTime(videoRef.current.currentTime);
+        }
+      };
+
+      // If metadata already loaded, restore immediately, else wait for loadedmetadata
+      if (videoRef.current && videoRef.current.readyState >= 1) {
+        tryRestore();
+      } else if (videoRef.current) {
+        const onLoaded = () => {
+          tryRestore();
+          videoRef.current?.removeEventListener("loadedmetadata", onLoaded);
+        };
+        videoRef.current.addEventListener("loadedmetadata", onLoaded);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [video]);
+
+  // Ensure the actual <video> element is always synced with volume/muted state
+  useEffect(() => {
+    try {
+      if (videoRef.current) {
+        videoRef.current.volume = isMuted ? 0 : volume;
+        // Keep `muted` in sync as well for completeness
+        videoRef.current.muted = !!isMuted;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [volume, isMuted, video]);
+
   // Auto-play effect when video is ready
   useEffect(() => {
     if (autoPlay && videoRef.current && video) {
       const tryAutoPlay = () => {
-        if (videoRef.current && videoRef.current.readyState >= 3) { // HAVE_FUTURE_DATA
+        if (videoRef.current && videoRef.current.readyState >= 3) {
+          // HAVE_FUTURE_DATA
           const playPromise = videoRef.current.play();
           if (playPromise !== undefined) {
             playPromise
@@ -267,20 +367,24 @@ const VideoPlayer = ({
               })
               .catch((error) => {
                 // Autoplay prevented - this is normal in many browsers
-                console.log('Autoplay prevented by browser:', error);
+                console.log("Autoplay prevented by browser:", error);
                 setIsPlaying(false);
               });
           }
         }
       };
-      
+
       // Try immediately if ready
       if (videoRef.current.readyState >= 3) {
         tryAutoPlay();
       } else {
         // Wait for video to be ready
-        videoRef.current.addEventListener('canplaythrough', tryAutoPlay, { once: true });
-        videoRef.current.addEventListener('loadeddata', tryAutoPlay, { once: true });
+        videoRef.current.addEventListener("canplaythrough", tryAutoPlay, {
+          once: true,
+        });
+        videoRef.current.addEventListener("loadeddata", tryAutoPlay, {
+          once: true,
+        });
       }
     }
   }, [autoPlay, video, videoQuality]);
@@ -288,51 +392,61 @@ const VideoPlayer = ({
   // Update video source when quality changes
   useEffect(() => {
     if (!videoRef.current || !video || !video.video?.variants) return;
-    
+
     const newUrl = getVideoUrl(videoQuality);
     const currentSrc = videoRef.current.src || videoRef.current.currentSrc;
-    
+
     // Check if URL actually changed (compare full URLs)
-    if (newUrl && newUrl !== currentSrc && newUrl !== '') {
+    if (newUrl && newUrl !== currentSrc && newUrl !== "") {
       const wasPlaying = isPlaying;
       // Only save time if this is not the initial load and we have a valid position
-      const shouldRestorePosition = !isInitialLoadRef.current && lastQualityRef.current !== null;
-      const savedTime = shouldRestorePosition ? Math.max(0, videoRef.current.currentTime || 0) : 0;
-      
+      const shouldRestorePosition =
+        !isInitialLoadRef.current && lastQualityRef.current !== null;
+      const savedTime = shouldRestorePosition
+        ? Math.max(0, videoRef.current.currentTime || 0)
+        : 0;
+
       // Update refs
       lastQualityRef.current = videoQuality;
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
       }
-      
+
       setIsChangingQuality(true);
       setIsLoading(true);
-      
+
       // Pause and save state
       if (wasPlaying) {
         videoRef.current.pause();
       }
-      
+
       // Store the saved time in a ref to ensure it persists
       const savedTimeRef = { value: savedTime };
-      
+
       // Function to restore playback position
       const restorePlayback = () => {
         if (!videoRef.current) return;
-        
+
         const seekToTime = () => {
-          if (videoRef.current && videoRef.current.readyState >= 2 && savedTimeRef.value > 0) {
+          if (
+            videoRef.current &&
+            videoRef.current.readyState >= 2 &&
+            savedTimeRef.value > 0
+          ) {
             // Ensure we don't seek beyond duration
             const maxTime = videoRef.current.duration || Infinity;
             const targetTime = Math.min(savedTimeRef.value, maxTime);
-            
+
             if (targetTime > 0 && targetTime < maxTime) {
               videoRef.current.currentTime = targetTime;
               setCurrentTime(targetTime);
               setIsChangingQuality(false);
-              
+
               // Resume playback if it was playing
-              if (wasPlaying || (autoPlay && isInitialLoadRef.current === false)) {
+              if (
+                wasPlaying ||
+                (autoPlay && isInitialLoadRef.current === false)
+              ) {
                 const playPromise = videoRef.current.play();
                 if (playPromise !== undefined) {
                   playPromise
@@ -349,7 +463,7 @@ const VideoPlayer = ({
           }
           return false;
         };
-        
+
         // Only restore if we have a saved time
         if (savedTimeRef.value > 0) {
           // Try multiple events to ensure we catch when video is ready
@@ -357,19 +471,31 @@ const VideoPlayer = ({
             if (seekToTime()) {
               // Remove other listeners since we succeeded
               if (videoRef.current) {
-                videoRef.current.removeEventListener('canplay', handleCanSeek);
-                videoRef.current.removeEventListener('canplaythrough', handleCanSeek);
-                videoRef.current.removeEventListener('loadeddata', handleCanSeek);
+                videoRef.current.removeEventListener("canplay", handleCanSeek);
+                videoRef.current.removeEventListener(
+                  "canplaythrough",
+                  handleCanSeek
+                );
+                videoRef.current.removeEventListener(
+                  "loadeddata",
+                  handleCanSeek
+                );
               }
             }
           };
-          
+
           // Listen for multiple events to ensure we can seek
           if (videoRef.current) {
-            videoRef.current.addEventListener('canplay', handleCanSeek, { once: true });
-            videoRef.current.addEventListener('canplaythrough', handleCanSeek, { once: true });
-            videoRef.current.addEventListener('loadeddata', handleCanSeek, { once: true });
-            
+            videoRef.current.addEventListener("canplay", handleCanSeek, {
+              once: true,
+            });
+            videoRef.current.addEventListener("canplaythrough", handleCanSeek, {
+              once: true,
+            });
+            videoRef.current.addEventListener("loadeddata", handleCanSeek, {
+              once: true,
+            });
+
             // Also try immediately if video is already ready
             if (videoRef.current.readyState >= 2) {
               setTimeout(() => {
@@ -397,11 +523,11 @@ const VideoPlayer = ({
           }
         }
       };
-      
+
       // Change source
       videoRef.current.src = newUrl;
       videoRef.current.load();
-      
+
       // Restore playback after source change
       restorePlayback();
     } else if (isInitialLoadRef.current && newUrl) {
@@ -410,16 +536,16 @@ const VideoPlayer = ({
       lastQualityRef.current = videoQuality;
     }
   }, [videoQuality, video, getVideoUrl, isPlaying, autoPlay]);
-  
+
   // Speed options
   const speedOptions = [
-    { value: 0.25, label: '0.25x' },
-    { value: 0.5, label: '0.5x' },
-    { value: 0.75, label: '0.75x' },
-    { value: 1, label: 'Normal' },
-    { value: 1.25, label: '1.25x' },
-    { value: 1.5, label: '1.5x' },
-    { value: 2, label: '2x' }
+    { value: 0.25, label: "0.25x" },
+    { value: 0.5, label: "0.5x" },
+    { value: 0.75, label: "0.75x" },
+    { value: 1, label: "Normal" },
+    { value: 1.25, label: "1.25x" },
+    { value: 1.5, label: "1.5x" },
+    { value: 2, label: "2x" },
   ];
 
   // Security measures and keyboard controls
@@ -435,20 +561,22 @@ const VideoPlayer = ({
     const handleKeyDown = (e) => {
       // Security: Disable forbidden keys
       const forbiddenKeys = [
-        'F12', // Dev tools
-        'Ctrl+Shift+I', // Dev tools
-        'Ctrl+U', // View source
-        'Ctrl+S', // Save
-        'Ctrl+A', // Select all
-        'Ctrl+P', // Print
-        'Ctrl+Shift+C', // Inspect element
+        "F12", // Dev tools
+        "Ctrl+Shift+I", // Dev tools
+        "Ctrl+U", // View source
+        "Ctrl+S", // Save
+        "Ctrl+A", // Select all
+        "Ctrl+P", // Print
+        "Ctrl+Shift+C", // Inspect element
       ];
-      
-      if (forbiddenKeys.some(key => 
-        key.includes('Ctrl+') ? 
-        e.ctrlKey && e.key === key.split('+')[1] :
-        e.key === key
-      )) {
+
+      if (
+        forbiddenKeys.some((key) =>
+          key.includes("Ctrl+")
+            ? e.ctrlKey && e.key === key.split("+")[1]
+            : e.key === key
+        )
+      ) {
         e.preventDefault();
         setSecurityWarning(true);
         setTimeout(() => setSecurityWarning(false), 3000);
@@ -458,8 +586,8 @@ const VideoPlayer = ({
       // Keyboard controls for video player
       if (videoRef.current) {
         switch (e.key) {
-          case ' ':
-          case 'k':
+          case " ":
+          case "k":
             e.preventDefault();
             if (isPlaying) {
               handlePause();
@@ -467,73 +595,74 @@ const VideoPlayer = ({
               handlePlay();
             }
             break;
-          case 'ArrowLeft':
+          case "ArrowLeft":
             e.preventDefault();
             handleSkip(-10);
             break;
-          case 'ArrowRight':
+          case "ArrowRight":
             e.preventDefault();
             handleSkip(10);
             break;
-          case 'ArrowUp':
+          case "ArrowUp":
             e.preventDefault();
             handleVolumeKeyChange(0.05); // Smaller increment
             break;
-          case 'ArrowDown':
+          case "ArrowDown":
             e.preventDefault();
             handleVolumeKeyChange(-0.05); // Smaller increment
             break;
-          case 'm':
+          case "m":
             e.preventDefault();
             handleMuteToggle();
             break;
-          case 'f':
+          case "f":
             e.preventDefault();
             handleFullscreen();
             break;
-          case 'j':
+          case "j":
             e.preventDefault();
             handleSkip(-10);
             break;
-          case 'l':
+          case "l":
             e.preventDefault();
             handleSkip(10);
             break;
-          case '0':
+          case "0":
             e.preventDefault();
             if (videoRef.current) {
               videoRef.current.currentTime = 0;
             }
             break;
-          case '1':
-          case '2':
-          case '3':
-          case '4':
-          case '5':
-          case '6':
-          case '7':
-          case '8':
-          case '9':
+          case "1":
+          case "2":
+          case "3":
+          case "4":
+          case "5":
+          case "6":
+          case "7":
+          case "8":
+          case "9":
             e.preventDefault();
             if (videoRef.current) {
               const percentage = parseInt(e.key) / 10;
-              videoRef.current.currentTime = videoRef.current.duration * percentage;
+              videoRef.current.currentTime =
+                videoRef.current.duration * percentage;
             }
             break;
-          case 'c':
+          case "c":
             e.preventDefault();
             setShowSubtitles(!showSubtitles);
             break;
-          case 's':
+          case "s":
             e.preventDefault();
             setShowSettings(!showSettings);
             break;
-          case '?':
-          case 'h':
+          case "?":
+          case "h":
             e.preventDefault();
             setShowKeyboardHelp(!showKeyboardHelp);
             break;
-          case 'Escape':
+          case "Escape":
             if (showSettings) {
               setShowSettings(false);
             } else if (showKeyboardHelp) {
@@ -549,26 +678,35 @@ const VideoPlayer = ({
     // Detect dev tools
     const detectDevTools = () => {
       const threshold = 160;
-      if (window.outerHeight - window.innerHeight > threshold || 
-          window.outerWidth - window.innerWidth > threshold) {
+      if (
+        window.outerHeight - window.innerHeight > threshold ||
+        window.outerWidth - window.innerWidth > threshold
+      ) {
         setDevToolsWarning(true);
         setTimeout(() => setDevToolsWarning(false), 5000);
       }
     };
 
-    document.addEventListener('contextmenu', handleContextMenu);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("keydown", handleKeyDown);
     const devToolsInterval = setInterval(detectDevTools, 1000);
 
     return () => {
-      document.removeEventListener('contextmenu', handleContextMenu);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("keydown", handleKeyDown);
       clearInterval(devToolsInterval);
       if (volumeStatusTimeout) {
         clearTimeout(volumeStatusTimeout);
       }
     };
-  }, [rightClickDisabled, isPlaying, volume, showSubtitles, showSettings, isFullscreen]);
+  }, [
+    rightClickDisabled,
+    isPlaying,
+    volume,
+    showSubtitles,
+    showSettings,
+    isFullscreen,
+  ]);
 
   // Video event handlers
   const handleLoadedMetadata = () => {
@@ -576,7 +714,7 @@ const VideoPlayer = ({
       setDuration(videoRef.current.duration);
       setIsLoading(false);
       setIsChangingQuality(false);
-      
+
       // Auto-play if enabled
       if (autoPlay && !isPlaying) {
         const playPromise = videoRef.current.play();
@@ -587,7 +725,7 @@ const VideoPlayer = ({
             })
             .catch((error) => {
               // Autoplay was prevented (browser policy)
-              console.log('Autoplay prevented:', error);
+              console.log("Autoplay prevented:", error);
               setIsPlaying(false);
             });
         }
@@ -595,15 +733,103 @@ const VideoPlayer = ({
     }
   };
 
+  // Update watch history
+  const updateWatchHistory = useCallback(
+    async (forceUpdate = false) => {
+      if (!video || !videoRef.current) {
+        return;
+      }
+
+      // Get current time from video element if available
+      const currentVideoTime = videoRef.current?.currentTime || currentTime;
+      const videoDuration = videoRef.current?.duration || duration;
+
+      // Only skip if not forcing and conditions aren't met
+      if (!forceUpdate && (currentVideoTime <= 0 || videoDuration <= 0)) {
+        return;
+      }
+
+      try {
+        const contentId = video.id || video.content_id;
+        if (!contentId) return;
+
+        // Debounce: Only update every 5 seconds (unless forced)
+        if (!forceUpdate) {
+          const now = Date.now();
+          if (now - lastWatchHistoryUpdateRef.current < 5000) {
+            return;
+          }
+          lastWatchHistoryUpdateRef.current = now;
+        }
+
+        const watchHistoryData = {
+          contentId: Number(contentId),
+          durationWatched: Math.floor(currentVideoTime),
+          totalDuration: Math.floor(videoDuration),
+        };
+
+        console.log("📺 Updating watch history:", watchHistoryData);
+
+        const response = await fetch("/api/user/watch-history", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(watchHistoryData),
+        });
+
+        if (response.ok) {
+          console.log("✅ Watch history updated successfully");
+        } else {
+          console.error(
+            "❌ Failed to update watch history:",
+            await response.text()
+          );
+        }
+      } catch (error) {
+        console.error("❌ Error updating watch history:", error);
+      }
+    },
+    [video, currentTime, duration]
+  );
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
-      
+
       // Calculate buffered progress
       if (videoRef.current.buffered.length > 0) {
-        const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+        const bufferedEnd = videoRef.current.buffered.end(
+          videoRef.current.buffered.length - 1
+        );
         const bufferedPercent = (bufferedEnd / videoRef.current.duration) * 100;
         setBuffered(bufferedPercent);
+      }
+
+      // Update watch history periodically (debounced)
+      if (watchHistoryUpdateTimeoutRef.current) {
+        clearTimeout(watchHistoryUpdateTimeoutRef.current);
+      }
+      watchHistoryUpdateTimeoutRef.current = setTimeout(() => {
+        updateWatchHistory();
+      }, 5000); // Update every 5 seconds
+
+      // Persist current playback position in sessionStorage (throttled)
+      try {
+        const contentId = video?.id || video?.content_id;
+        if (contentId) {
+          const now = Date.now();
+          // throttle writes to once every 2s
+          if (now - lastSavedTimeRef.current > 2000) {
+            const key = SESSION_PLAY_PREFIX + String(contentId);
+            const toSave = Math.floor(videoRef.current.currentTime || 0);
+            sessionStorage.setItem(key, String(toSave));
+            lastSavedTimeRef.current = now;
+          }
+        }
+      } catch (e) {
+        // ignore session storage errors
       }
     }
   };
@@ -616,7 +842,7 @@ const VideoPlayer = ({
   const handleCanPlay = () => {
     setIsLoading(false);
     setIsBuffering(false);
-    
+
     // Auto-play if enabled and not already playing
     if (autoPlay && videoRef.current && !isPlaying && videoRef.current.paused) {
       const playPromise = videoRef.current.play();
@@ -627,7 +853,7 @@ const VideoPlayer = ({
           })
           .catch((error) => {
             // Autoplay was prevented
-            console.log('Autoplay prevented:', error);
+            console.log("Autoplay prevented:", error);
             setIsPlaying(false);
           });
       }
@@ -637,7 +863,7 @@ const VideoPlayer = ({
   const handleCanPlayThrough = () => {
     setIsLoading(false);
     setIsBuffering(false);
-    
+
     // Auto-play if enabled and not already playing
     if (autoPlay && videoRef.current && !isPlaying && videoRef.current.paused) {
       const playPromise = videoRef.current.play();
@@ -647,7 +873,7 @@ const VideoPlayer = ({
             setIsPlaying(true);
           })
           .catch((error) => {
-            console.log('Autoplay prevented:', error);
+            console.log("Autoplay prevented:", error);
             setIsPlaying(false);
           });
       }
@@ -666,10 +892,12 @@ const VideoPlayer = ({
 
   const handleProgress = () => {
     if (videoRef.current && videoRef.current.buffered.length > 0) {
-      const bufferedEnd = videoRef.current.buffered.end(videoRef.current.buffered.length - 1);
+      const bufferedEnd = videoRef.current.buffered.end(
+        videoRef.current.buffered.length - 1
+      );
       const bufferedPercent = (bufferedEnd / videoRef.current.duration) * 100;
       setBuffered(bufferedPercent);
-      
+
       // If buffered enough, stop showing loading
       if (bufferedPercent > 5) {
         setIsBuffering(false);
@@ -703,7 +931,15 @@ const VideoPlayer = ({
       videoRef.current.volume = value[0];
       setVolume(value[0]);
       setIsMuted(value[0] === 0);
-      
+
+      // Persist volume + mute state in sessionStorage
+      try {
+        const payload = JSON.stringify({ volume: value[0], muted: value[0] === 0 });
+        sessionStorage.setItem(SESSION_VOLUME_KEY, payload);
+      } catch (e) {
+        // ignore
+      }
+
       // Show volume status bar
       setShowVolumeStatus(true);
       if (volumeStatusTimeout) {
@@ -739,7 +975,15 @@ const VideoPlayer = ({
         videoRef.current.volume = 0;
         setIsMuted(true);
       }
-      
+
+      // Persist mute state in sessionStorage (keep volume value)
+      try {
+        const payload = JSON.stringify({ volume: volume, muted: !isMuted });
+        sessionStorage.setItem(SESSION_VOLUME_KEY, payload);
+      } catch (e) {
+        // ignore
+      }
+
       // Show volume status bar
       setShowVolumeStatus(true);
       if (volumeStatusTimeout) {
@@ -760,10 +1004,13 @@ const VideoPlayer = ({
   };
 
   const handleQualityChange = (quality) => {
-    if (quality === 'auto') {
+    if (quality === "auto") {
       setUserSelectedQuality(null);
       // Use network speed recommendation
-      if (networkSpeedRef.current?.recommendedQuality && video?.video?.variants?.[networkSpeedRef.current.recommendedQuality]) {
+      if (
+        networkSpeedRef.current?.recommendedQuality &&
+        video?.video?.variants?.[networkSpeedRef.current.recommendedQuality]
+      ) {
         const recommended = networkSpeedRef.current.recommendedQuality;
         setVideoQuality(recommended);
         // Force update by setting a different value first, then the target
@@ -771,7 +1018,7 @@ const VideoPlayer = ({
           setVideoQuality(recommended);
         }, 10);
       } else {
-        setVideoQuality('auto');
+        setVideoQuality("auto");
       }
     } else {
       setUserSelectedQuality(quality);
@@ -783,14 +1030,18 @@ const VideoPlayer = ({
     }
     setShowQualityPanel(false);
   };
-  
+
   // Handle click on video to play/pause
   const handleVideoClick = (e) => {
     // Don't trigger if clicking on controls
-    if (e.target.closest('[data-controls]') || e.target.closest('button') || e.target.closest('[data-settings-panel]')) {
+    if (
+      e.target.closest("[data-controls]") ||
+      e.target.closest("button") ||
+      e.target.closest("[data-settings-panel]")
+    ) {
       return;
     }
-    
+
     if (isPlaying) {
       handlePause();
     } else {
@@ -820,7 +1071,7 @@ const VideoPlayer = ({
       await navigator.clipboard.writeText(window.location.href);
       setShowContextMenu(false);
     } catch (err) {
-      console.error('Failed to copy URL:', err);
+      console.error("Failed to copy URL:", err);
     }
   };
 
@@ -854,7 +1105,7 @@ const VideoPlayer = ({
           await videoRef.current.requestPictureInPicture();
         }
       } catch (err) {
-        console.error('Picture-in-Picture failed:', err);
+        console.error("Picture-in-Picture failed:", err);
       }
     }
     setShowContextMenu(false);
@@ -864,7 +1115,7 @@ const VideoPlayer = ({
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   // Auto-hide controls
@@ -886,13 +1137,21 @@ const VideoPlayer = ({
   // Close panels when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showSettings || showSpeedPanel || showQualityPanel || showSubtitlePanel || showContextMenu) {
+      if (
+        showSettings ||
+        showSpeedPanel ||
+        showQualityPanel ||
+        showSubtitlePanel ||
+        showContextMenu
+      ) {
         const target = event.target;
-        if (!target.closest('[data-settings-panel]') && 
-            !target.closest('[data-speed-panel]') && 
-            !target.closest('[data-quality-panel]') && 
-            !target.closest('[data-subtitle-panel]') &&
-            !target.closest('[data-context-menu]')) {
+        if (
+          !target.closest("[data-settings-panel]") &&
+          !target.closest("[data-speed-panel]") &&
+          !target.closest("[data-quality-panel]") &&
+          !target.closest("[data-subtitle-panel]") &&
+          !target.closest("[data-context-menu]")
+        ) {
           setShowSettings(false);
           setShowSpeedPanel(false);
           setShowQualityPanel(false);
@@ -902,9 +1161,58 @@ const VideoPlayer = ({
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showSettings, showSpeedPanel, showQualityPanel, showSubtitlePanel, showContextMenu]);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [
+    showSettings,
+    showSpeedPanel,
+    showQualityPanel,
+    showSubtitlePanel,
+    showContextMenu,
+  ]);
+
+  // Cleanup: Update watch history on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any pending watch history updates
+      if (watchHistoryUpdateTimeoutRef.current) {
+        clearTimeout(watchHistoryUpdateTimeoutRef.current);
+      }
+
+      // Final watch history update before unmounting
+      if (video && videoRef.current) {
+        const currentVideoTime = videoRef.current.currentTime || 0;
+        const videoDuration = videoRef.current.duration || 0;
+        const contentId = video.id || video.content_id;
+
+        if (contentId && videoDuration > 0) {
+          const watchHistoryData = {
+            contentId: Number(contentId),
+            durationWatched: Math.floor(currentVideoTime),
+            totalDuration: Math.floor(videoDuration),
+          };
+
+          console.log(
+            "📺 Final watch history update on unmount:",
+            watchHistoryData
+          );
+
+          // Use fetch with keepalive for reliable delivery during page unload
+          fetch("/api/user/watch-history", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(watchHistoryData),
+            keepalive: true, // Keep request alive even after page unload
+          }).catch((error) => {
+            console.error("❌ Error updating watch history on unmount:", error);
+          });
+        }
+      }
+    };
+  }, [video]);
 
   // Security overlay
   const SecurityOverlay = () => (
@@ -913,9 +1221,10 @@ const VideoPlayer = ({
         <Shield className="h-16 w-16 text-red-500 mx-auto" />
         <h3 className="text-xl font-bold text-white">Security Warning</h3>
         <p className="text-gray-300 max-w-md">
-          This content is protected. Downloading, recording, or sharing is prohibited.
+          This content is protected. Downloading, recording, or sharing is
+          prohibited.
         </p>
-        <Button 
+        <Button
           onClick={() => setSecurityWarning(false)}
           className="bg-red-600 hover:bg-red-700"
         >
@@ -926,9 +1235,11 @@ const VideoPlayer = ({
   );
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`relative bg-black ${isFullscreen ? 'fixed inset-0 z-50' : 'w-full h-screen'}`}
+      className={`relative bg-black ${
+        isFullscreen ? "fixed inset-0 z-50" : "w-full h-screen"
+      }`}
       onMouseMove={resetControlsTimeout}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onClick={handleVideoClick}
@@ -936,7 +1247,7 @@ const VideoPlayer = ({
     >
       {/* Security Warning Overlay */}
       {securityWarning && <SecurityOverlay />}
-      
+
       {/* Dev Tools Warning */}
       {devToolsWarning && (
         <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 z-40">
@@ -949,52 +1260,54 @@ const VideoPlayer = ({
       {showVolumeStatus && (
         <div className="absolute top-1/2 right-6 transform -translate-y-1/2 bg-black/90 backdrop-blur-sm rounded-lg p-4 z-40 border border-white/20">
           <div className="flex items-center gap-3">
-            <Volume2 className={`h-6 w-6 ${isMuted ? 'text-red-400' : 'text-white'}`} />
+            <Volume2
+              className={`h-6 w-6 ${isMuted ? "text-red-400" : "text-white"}`}
+            />
             <div className="flex flex-col items-center gap-2">
               <div className="w-32 h-2 bg-white/20 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-glimz-primary transition-all duration-200"
                   style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
                 />
               </div>
               <span className="text-white text-sm font-medium">
-                {isMuted ? 'Muted' : `${Math.round(volume * 100)}%`}
+                {isMuted ? "Muted" : `${Math.round(volume * 100)}%`}
               </span>
             </div>
           </div>
         </div>
       )}
 
-       {/* Video Element */}
-       <video
-         ref={videoRef}
-         className="w-full h-full object-cover transition-opacity duration-300"
-         src={getVideoUrl(videoQuality)}
-         autoPlay={autoPlay}
-         muted={false} // Don't force mute - let user control
-         onLoadedMetadata={handleLoadedMetadata}
-         onTimeUpdate={handleTimeUpdate}
-         onPlay={handlePlaying}
-         onPause={handlePause}
-         onLoadStart={() => setIsLoading(true)}
-         onCanPlay={handleCanPlay}
-         onCanPlayThrough={handleCanPlayThrough}
-         onWaiting={handleWaiting}
-         onStalled={handleStalled}
-         onProgress={handleProgress}
-         onError={() => {
-           setIsLoading(false);
-           setIsBuffering(false);
-         }}
-         controls={false}
-         onContextMenu={(e) => e.preventDefault()}
-         preload="auto"
-         playsInline
-         style={{
-           pointerEvents: 'none', // Prevent direct video interaction
-           opacity: isChangingQuality ? 0.5 : 1,
-         }}
-       />
+      {/* Video Element */}
+      <video
+        ref={videoRef}
+        className="w-full h-full object-cover transition-opacity duration-300"
+        src={getVideoUrl(videoQuality)}
+        autoPlay={autoPlay}
+        muted={false} // Don't force mute - let user control
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        onPlay={handlePlaying}
+        onPause={handlePause}
+        onLoadStart={() => setIsLoading(true)}
+        onCanPlay={handleCanPlay}
+        onCanPlayThrough={handleCanPlayThrough}
+        onWaiting={handleWaiting}
+        onStalled={handleStalled}
+        onProgress={handleProgress}
+        onError={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
+        controls={false}
+        onContextMenu={(e) => e.preventDefault()}
+        preload="auto"
+        playsInline
+        style={{
+          pointerEvents: "none", // Prevent direct video interaction
+          opacity: isChangingQuality ? 0.5 : 1,
+        }}
+      />
 
       {/* Loading Overlay */}
       {(isLoading || isBuffering || isChangingQuality) && (
@@ -1008,33 +1321,39 @@ const VideoPlayer = ({
             </div>
             <div className="space-y-2">
               {isChangingQuality && (
-                <p className="text-white font-medium text-lg">Changing quality...</p>
+                <p className="text-white font-medium text-lg">
+                  Changing quality...
+                </p>
               )}
               {isBuffering && !isChangingQuality && (
                 <p className="text-white font-medium text-lg">Buffering...</p>
               )}
               {isLoading && !isBuffering && !isChangingQuality && (
-                <p className="text-white font-medium text-lg">Loading video...</p>
+                <p className="text-white font-medium text-lg">
+                  Loading video...
+                </p>
               )}
               {networkSpeed && (
                 <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
-                  {networkSpeed.speed === 'fast' ? (
+                  {networkSpeed.speed === "fast" ? (
                     <Wifi className="h-4 w-4 text-green-400" />
-                  ) : networkSpeed.speed === 'medium' ? (
+                  ) : networkSpeed.speed === "medium" ? (
                     <Wifi className="h-4 w-4 text-yellow-400" />
                   ) : (
                     <WifiOff className="h-4 w-4 text-red-400" />
                   )}
                   <span>Network: {networkSpeed.speed}</span>
-                  {videoQuality !== 'auto' && (
-                    <span className="text-gray-400">• Quality: {videoQuality}</span>
+                  {videoQuality !== "auto" && (
+                    <span className="text-gray-400">
+                      • Quality: {videoQuality}
+                    </span>
                   )}
                 </div>
               )}
             </div>
             {/* Progress indicator */}
             <div className="w-64 h-1 bg-white/20 rounded-full overflow-hidden mx-auto">
-              <div 
+              <div
                 className="h-full bg-glimz-primary transition-all duration-300"
                 style={{ width: `${buffered}%` }}
               />
@@ -1044,9 +1363,9 @@ const VideoPlayer = ({
       )}
 
       {/* Video Controls Overlay */}
-      <div 
+      <div
         className={`absolute inset-0 transition-opacity duration-200 ease-in-out ${
-          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          showControls ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         data-controls
         onClick={(e) => e.stopPropagation()}
@@ -1056,7 +1375,14 @@ const VideoPlayer = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button
-                onClick={onClose}
+                onClick={async () => {
+                  // Update watch history before closing
+                  await updateWatchHistory(true);
+                  // Small delay to ensure the request is sent
+                  setTimeout(() => {
+                    onClose?.();
+                  }, 100);
+                }}
                 variant="ghost"
                 size="sm"
                 className="text-white hover:bg-white/20"
@@ -1067,7 +1393,7 @@ const VideoPlayer = ({
                 {video?.title}
               </h2>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-white/20 text-white">
                 <Shield className="h-3 w-3 mr-1" />
@@ -1113,7 +1439,7 @@ const VideoPlayer = ({
           <div className="px-4 py-2">
             <div className="relative group">
               {/* Buffered Progress */}
-              <div 
+              <div
                 className="absolute top-0 left-0 h-1 bg-white/30 rounded-full"
                 style={{ width: `${buffered}%` }}
               />
@@ -1167,8 +1493,6 @@ const VideoPlayer = ({
                 <SkipForward className="h-5 w-5" />
               </Button>
 
-              
-
               {/* Time Display */}
               <div className="text-white text-sm font-mono ml-2">
                 {formatTime(currentTime)} / {formatTime(duration)}
@@ -1191,7 +1515,7 @@ const VideoPlayer = ({
                   )}
                 </Button>
                 {/* Volume Slider - appears on hover */}
-                <div 
+                <div
                   className="w-20 opacity-0 group-hover/volume:opacity-100 transition-opacity duration-200 cursor-pointer hover:opacity-100"
                   onClick={handleVolumeClick}
                 >
@@ -1205,9 +1529,9 @@ const VideoPlayer = ({
                 </div>
                 {/* Volume Status - shows current volume percentage */}
                 <div className="opacity-0 group-hover/volume:opacity-100 transition-opacity duration-200 text-white text-xs min-w-[3ch] hover:opacity-100">
-                  {isMuted ? 'Muted' : `${Math.round(volume * 100)}%`}
+                  {isMuted ? "Muted" : `${Math.round(volume * 100)}%`}
                 </div>
-              </div>  
+              </div>
             </div>
 
             {/* Right Controls */}
@@ -1229,8 +1553,12 @@ const VideoPlayer = ({
                 size="sm"
                 className="text-white hover:bg-white/20 p-2 rounded-full"
               >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z"/>
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z" />
                 </svg>
               </Button>
 
@@ -1256,7 +1584,9 @@ const VideoPlayer = ({
           <div className="absolute inset-0 bg-black/90 flex items-center justify-center z-50">
             <div className="bg-black/95 backdrop-blur-sm rounded-lg p-8 w-96 max-w-[90vw] space-y-6 border border-white/20">
               <div className="flex items-center justify-between">
-                <h3 className="text-white text-xl font-bold">Keyboard Shortcuts</h3>
+                <h3 className="text-white text-xl font-bold">
+                  Keyboard Shortcuts
+                </h3>
                 <Button
                   onClick={() => setShowKeyboardHelp(false)}
                   variant="ghost"
@@ -1266,62 +1596,86 @@ const VideoPlayer = ({
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">Space</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      Space
+                    </kbd>
                     <span className="text-white/80">Play/Pause</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">K</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      K
+                    </kbd>
                     <span className="text-white/80">Play/Pause</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">← →</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      ← →
+                    </kbd>
                     <span className="text-white/80">Skip 10s</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">J L</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      J L
+                    </kbd>
                     <span className="text-white/80">Skip 10s</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">↑ ↓</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      ↑ ↓
+                    </kbd>
                     <span className="text-white/80">Volume</span>
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">M</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      M
+                    </kbd>
                     <span className="text-white/80">Mute</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">F</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      F
+                    </kbd>
                     <span className="text-white/80">Fullscreen</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">0-9</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      0-9
+                    </kbd>
                     <span className="text-white/80">Jump to %</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">C</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      C
+                    </kbd>
                     <span className="text-white/80">Subtitles</span>
                   </div>
                   <div className="flex justify-between">
-                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">S</kbd>
+                    <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                      S
+                    </kbd>
                     <span className="text-white/80">Settings</span>
                   </div>
                 </div>
               </div>
-              
+
               <div className="pt-4 border-t border-white/20">
                 <div className="flex justify-between">
-                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">Esc</kbd>
+                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                    Esc
+                  </kbd>
                   <span className="text-white/80">Close/Exit Fullscreen</span>
                 </div>
                 <div className="flex justify-between mt-2">
-                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">? H</kbd>
+                  <kbd className="px-2 py-1 bg-white/20 rounded text-white font-mono">
+                    ? H
+                  </kbd>
                   <span className="text-white/80">Show/Hide Help</span>
                 </div>
               </div>
@@ -1331,12 +1685,12 @@ const VideoPlayer = ({
 
         {/* YouTube-style Settings Panel */}
         {showSettings && (
-          <div 
+          <div
             data-settings-panel
             className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-64 space-y-1 shadow-2xl border border-white/20"
           >
             {/* Playback Speed */}
-            <div 
+            <div
               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
               onClick={() => {
                 setShowSettings(false);
@@ -1345,12 +1699,13 @@ const VideoPlayer = ({
             >
               <div className="text-white text-sm">Playback speed</div>
               <div className="text-white/70 text-xs mt-1">
-                {speedOptions.find(opt => opt.value === playbackSpeed)?.label || 'Normal'}
+                {speedOptions.find((opt) => opt.value === playbackSpeed)
+                  ?.label || "Normal"}
               </div>
             </div>
 
             {/* Quality */}
-            <div 
+            <div
               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
               onClick={() => {
                 setShowSettings(false);
@@ -1365,7 +1720,9 @@ const VideoPlayer = ({
                   <>
                     <span>Auto</span>
                     {networkSpeed && (
-                      <span className="text-gray-500">({networkSpeed.recommendedQuality})</span>
+                      <span className="text-gray-500">
+                        ({networkSpeed.recommendedQuality})
+                      </span>
                     )}
                   </>
                 )}
@@ -1373,7 +1730,7 @@ const VideoPlayer = ({
             </div>
 
             {/* Subtitles */}
-            <div 
+            <div
               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
               onClick={() => {
                 setShowSettings(false);
@@ -1382,12 +1739,12 @@ const VideoPlayer = ({
             >
               <div className="text-white text-sm">Subtitles</div>
               <div className="text-white/70 text-xs mt-1">
-                {showSubtitles ? 'On' : 'Off'}
+                {showSubtitles ? "On" : "Off"}
               </div>
             </div>
 
             {/* Keyboard Shortcuts */}
-            <div 
+            <div
               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer"
               onClick={() => {
                 setShowSettings(false);
@@ -1402,16 +1759,18 @@ const VideoPlayer = ({
 
         {/* Speed Panel */}
         {showSpeedPanel && (
-          <div 
+          <div
             data-speed-panel
             className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
           >
-            <div className="px-3 py-2 text-white text-sm font-medium">Playback speed</div>
+            <div className="px-3 py-2 text-white text-sm font-medium">
+              Playback speed
+            </div>
             {speedOptions.map((option) => (
               <div
                 key={option.value}
                 className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
-                  playbackSpeed === option.value ? 'bg-glimz-primary/20' : ''
+                  playbackSpeed === option.value ? "bg-glimz-primary/20" : ""
                 }`}
                 onClick={() => {
                   handleSpeedChange(option.value);
@@ -1426,7 +1785,7 @@ const VideoPlayer = ({
 
         {/* Quality Panel */}
         {showQualityPanel && (
-          <div 
+          <div
             data-quality-panel
             className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-56 space-y-1 shadow-2xl border border-white/20 z-50"
           >
@@ -1437,9 +1796,9 @@ const VideoPlayer = ({
               </div>
               {networkSpeed && (
                 <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                  {networkSpeed.speed === 'fast' ? (
+                  {networkSpeed.speed === "fast" ? (
                     <Zap className="h-3 w-3 text-green-400" />
-                  ) : networkSpeed.speed === 'medium' ? (
+                  ) : networkSpeed.speed === "medium" ? (
                     <Gauge className="h-3 w-3 text-yellow-400" />
                   ) : (
                     <WifiOff className="h-3 w-3 text-red-400" />
@@ -1449,31 +1808,37 @@ const VideoPlayer = ({
               )}
             </div>
             {availableQualities.map((option) => {
-              const isSelected = option.value === 'auto' 
-                ? !userSelectedQuality 
-                : userSelectedQuality === option.value;
-              const isRecommended = option.value === 'auto' 
-                ? false 
-                : networkSpeed?.recommendedQuality === option.value && !userSelectedQuality;
-              
+              const isSelected =
+                option.value === "auto"
+                  ? !userSelectedQuality
+                  : userSelectedQuality === option.value;
+              const isRecommended =
+                option.value === "auto"
+                  ? false
+                  : networkSpeed?.recommendedQuality === option.value &&
+                    !userSelectedQuality;
+
               return (
-              <div
-                key={option.value}
+                <div
+                  key={option.value}
                   className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer transition-all duration-150 ${
-                    isSelected ? 'bg-glimz-primary/30' : ''
+                    isSelected ? "bg-glimz-primary/30" : ""
                   }`}
                   onClick={() => handleQualityChange(option.value)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-white text-sm">{option.label}</span>
-                      {option.value === 'auto' && (
+                      {option.value === "auto" && (
                         <Zap className="h-3 w-3 text-gray-400" />
                       )}
-              </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       {isRecommended && !isSelected && (
-                        <Badge variant="outline" className="text-xs border-green-500/50 text-green-400">
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-green-500/50 text-green-400"
+                        >
                           Recommended
                         </Badge>
                       )}
@@ -1490,14 +1855,16 @@ const VideoPlayer = ({
 
         {/* Subtitle Panel */}
         {showSubtitlePanel && (
-          <div 
+          <div
             data-subtitle-panel
             className="absolute bottom-16 right-4 bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20"
           >
-            <div className="px-3 py-2 text-white text-sm font-medium">Subtitles</div>
+            <div className="px-3 py-2 text-white text-sm font-medium">
+              Subtitles
+            </div>
             <div
               className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
-                !showSubtitles ? 'bg-glimz-primary/20' : ''
+                !showSubtitles ? "bg-glimz-primary/20" : ""
               }`}
               onClick={() => {
                 setShowSubtitles(false);
@@ -1508,7 +1875,7 @@ const VideoPlayer = ({
             </div>
             <div
               className={`px-3 py-2 hover:bg-white/10 rounded cursor-pointer ${
-                showSubtitles ? 'bg-glimz-primary/20' : ''
+                showSubtitles ? "bg-glimz-primary/20" : ""
               }`}
               onClick={() => {
                 setShowSubtitles(true);
@@ -1517,94 +1884,118 @@ const VideoPlayer = ({
             >
               <div className="text-white text-sm">English</div>
             </div>
-           </div>
-         )}
+          </div>
+        )}
 
-         {/* Context Menu */}
-         {showContextMenu && (
-           <div 
-             data-context-menu
-             className="fixed bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20 z-50"
-             style={{
-               left: contextMenuPosition.x,
-               top: contextMenuPosition.y,
-               transform: 'translate(-100%, -10px)' // Position above and to the left of cursor
-             }}
-           >
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={handleCopyUrl}
-             >
-               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                 <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z"/>
-                 <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"/>
-               </svg>
-               <span className="text-white text-sm">Copy video URL</span>
-             </div>
+        {/* Context Menu */}
+        {showContextMenu && (
+          <div
+            data-context-menu
+            className="fixed bg-black/95 backdrop-blur-sm rounded-lg p-2 w-48 space-y-1 shadow-2xl border border-white/20 z-50"
+            style={{
+              left: contextMenuPosition.x,
+              top: contextMenuPosition.y,
+              transform: "translate(-100%, -10px)", // Position above and to the left of cursor
+            }}
+          >
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={handleCopyUrl}
+            >
+              <svg
+                className="h-4 w-4 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M8 2a1 1 0 000 2h2a1 1 0 100-2H8z" />
+                <path d="M3 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v6h-4.586l1.293-1.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L10.414 13H15v3a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" />
+              </svg>
+              <span className="text-white text-sm">Copy video URL</span>
+            </div>
 
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={handleShare}
-             >
-               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                 <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
-               </svg>
-               <span className="text-white text-sm">Share</span>
-             </div>
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={handleShare}
+            >
+              <svg
+                className="h-4 w-4 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+              </svg>
+              <span className="text-white text-sm">Share</span>
+            </div>
 
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={handleLoop}
-             >
-               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/>
-               </svg>
-               <span className="text-white text-sm">
-                 {isLooping ? 'Turn off loop' : 'Loop'}
-               </span>
-             </div>
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={handleLoop}
+            >
+              <svg
+                className="h-4 w-4 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-white text-sm">
+                {isLooping ? "Turn off loop" : "Loop"}
+              </span>
+            </div>
 
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={handlePictureInPicture}
-             >
-               <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                 <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
-               </svg>
-               <span className="text-white text-sm">Picture-in-Picture</span>
-             </div>
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={handlePictureInPicture}
+            >
+              <svg
+                className="h-4 w-4 text-white"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="text-white text-sm">Picture-in-Picture</span>
+            </div>
 
-             <div className="border-t border-white/20 my-1"></div>
+            <div className="border-t border-white/20 my-1"></div>
 
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={() => {
-                 setShowSettings(true);
-                 setShowContextMenu(false);
-               }}
-             >
-               <Settings className="h-4 w-4 text-white" />
-               <span className="text-white text-sm">Video settings</span>
-             </div>
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={() => {
+                setShowSettings(true);
+                setShowContextMenu(false);
+              }}
+            >
+              <Settings className="h-4 w-4 text-white" />
+              <span className="text-white text-sm">Video settings</span>
+            </div>
 
-             <div 
-               className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
-               onClick={handleFullscreen}
-             >
-               {isFullscreen ? (
-                 <Minimize className="h-4 w-4 text-white" />
-               ) : (
-                 <Maximize className="h-4 w-4 text-white" />
-               )}
-               <span className="text-white text-sm">
-                 {isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-               </span>
-             </div>
-           </div>
-         )}
-       </div>
-     </div>
-   );
+            <div
+              className="px-3 py-2 hover:bg-white/10 rounded cursor-pointer flex items-center gap-2"
+              onClick={handleFullscreen}
+            >
+              {isFullscreen ? (
+                <Minimize className="h-4 w-4 text-white" />
+              ) : (
+                <Maximize className="h-4 w-4 text-white" />
+              )}
+              <span className="text-white text-sm">
+                {isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default VideoPlayer;

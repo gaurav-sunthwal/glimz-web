@@ -104,3 +104,5 @@ export const MyList = ({ onBack, onPlay, onViewDetails }) => {
     </div>
   );
 };
+
+export default MyList;

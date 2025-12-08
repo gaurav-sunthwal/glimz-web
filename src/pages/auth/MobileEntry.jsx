@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useRouter } from 'next/router';
+import Cookies from 'js-cookie';
 
 const MobileEntry = () => {
   const [mobileNumber, setMobileNumber] = useState('');
-  const navigate = useNavigate();
-  const { userType } = useParams(); // 'creator' or 'user'
+  const router = useRouter();
+  const { userType } = router.query || {}; // 'creator' or 'user'
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Redirect to OTP verification, passing mobile number and user type
-    navigate('/signup/otp', { state: { mobileNumber, userType } });
+    // Save mobile number in cookie for next step
+    Cookies.set('mobileNumber', mobileNumber, { expires: 0.0417 }); // ~1 hour
+    // Redirect to OTP verification with query params
+    router.push({ pathname: '/signup/otp', query: { mobileNumber, userType } });
   };
 
   return (
