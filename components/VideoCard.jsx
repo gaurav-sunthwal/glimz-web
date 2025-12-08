@@ -143,7 +143,6 @@ export const VideoCard = ({
 
             {(video.price || isPaid) && (
               <div className="flex items-center gap-1 bg-black/70 px-3 py-1 rounded-full">
-                <DollarSign size={14} className="text-blue-400" />
                 <span className="text-blue-400 text-xs font-semibold">
                   {video.price ? `₹${video.price}` : isPaid ? "Paid" : "Free"}
                 </span>

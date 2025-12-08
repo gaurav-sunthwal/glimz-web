@@ -4,44 +4,113 @@ import { useState, useEffect } from 'react';
 import { Play, Info, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 
 export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [descExpanded, setDescExpanded] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+  const [cachedVideos, setCachedVideos] = useState([]);
   const router = useRouter();
 
-  // Support both single video and multiple videos
-  const videoList = videos && videos.length > 0 ? videos : (video ? [video] : []);
+  // Session Storage & Data Management
+  useEffect(() => {
+    // Save to session storage when videos are available
+    if (videos && videos.length > 0) {
+      sessionStorage.setItem('hero_videos', JSON.stringify(videos));
+    }
+  }, [videos]);
+
+  // Load from session storage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem('hero_videos');
+      if (cached) {
+        try {
+          setCachedVideos(JSON.parse(cached));
+        } catch (e) {
+          console.error("Failed to parse hero_videos", e);
+        }
+      }
+    }
+  }, []);
+
+  // Priority: videos prop > cachedVideos > video prop
+  const resolvedVideos = (videos && videos.length > 0) ? videos : (cachedVideos.length > 0 ? cachedVideos : (video ? [video] : []));
+  const videoList = resolvedVideos;
   const currentVideo = videoList[currentIndex];
 
   useEffect(() => {
     setImageLoaded(false);
-    if (videos && videos.length > 0) {
-      setCurrentIndex(0);
+    console.log("Video details:", videoList);
+    if (resolvedVideos && resolvedVideos.length > 0) {
+      if (currentIndex >= resolvedVideos.length) {
+        setCurrentIndex(0);
+      }
     }
-  }, [videos?.length, video?.id]);
+  }, [resolvedVideos.length, video?.id, currentIndex]); // Added currentIndex to dep array as per previous logic, but actually we only reset on length change usually. 
+  // Wait, original logic was:
+  /*
+    useEffect(() => {
+      setImageLoaded(false);
+      console.log("Video details:", videoList);
+      if (videos && videos.length > 0) {
+        setCurrentIndex(0);
+      }
+    }, [videos?.length, video?.id]);
+  */
+  // I should be careful not to reset index on every render.
+  // The original logic reset index when videos.length CHANGED.
 
+  // Refined useEffect for index reset:
+  useEffect(() => {
+    if (resolvedVideos && resolvedVideos.length > 0) {
+      // Only reset if we are out of bounds or if it's a fresh load of DIFFERENT videos
+      // For simplicity, let's stick to bounds check.
+      if (currentIndex >= resolvedVideos.length) {
+        setCurrentIndex(0);
+      }
+    }
+  }, [resolvedVideos.length]);
+
+  // Effect to reset imageLoaded when index changes
   useEffect(() => {
     setImageLoaded(false);
   }, [currentIndex]);
 
+  // Parallax Effect
+  useEffect(() => {
+    const handleScroll = () => {
+      requestAnimationFrame(() => {
+        setScrollY(window.scrollY);
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Auto-rotate through videos if multiple videos provided
   useEffect(() => {
     if (videoList.length <= 1) return;
+    if (!imageLoaded) return; // Don't auto-rotate if still loading
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % videoList.length);
     }, 8000); // Change video every 8 seconds
 
     return () => clearInterval(interval);
-  }, [videoList.length]);
+  }, [videoList.length, imageLoaded]);
 
   const handlePrevious = () => {
+    if (!imageLoaded) return;
     setCurrentIndex((prev) => (prev - 1 + videoList.length) % videoList.length);
   };
 
   const handleNext = () => {
+    if (!imageLoaded) return;
     setCurrentIndex((prev) => (prev + 1) % videoList.length);
   };
 
@@ -49,6 +118,13 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
 
   const handleImageLoad = () => {
     setImageLoaded(true);
+  };
+
+  const getHeroSrc = (v) => {
+    if (!v) return '/api/placeholder/1920/1080';
+    return (
+      v.heroImage || v.heroimage || v.thumbnail || v.thimainel || v.thumb || v.poster || v.image || '/api/placeholder/1920/1080'
+    );
   };
 
   return (
@@ -62,21 +138,35 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
         flex flex-col
       "
     >
-      {/* Background Image */}
-      <div className="absolute inset-0">
+      {/* Background Image with Parallax */}
+      <div className="absolute inset-0 overflow-hidden">
         {!imageLoaded && (
           <div className="absolute inset-0 bg-background-secondary animate-pulse" />
         )}
-        <img
-          src={currentVideo.heroImage || currentVideo.thumbnail}
-          alt={currentVideo.title}
-          className={`
-            w-full h-full object-cover transition-opacity duration-700
-            ${imageLoaded ? 'opacity-100' : 'opacity-0'}
-          `}
-          onLoad={handleImageLoad}
-          draggable={false}
-        />
+        <div
+          className="relative w-full h-[120%] -top-[10%]"
+          style={{
+            transform: `translateY(${scrollY * 0.4}px)`,
+            willChange: 'transform'
+          }}
+        >
+          <NextImage
+            key={currentVideo.id}
+            src={getHeroSrc(currentVideo)}
+            alt={currentVideo.title}
+            fill
+            priority={true} // Priority Loading
+            sizes="100vw"
+            className={`
+              object-cover transition-opacity duration-700 w-full h-full
+              ${imageLoaded ? 'opacity-100' : 'opacity-0'}
+            `}
+            onLoad={handleImageLoad} // Fixed: onLoadingComplete -> onLoad
+            onError={() => setImageLoaded(true)}
+            draggable={false}
+            unoptimized
+          />
+        </div>
 
         {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
@@ -142,18 +232,32 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
           </div>
 
           {/* Description */}
-          <p
-            className="
-              text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
-              text-white/90 leading-relaxed
-              max-w-full sm:max-w-xl md:max-w-2xl
-              line-clamp-4 sm:line-clamp-5 md:line-clamp-6
-              break-words
-            "
-            style={{ wordBreak: 'break-word' }}
-          >
-            {currentVideo.description}
-          </p>
+          <div className="max-w-full sm:max-w-xl md:max-w-2xl">
+            <p
+              className={`
+                text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
+                text-white/90 leading-relaxed
+                break-words
+              `}
+              style={{ wordBreak: 'break-word' }}
+            >
+              {(() => {
+                const full = currentVideo.description || '';
+                const short = currentVideo.shortDescription || (full.length > 120 ? full.slice(0, 120) + '...' : full);
+                return descExpanded ? full : short;
+              })()}
+            </p>
+
+            {(currentVideo.description && (currentVideo.shortDescription || currentVideo.description.length > 220)) && (
+              <button
+                onClick={() => setDescExpanded((s) => !s)}
+                className="mt-2 text-sm text-white/80 underline underline-offset-2"
+                aria-expanded={descExpanded}
+              >
+                {descExpanded ? 'Show less' : 'Read more'}
+              </button>
+            )}
+          </div>
 
           {/* Action Buttons - in one row always */}
           <div className="flex flex-row items-center gap-2 xs:gap-3 sm:gap-4 w-full">
@@ -223,6 +327,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
         <>
           <Button
             onClick={handlePrevious}
+            disabled={!imageLoaded}
             variant="ghost"
             size="sm"
             className="
@@ -238,12 +343,14 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               border border-white/20
               hover:bg-white/20
               flex items-center justify-center
+              disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
             <ChevronLeft className="h-5 w-5 xs:h-6 xs:w-6 sm:h-7 sm:w-7 text-white" />
           </Button>
           <Button
             onClick={handleNext}
+            disabled={!imageLoaded}
             variant="ghost"
             size="sm"
             className="
@@ -259,6 +366,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               border border-white/20
               hover:bg-white/20
               flex items-center justify-center
+              disabled:opacity-50 disabled:cursor-not-allowed
             "
           >
             <ChevronRight className="h-5 w-5 xs:h-6 xs:w-6 sm:h-7 sm:w-7 text-white" />
@@ -276,15 +384,19 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
             {videoList.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentIndex(index)}
+                onClick={() => {
+                  if (imageLoaded) setCurrentIndex(index);
+                }}
+                disabled={!imageLoaded}
                 className={`
                   w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3
                   rounded-full
                   transition-all duration-300
-                  ${index === currentIndex 
-                    ? 'bg-white w-6 xs:w-8 sm:w-10' 
+                  ${index === currentIndex
+                    ? 'bg-white w-6 xs:w-8 sm:w-10'
                     : 'bg-white/40 hover:bg-white/60'
                   }
+                  ${!imageLoaded ? 'cursor-not-allowed opacity-50' : ''}
                 `}
                 aria-label={`Go to video ${index + 1}`}
               />
