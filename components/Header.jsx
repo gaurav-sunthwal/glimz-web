@@ -74,7 +74,7 @@ export const Header = () => {
 
         // First check if session is incomplete via API (since cookies might be HttpOnly)
         const sessionCheck = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/check-session`,
+          "http://api.glimznow.com/api/auth/check-session",
           {
             method: "GET",
             credentials: "include",

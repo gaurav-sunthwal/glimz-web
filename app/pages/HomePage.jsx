@@ -49,7 +49,7 @@ const HomePage = () => {
       try {
         setIsLoadingContinueWatching(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/user/continue-watching`,
+          "http://api.glimznow.com/api/user/continue-watching",
           {
             method: "GET",
             credentials: "include",
@@ -124,7 +124,7 @@ const HomePage = () => {
       try {
         setIsLoadingPurchasedContent(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/user/purchased-content`,
+          "http://api.glimznow.com/api/user/purchased-content",
           {
             method: "GET",
             credentials: "include",
@@ -200,7 +200,7 @@ const HomePage = () => {
       try {
         setIsLoadingBannerVideos(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/content?page=1&limit=5`,
+          "http://api.glimznow.com/api/content?page=1&limit=5",
           {
             method: "GET",
             credentials: "include",
@@ -266,7 +266,7 @@ const HomePage = () => {
       try {
         setIsLoadingTrending(true);
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/content?page=1&limit=20`,
+          "http://api.glimznow.com/api/content?page=1&limit=20",
           {
             method: "GET",
             credentials: "include",
