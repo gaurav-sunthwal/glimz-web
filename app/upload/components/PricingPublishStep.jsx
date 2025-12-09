@@ -65,21 +65,27 @@ const ContentPreview = ({ data }) => {
               {data.contentData.category || "No category selected"}
             </p>
             <div className="flex flex-wrap gap-2">
-              <Badge
-                variant={data.teaserVideo ? "default" : "destructive"}
-                className={
-                  data.teaserVideo
-                    ? "bg-green-500 text-white"
-                    : "bg-red-500 text-white"
-                }
-              >
-                {data.teaserVideo ? (
-                  <Check className="h-3 w-3 mr-1" />
-                ) : (
-                  <X className="h-3 w-3 mr-1" />
-                )}
-                Teaser
-              </Badge>
+              {(() => {
+                const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+                const hasTeasers = teaserVideos.length > 0;
+                return (
+                  <Badge
+                    variant={hasTeasers ? "default" : "destructive"}
+                    className={
+                      hasTeasers
+                        ? "bg-green-500 text-white"
+                        : "bg-red-500 text-white"
+                    }
+                  >
+                    {hasTeasers ? (
+                      <Check className="h-3 w-3 mr-1" />
+                    ) : (
+                      <X className="h-3 w-3 mr-1" />
+                    )}
+                    Teaser{teaserVideos.length > 1 ? ` (${teaserVideos.length})` : ''}
+                  </Badge>
+                );
+              })()}
               <Badge
                 variant={data.contentVideo ? "default" : "destructive"}
                 className={
@@ -177,8 +183,9 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
 
   const handlePublish = useCallback(async () => {
     console.log("🚀 [Upload Page] Starting publish process...");
-    
-    if (!data.teaserVideo || !data.contentVideo) {
+
+    const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+    if (teaserVideos.length === 0 || !data.contentVideo) {
       console.log("❌ [Upload Page] Validation failed: Missing videos");
       toast({
         title: "Validation Error",
@@ -256,7 +263,19 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
 
       // Add files
       formData.append("video", data.contentVideo.file);
-      formData.append("teaser", data.teaserVideo.file);
+
+      // Add all teaser videos
+      const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+      if (teaserVideos.length > 0) {
+        // First teaser uses "teaser" field name for backward compatibility
+        formData.append("teaser", teaserVideos[0].file);
+
+        // Additional teasers use indexed field names
+        for (let i = 1; i < teaserVideos.length; i++) {
+          formData.append(`teaser_${i}`, teaserVideos[i].file);
+        }
+      }
+
       if (data.teaserThumbnail?.file) {
         formData.append("thumbnail", data.teaserThumbnail.file);
       }
@@ -364,8 +383,9 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
   }, [data, handleProgressUpdate, router]);
 
   const isFormValid = () => {
+    const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
     return (
-      data.teaserVideo &&
+      teaserVideos.length > 0 &&
       data.contentVideo &&
       data.contentData.title.trim() &&
       data.contentData.category &&
@@ -472,7 +492,7 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
       </div>
 
       {/* Upload Progress Modal */}
-      <Dialog open={showProgressModal} onOpenChange={() => {}}>
+      <Dialog open={showProgressModal} onOpenChange={() => { }}>
         <DialogContent className="bg-gray-900 border-gray-700 text-white max-w-md">
           <DialogHeader>
             <DialogTitle>
