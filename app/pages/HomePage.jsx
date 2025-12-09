@@ -49,9 +49,13 @@ const HomePage = () => {
         const response = await fetch('/api/user/continue-watching', {
           method: 'GET',
           credentials: 'include',
+
         });
         
+
         const data = await response.json();
+        console.log("Continue watching response:", data);
+        console.log("Continue watching data:", data);
         if (data.status && data.result && Array.isArray(data.result)) {
           // Transform API response to match VideoCard format
           const transformedVideos = data.result.map((item) => {
