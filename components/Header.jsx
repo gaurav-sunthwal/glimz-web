@@ -73,13 +73,10 @@ export const Header = () => {
         setLoading(true);
 
         // First check if session is incomplete via API (since cookies might be HttpOnly)
-        const sessionCheck = await fetch(
-          "http://api.glimznow.com/api/auth/check-session",
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
+        const sessionCheck = await fetch("/api/auth/check-session", {
+          method: "GET",
+          credentials: "include",
+        });
         const sessionData = await sessionCheck.json();
 
         // Check if auth_token and uuid exist but is_creator cookie is missing
