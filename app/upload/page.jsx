@@ -59,10 +59,10 @@ export default function UploadPage() {
   useEffect(() => {
     const checkAccess = async () => {
       console.log("🔍 [Upload Page] Checking access...");
-      
+
       try {
         setIsLoading(true);
-        
+
         // First check if session is incomplete via API (since cookies might be HttpOnly)
         const sessionCheck = await fetch('/api/auth/check-session', {
           method: 'GET',
@@ -70,7 +70,7 @@ export default function UploadPage() {
         });
         const sessionData = await sessionCheck.json();
         console.log("🔍 [Upload Page] Session check:", sessionData);
-        
+
         // Check if auth_token and uuid exist but is_creator cookie is missing
         if (sessionData.isIncompleteSession) {
           // Show toast first
@@ -79,7 +79,7 @@ export default function UploadPage() {
             description: "Your session is incomplete. Please login again.",
             variant: "destructive",
           });
-          
+
           // Clear all cookies via API (including HttpOnly cookies)
           try {
             await fetch('/api/auth/logout', {
@@ -89,28 +89,28 @@ export default function UploadPage() {
           } catch (error) {
             console.error("Error clearing session:", error);
           }
-          
+
           // Also clear client-side cookies as fallback
           document.cookie = 'auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           document.cookie = 'uuid=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
           document.cookie = 'is_creator=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-          
+
           router.push("/auth");
           return;
         }
-        
+
         // Check is_creator cookie to determine which endpoint to call (same as Header.jsx)
-        const cookies = typeof document !== 'undefined' 
+        const cookies = typeof document !== 'undefined'
           ? document.cookie.split('; ').reduce((acc, cookie) => {
-              const [key, value] = cookie.split('=');
-              acc[key] = decodeURIComponent(value);
-              return acc;
-            }, {})
+            const [key, value] = cookie.split('=');
+            acc[key] = decodeURIComponent(value);
+            return acc;
+          }, {})
           : {};
-        
+
         const isCreatorCookie = cookies['is_creator'];
         console.log("🔍 [Upload Page] is_creator cookie value:", isCreatorCookie);
-        
+
         let endpoint;
         if (isCreatorCookie === '1') {
           endpoint = '/api/auth/get-creator-detail';
@@ -126,22 +126,22 @@ export default function UploadPage() {
         // Make direct API call to verify authentication (same method as Header.jsx)
         const resp = await fetch(endpoint, { method: 'GET', credentials: 'include' });
         const response = await resp.json();
-        
+
         console.log("🔍 [Upload Page] API response status:", resp.status);
         console.log("🔍 [Upload Page] API response data:", response);
-        
+
         // Check if response indicates authentication error (401 Unauthorized or status: false)
         const isAuthError = (!resp.ok && resp.status === 401) || !response || !response.status;
-        
+
         if (!isAuthError && response && response.status) {
           // User is authenticated
           setIsAuth(true);
           setIsCreator(isCreatorCookie === '1');
           setIsLoading(false);
-          
+
           console.log("✅ [Upload Page] User is authenticated");
           console.log("✅ [Upload Page] Creator status:", isCreatorCookie === '1');
-          
+
           // If is_creator = 0, user is a viewer, redirect to home
           if (isCreatorCookie === '0') {
             console.log("❌ [Upload Page] User is a viewer (is_creator=0) - redirecting to /");
@@ -180,17 +180,17 @@ export default function UploadPage() {
     setContentData((prev) => {
       const newData = updates.contentData
         ? {
-            ...prev,
-            ...updates,
-            contentData: {
-              ...prev.contentData,
-              ...updates.contentData,
-            },
-          }
+          ...prev,
+          ...updates,
+          contentData: {
+            ...prev.contentData,
+            ...updates.contentData,
+          },
+        }
         : {
-            ...prev,
-            ...updates,
-          };
+          ...prev,
+          ...updates,
+        };
       console.log("🔄 [Upload Page] Previous data:", prev);
       console.log("🔄 [Upload Page] New data:", newData);
       return newData;
@@ -262,7 +262,7 @@ export default function UploadPage() {
         </div>
       );
     }
-    
+
     // If we get here, show access denied message
     return (
       <div className="min-h-screen bg-background">
@@ -353,20 +353,19 @@ export default function UploadPage() {
               Cancel
             </Button>
           </div>
-          
+
           {/* Progress Steps */}
           <div className="flex items-center gap-2 mb-8">
             {STEP_NAMES.map((name, index) => (
               <div key={index} className="flex items-center flex-1">
                 <div className="flex items-center">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] max-w-[2.5rem] max-h-[2.5rem] rounded-full border-2 transition-all shrink-0 ${
-                      index === currentStep
+                    className={`flex items-center justify-center w-10 h-10 min-w-[2.5rem] min-h-[2.5rem] max-w-[2.5rem] max-h-[2.5rem] rounded-full border-2 transition-all shrink-0 ${index === currentStep
                         ? "border-glimz-primary bg-glimz-primary text-white"
                         : index < currentStep
-                        ? "border-green-500 bg-green-500 text-white"
-                        : "border-gray-600 text-gray-400"
-                    }`}
+                          ? "border-green-500 bg-green-500 text-white"
+                          : "border-gray-600 text-gray-400"
+                      }`}
                   >
                     {index < currentStep ? (
                       <svg
@@ -387,22 +386,20 @@ export default function UploadPage() {
                     )}
                   </div>
                   <span
-                    className={`ml-2 text-sm font-medium whitespace-nowrap ${
-                      index === currentStep
+                    className={`ml-2 text-sm font-medium whitespace-nowrap ${index === currentStep
                         ? "text-white"
                         : index < currentStep
-                        ? "text-green-400"
-                        : "text-gray-400"
-                    }`}
+                          ? "text-green-400"
+                          : "text-gray-400"
+                      }`}
                   >
                     {name}
                   </span>
                 </div>
                 {index < STEP_NAMES.length - 1 && (
                   <div
-                    className={`h-0.5 flex-1 mx-2 ${
-                      index < currentStep ? "bg-green-500" : "bg-gray-600"
-                    }`}
+                    className={`h-0.5 flex-1 mx-2 ${index < currentStep ? "bg-green-500" : "bg-gray-600"
+                      }`}
                   />
                 )}
               </div>

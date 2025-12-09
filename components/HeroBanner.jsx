@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react';
-import { Play, Info, Volume2, VolumeX } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Play, Info, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
@@ -16,6 +16,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
   const [cachedVideos, setCachedVideos] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const router = useRouter();
+  const swiperRef = useRef(null);
 
   // Session Storage & Data Management
   useEffect(() => {
@@ -71,11 +72,12 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
       className="relative w-full overflow-hidden h-[60vh] xs:h-[65vh] sm:h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] min-h-[340px] sm:min-h-[400px] md:min-h-[480px] lg:min-h-[520px]"
     >
       <Swiper
+        ref={swiperRef}
         modules={[Autoplay, Pagination, Navigation, EffectFade, Keyboard]}
         effect="fade"
         speed={800}
         autoplay={{
-          delay: 8000,
+          delay: 5000,
           disableOnInteraction: false,
           pauseOnMouseEnter: true,
         }}
@@ -92,7 +94,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
         className="hero-swiper h-full w-full"
       >
         {videoList.map((videoItem, index) => (
-          <SwiperSlide key={videoItem.id || index} autoplay={{ delay: 4000 }} navigator={true} pagination={true}>
+          <SwiperSlide key={videoItem.id || index}>
             {/* Background Image with Parallax */}
             <div className="absolute inset-0 overflow-hidden">
               {!imageLoaded[index] && (
@@ -277,6 +279,75 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
           </SwiperSlide>
         ))}
       </Swiper>
+
+      {/* Navigation Buttons */}
+      {videoList.length > 1 && (
+        <>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (swiperRef.current && swiperRef.current.swiper) {
+                swiperRef.current.swiper.slidePrev();
+              }
+            }}
+            className="
+              absolute
+              left-4 sm:left-6 md:left-8 lg:left-3
+              top-1/2
+              -translate-y-1/2
+              z-20
+              p-2 sm:p-3 md:p-4
+              rounded-full
+              bg-white/10
+              backdrop-blur-sm
+              border border-white/30
+              hover:bg-white/20
+              hover:border-white/50
+              transition-all duration-300
+              group
+              flex items-center justify-center
+              cursor-pointer
+            "
+            aria-label="Previous slide"
+            type="button"
+          >
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-white group-hover:scale-110 transition-transform" />
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (swiperRef.current && swiperRef.current.swiper) {
+                swiperRef.current.swiper.slideNext();
+              }
+            }}
+            className="
+              absolute
+              right-4 sm:right-6 md:right-8 lg:right-3
+              top-1/2
+              -translate-y-1/2
+              z-20
+              p-2 sm:p-3 md:p-4
+              rounded-full
+              bg-white/10
+              backdrop-blur-sm
+              border border-white/30
+              hover:bg-white/20
+              hover:border-white/50
+              transition-all duration-300
+              group
+              flex items-center justify-center
+              cursor-pointer
+            "
+            aria-label="Next slide"
+            type="button"
+          >
+            <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 text-white group-hover:scale-110 transition-transform" />
+          </button>
+        </>
+      )}
 
       {/* Custom Swiper Styles */}
       <style dangerouslySetInnerHTML={{
