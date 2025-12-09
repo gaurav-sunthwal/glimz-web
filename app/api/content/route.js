@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://api.glimznow.com/api";
 
 export async function GET(request) {
   try {
     // Get UUID and auth token from cookies (optional for trending content)
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
@@ -24,7 +25,7 @@ export async function GET(request) {
     const headers = {
       "Content-Type": "application/json",
     };
-    
+
     // Add auth headers only if they exist (for trending content, auth is not required)
     if (uuid) {
       headers["uuid"] = uuid;
@@ -36,17 +37,17 @@ export async function GET(request) {
     // Call external API
     let response;
     const apiUrl = `${API_BASE_URL}/content?${queryParams.toString()}`;
-    console.log('[Content API] Calling:', apiUrl);
-    console.log('[Content API] Headers:', headers);
-    
+    console.log("[Content API] Calling:", apiUrl);
+    console.log("[Content API] Headers:", headers);
+
     try {
       response = await fetch(apiUrl, {
         method: "GET",
         headers: headers,
       });
-      
-      console.log('[Content API] Response status:', response.status);
-      console.log('[Content API] Response ok:', response.ok);
+
+      console.log("[Content API] Response status:", response.status);
+      console.log("[Content API] Response ok:", response.ok);
     } catch (fetchError) {
       console.error("[Content API] Fetch error:", fetchError);
       return NextResponse.json(
@@ -66,7 +67,7 @@ export async function GET(request) {
       let errorData;
       try {
         errorData = await response.json();
-        console.error('[Content API] Error response:', errorData);
+        console.error("[Content API] Error response:", errorData);
       } catch {
         errorData = {
           status: false,
@@ -98,4 +99,3 @@ export async function GET(request) {
     );
   }
 }
-
