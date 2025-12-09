@@ -5,6 +5,7 @@ import { Play, Heart, Clock, ThumbsUp, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { WishlistDialog } from "./WishlistDialog";
+import Image from "next/image";
 
 export const VideoCard = ({
   video,
@@ -20,9 +21,9 @@ export const VideoCard = ({
   const [showWishlistDialog, setShowWishlistDialog] = useState(false);
 
   const sizeClasses = {
-    small: "w-96 h-56",
-    medium: "w-96 h-56",
-    large: "w-96 h-56",
+    small: "w-96 aspect-video",
+    medium: "w-96 aspect-video",
+    large: "w-96 aspect-video",
   };
 
   const handleImageLoad = () => {
@@ -38,7 +39,7 @@ export const VideoCard = ({
     if (!num && num !== 0) return "";
     const number = typeof num === "string" ? parseFloat(num.replace(/[^0-9.]/g, "")) : num;
     if (isNaN(number)) return num;
-    
+
     if (number >= 1000000) {
       return `${(number / 1000000).toFixed(1)}M`;
     } else if (number >= 1000) {
@@ -67,21 +68,21 @@ export const VideoCard = ({
         )}
 
         {/* Thumbnail Image */}
-        <img
+        <Image
           src={video.thumbnail}
           alt={video.title}
-          className={`w-full h-full object-cover transition-all duration-300 ${
-            imageLoaded ? "opacity-100" : "opacity-0"
-          } ${isHovered ? "scale-110" : "scale-100"}`}
+          width={500}
+          height={500}
+          className={`w-full h-full object-cover object-top transition-all duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"
+            } ${isHovered ? "scale-110" : "scale-100"}`}
           onLoad={handleImageLoad}
           loading="lazy"
         />
 
         {/* Dark Overlay */}
         <div
-          className={`absolute inset-0 transition-all duration-300 ${
-            isHovered ? "bg-black/60" : "bg-black/30"
-          }`}
+          className={`absolute inset-0 transition-all duration-300 ${isHovered ? "bg-black/60" : "bg-black/30"
+            }`}
         />
 
         {/* Duration Badge */}
@@ -113,9 +114,8 @@ export const VideoCard = ({
 
         {/* Play Button Overlay */}
         <div
-          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 pointer-events-none ${
-            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75"
-          }`}
+          className={`absolute inset-0 flex items-center justify-center transition-all duration-300 pointer-events-none ${isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75"
+            }`}
         >
           <Button
             onClick={(e) => {
@@ -210,13 +210,11 @@ export const VideoCard = ({
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                className={`p-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 hover:bg-white/25 transition-all duration-200 relative z-50 ${
-                  isInWatchlist
-                    ? "text-red-400 bg-red-400/20 border-red-400/30"
-                    : "text-white hover:text-red-400"
-                } ${
-                  isHovered ? "opacity-100 scale-100" : "opacity-70 scale-90"
-                }`}
+                className={`p-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 hover:bg-white/25 transition-all duration-200 relative z-50 ${isInWatchlist
+                  ? "text-red-400 bg-red-400/20 border-red-400/30"
+                  : "text-white hover:text-red-400"
+                  } ${isHovered ? "opacity-100 scale-100" : "opacity-70 scale-90"
+                  }`}
               >
                 <Heart
                   className={`h-4 w-4 ${isInWatchlist ? "fill-current" : ""}`}
@@ -227,9 +225,8 @@ export const VideoCard = ({
 
           {/* Description - Show on hover with smooth transition */}
           <div
-            className={`overflow-hidden transition-all duration-300 ${
-              isHovered ? "max-h-16 opacity-100 mt-2" : "max-h-0 opacity-0"
-            }`}
+            className={`overflow-hidden transition-all duration-300 ${isHovered ? "max-h-16 opacity-100 mt-2" : "max-h-0 opacity-0"
+              }`}
           >
             {video.description && (
               <p className="text-white/90 text-xs line-clamp-3 leading-relaxed">
