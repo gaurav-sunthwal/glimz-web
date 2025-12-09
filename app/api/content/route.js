@@ -35,19 +35,27 @@ export async function GET(request) {
 
     // Call external API
     let response;
+    const apiUrl = `${API_BASE_URL}/content?${queryParams.toString()}`;
+    console.log('[Content API] Calling:', apiUrl);
+    console.log('[Content API] Headers:', headers);
+    
     try {
-      response = await fetch(`${API_BASE_URL}/content?${queryParams.toString()}`, {
+      response = await fetch(apiUrl, {
         method: "GET",
         headers: headers,
       });
+      
+      console.log('[Content API] Response status:', response.status);
+      console.log('[Content API] Response ok:', response.ok);
     } catch (fetchError) {
-      console.error("Error calling content API:", fetchError);
+      console.error("[Content API] Fetch error:", fetchError);
       return NextResponse.json(
         {
           status: false,
           code: 503,
           message: "Failed to connect to content service",
           error: fetchError.message,
+          apiUrl: apiUrl,
         },
         { status: 503 }
       );
@@ -58,12 +66,14 @@ export async function GET(request) {
       let errorData;
       try {
         errorData = await response.json();
+        console.error('[Content API] Error response:', errorData);
       } catch {
         errorData = {
           status: false,
           code: response.status,
           message: "Failed to fetch content",
           error: "Could not read error response",
+          apiUrl: apiUrl,
         };
       }
 
