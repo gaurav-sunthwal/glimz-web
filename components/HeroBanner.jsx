@@ -114,7 +114,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
                   priority={index === 0}
                   sizes="100vw"
                   className={`
-                    object-cover object-top transition-opacity duration-700 w-full h-full
+                    aspect-[16/9] object-contain object-top transition-opacity duration-700 w-full h-full
                     ${imageLoaded[index] ? 'opacity-100' : 'opacity-0'}
                   `}
                   onLoad={() => handleImageLoad(index)}

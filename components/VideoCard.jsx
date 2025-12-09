@@ -95,7 +95,7 @@ export const VideoCard = ({
           alt={video.title}
           width={500}
           height={500}
-          className={`w-full h-full object-cover object-top transition-all duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"
+          className={` aspect-[16/9] object-contain object-top transition-all duration-300 ${imageLoaded ? "opacity-100" : "opacity-0"
             } ${isHovered ? "scale-110" : "scale-100"}`}
           onLoad={handleImageLoad}
           loading="lazy"
