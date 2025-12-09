@@ -1,29 +1,29 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { Play, Info, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Info, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay, Pagination, Navigation, EffectFade, Keyboard } from 'swiper/modules';
 
 export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState({});
   const [isMuted, setIsMuted] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [scrollY, setScrollY] = useState(0);
   const [cachedVideos, setCachedVideos] = useState([]);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const router = useRouter();
 
   // Session Storage & Data Management
   useEffect(() => {
-    // Save to session storage when videos are available
     if (videos && videos.length > 0) {
       sessionStorage.setItem('hero_videos', JSON.stringify(videos));
     }
   }, [videos]);
 
-  // Load from session storage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const cached = sessionStorage.getItem('hero_videos');
@@ -37,48 +37,9 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
     }
   }, []);
 
-  // Priority: videos prop > cachedVideos > video prop
   const resolvedVideos = (videos && videos.length > 0) ? videos : (cachedVideos.length > 0 ? cachedVideos : (video ? [video] : []));
   const videoList = resolvedVideos;
-  const currentVideo = videoList[currentIndex];
-
-  useEffect(() => {
-    setImageLoaded(false);
-    console.log("Video details:", videoList);
-    if (resolvedVideos && resolvedVideos.length > 0) {
-      if (currentIndex >= resolvedVideos.length) {
-        setCurrentIndex(0);
-      }
-    }
-  }, [resolvedVideos.length, video?.id, currentIndex]); // Added currentIndex to dep array as per previous logic, but actually we only reset on length change usually. 
-  // Wait, original logic was:
-  /*
-    useEffect(() => {
-      setImageLoaded(false);
-      console.log("Video details:", videoList);
-      if (videos && videos.length > 0) {
-        setCurrentIndex(0);
-      }
-    }, [videos?.length, video?.id]);
-  */
-  // I should be careful not to reset index on every render.
-  // The original logic reset index when videos.length CHANGED.
-
-  // Refined useEffect for index reset:
-  useEffect(() => {
-    if (resolvedVideos && resolvedVideos.length > 0) {
-      // Only reset if we are out of bounds or if it's a fresh load of DIFFERENT videos
-      // For simplicity, let's stick to bounds check.
-      if (currentIndex >= resolvedVideos.length) {
-        setCurrentIndex(0);
-      }
-    }
-  }, [resolvedVideos.length]);
-
-  // Effect to reset imageLoaded when index changes
-  useEffect(() => {
-    setImageLoaded(false);
-  }, [currentIndex]);
+  const currentVideo = videoList[currentSlide] || videoList[0];
 
   // Parallax Effect
   useEffect(() => {
@@ -92,32 +53,10 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Auto-rotate through videos if multiple videos provided
-  useEffect(() => {
-    if (videoList.length <= 1) return;
-    if (!imageLoaded) return; // Don't auto-rotate if still loading
-
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % videoList.length);
-    }, 8000); // Change video every 8 seconds
-
-    return () => clearInterval(interval);
-  }, [videoList.length, imageLoaded]);
-
-  const handlePrevious = () => {
-    if (!imageLoaded) return;
-    setCurrentIndex((prev) => (prev - 1 + videoList.length) % videoList.length);
-  };
-
-  const handleNext = () => {
-    if (!imageLoaded) return;
-    setCurrentIndex((prev) => (prev + 1) % videoList.length);
-  };
-
   if (!currentVideo) return null;
 
-  const handleImageLoad = () => {
-    setImageLoaded(true);
+  const handleImageLoad = (index) => {
+    setImageLoaded(prev => ({ ...prev, [index]: true }));
   };
 
   const getHeroSrc = (v) => {
@@ -129,297 +68,335 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
 
   return (
     <section
-      className="
-        relative
-        w-full
-        overflow-hidden
-        h-[60vh] xs:h-[65vh] sm:h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh]
-        min-h-[340px] sm:min-h-[400px] md:min-h-[480px] lg:min-h-[520px]
-        flex flex-col
-      "
+      className="relative w-full overflow-hidden h-[60vh] xs:h-[65vh] sm:h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] min-h-[340px] sm:min-h-[400px] md:min-h-[480px] lg:min-h-[520px]"
     >
-      {/* Background Image with Parallax */}
-      <div className="absolute inset-0 overflow-hidden">
-        {!imageLoaded && (
-          <div className="absolute inset-0 bg-background-secondary animate-pulse" />
-        )}
-        <div
-          className="relative w-full h-[120%] -top-[10%]"
-          style={{
-            transform: `translateY(${scrollY * 0.4}px)`,
-            willChange: 'transform'
-          }}
-        >
-          <NextImage
-            key={currentVideo.id}
-            src={getHeroSrc(currentVideo)}
-            alt={currentVideo.title}
-            fill
-            priority={true} // Priority Loading
-            sizes="100vw"
-            className={`
-              object-cover transition-opacity duration-700 w-full h-full
-              ${imageLoaded ? 'opacity-100' : 'opacity-0'}
-            `}
-            onLoad={handleImageLoad} // Fixed: onLoadingComplete -> onLoad
-            onError={() => setImageLoaded(true)}
-            draggable={false}
-            unoptimized
-          />
-        </div>
-
-        {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-      </div>
-
-      {/* Content */}
-      <div
-        className="
-          relative z-10
-          w-full
-          h-full
-          flex items-center
-          px-3 xs:px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24
-          max-w-full
-        "
+      <Swiper
+        modules={[Autoplay, Pagination, Navigation, EffectFade, Keyboard]}
+        effect="fade"
+        speed={800}
+        autoplay={{
+          delay: 8000,
+          disableOnInteraction: false,
+          pauseOnMouseEnter: true,
+        }}
+        pagination={{
+          clickable: true,
+          dynamicBullets: false,
+        }}
+        navigation={videoList.length > 1}
+        keyboard={{
+          enabled: true,
+        }}
+        loop={videoList.length > 1}
+        onSlideChange={(swiper) => setCurrentSlide(swiper.realIndex)}
+        className="hero-swiper h-full w-full"
       >
-        <div
-          className="
-            w-full
-            max-w-full
-            sm:max-w-2xl
-            md:max-w-3xl
-            lg:max-w-4xl
-            xl:max-w-5xl
-            space-y-3 xs:space-y-4 sm:space-y-6
-            bg-black/0
-          "
-        >
-          {/* Title */}
-          <div className="space-y-1 xs:space-y-2 sm:space-y-3">
-            <h1
+        {videoList.map((videoItem, index) => (
+          <SwiperSlide key={videoItem.id || index} autoplay={{ delay: 4000 }} navigator={true} pagination={true}>
+            {/* Background Image with Parallax */}
+            <div className="absolute inset-0 overflow-hidden">
+              {!imageLoaded[index] && (
+                <div className="absolute inset-0 bg-background-secondary animate-pulse" />
+              )}
+              <div
+                className="relative w-full h-[120%] -top-[10%]"
+                style={{
+                  transform: `translateY(${scrollY * 0.4}px)`,
+                  willChange: 'transform'
+                }}
+              >
+                <NextImage
+                  src={getHeroSrc(videoItem)}
+                  alt={videoItem.title}
+                  fill
+                  priority={index === 0}
+                  sizes="100vw"
+                  className={`
+                    object-cover object-top transition-opacity duration-700 w-full h-full
+                    ${imageLoaded[index] ? 'opacity-100' : 'opacity-0'}
+                  `}
+                  onLoad={() => handleImageLoad(index)}
+                  onError={() => handleImageLoad(index)}
+                  draggable={false}
+                  unoptimized
+                />
+              </div>
+
+              {/* Gradient Overlays */}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            </div>
+
+            {/* Content */}
+            <div
               className="
-                text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl
-                font-bold text-white leading-tight
-                break-words
+                relative z-10
+                w-full
+                h-full
+                flex items-center
+                px-3 xs:px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24
                 max-w-full
               "
-              style={{ wordBreak: 'break-word' }}
             >
-              {currentVideo.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-1 xs:gap-2 sm:gap-3 md:gap-4 text-white/80">
-              <span className="text-sm xs:text-base sm:text-lg font-medium">{currentVideo.releaseYear}</span>
-              {currentVideo.rating && (
-                <span className="px-2 py-1 bg-white/20 rounded text-xs xs:text-sm font-medium">
-                  {currentVideo.rating}
-                </span>
-              )}
-              {currentVideo.duration && currentVideo.duration !== 'N/A' && (
-                <span className="text-sm xs:text-base sm:text-lg">{currentVideo.duration}</span>
-              )}
-              {currentVideo.genre && currentVideo.genre.length > 0 && (
-                <div className="flex gap-1 xs:gap-2">
-                  {currentVideo.genre.slice(0, 2).map((genre) => (
-                    <span key={genre} className="genre-tag text-xs xs:text-sm">
-                      {genre}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="max-w-full sm:max-w-xl md:max-w-2xl">
-            <p
-              className={`
-                text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
-                text-white/90 leading-relaxed
-                break-words
-              `}
-              style={{ wordBreak: 'break-word' }}
-            >
-              {(() => {
-                const full = currentVideo.description || '';
-                const short = currentVideo.shortDescription || (full.length > 120 ? full.slice(0, 120) + '...' : full);
-                return descExpanded ? full : short;
-              })()}
-            </p>
-
-            {(currentVideo.description && (currentVideo.shortDescription || currentVideo.description.length > 220)) && (
-              <button
-                onClick={() => setDescExpanded((s) => !s)}
-                className="mt-2 text-sm text-white/80 underline underline-offset-2"
-                aria-expanded={descExpanded}
+              <div
+                className="
+                  w-full
+                  max-w-full
+                  sm:max-w-2xl
+                  md:max-w-3xl
+                  lg:max-w-4xl
+                  xl:max-w-5xl
+                  space-y-3 xs:space-y-4 sm:space-y-6
+                "
               >
-                {descExpanded ? 'Show less' : 'Read more'}
-              </button>
-            )}
-          </div>
+                {/* Title */}
+                <div className="space-y-1 xs:space-y-2 sm:space-y-3">
+                  <h1
+                    className="
+                      text-2xl xs:text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl
+                      font-bold text-white leading-tight
+                      break-words
+                      max-w-full
+                    "
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {videoItem.title}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-1 xs:gap-2 sm:gap-3 md:gap-4 text-white/80">
+                    <span className="text-sm xs:text-base sm:text-lg font-medium">{videoItem.releaseYear}</span>
+                    {videoItem.rating && (
+                      <span className="px-2 py-1 bg-white/20 rounded text-xs xs:text-sm font-medium">
+                        {videoItem.rating}
+                      </span>
+                    )}
+                    {videoItem.duration && videoItem.duration !== 'N/A' && (
+                      <span className="text-sm xs:text-base sm:text-lg">{videoItem.duration}</span>
+                    )}
+                    {videoItem.genre && videoItem.genre.length > 0 && (
+                      <div className="flex gap-1 xs:gap-2">
+                        {videoItem.genre.slice(0, 2).map((genre) => (
+                          <span key={genre} className="genre-tag text-xs xs:text-sm">
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-          {/* Action Buttons - in one row always */}
-          <div className="flex flex-row items-center gap-2 xs:gap-3 sm:gap-4 w-full">
-            <Button
-              onClick={() => router.push(`/video/${currentVideo.id}`)}
-              className="
-                btn-glimz-primary
-                text-xs xs:text-sm sm:text-base
-                px-3 xs:px-4 sm:px-5
-                py-2
-                shadow-glow
-                flex items-center justify-center
-                min-w-[110px]
-              "
-            >
-              <Play className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 mr-2 fill-current" />
-              Watch Now
-            </Button>
+                {/* Description */}
+                <div className="max-w-full sm:max-w-xl md:max-w-2xl">
+                  <p
+                    className={`
+                      text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
+                      text-white/90 leading-relaxed
+                      break-words
+                    `}
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {(() => {
+                      const full = videoItem.description || '';
+                      const short = videoItem.shortDescription || (full.length > 120 ? full.slice(0, 120) + '...' : full);
+                      return descExpanded ? full : short;
+                    })()}
+                  </p>
 
-            <Button
-              onClick={() => onMoreInfo?.(currentVideo.id)}
-              className="
-                btn-glimz-secondary
-                text-xs xs:text-sm sm:text-base
-                px-3 xs:px-4 sm:px-5
-                py-2
-                flex items-center justify-center
-                min-w-[110px]
-              "
-            >
-              <Info className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 mr-2" />
-              More Info
-            </Button>
-          </div>
+                  {(videoItem.description && (videoItem.shortDescription || videoItem.description.length > 220)) && (
+                    <button
+                      onClick={() => setDescExpanded((s) => !s)}
+                      className="mt-2 text-sm text-white/80 underline underline-offset-2"
+                      aria-expanded={descExpanded}
+                    >
+                      {descExpanded ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </div>
 
-          {/* Audio Control */}
-          <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsMuted(!isMuted)}
-              className="
-                p-2 xs:p-2.5 sm:p-3
-                rounded-full
-                bg-white/10
-                backdrop-blur-sm
-                border border-white/20
-                hover:bg-white/20
-                flex items-center justify-center
-              "
-            >
-              {isMuted ? (
-                <VolumeX className="h-4 w-4 xs:h-5 xs:w-5 text-white" />
-              ) : (
-                <Volume2 className="h-4 w-4 xs:h-5 xs:w-5 text-white" />
-              )}
-            </Button>
-            <span className="text-white/60 text-xs xs:text-sm">
-              {isMuted ? 'Unmute' : 'Mute'}
-            </span>
-          </div>
-        </div>
-      </div>
+                {/* Action Buttons */}
+                <div className="flex flex-row items-center gap-2 xs:gap-3 sm:gap-4 w-full">
+                  <Button
+                    onClick={() => router.push(`/video/${videoItem.id}`)}
+                    className="
+                      btn-glimz-primary
+                      text-xs xs:text-sm sm:text-base
+                      px-3 xs:px-4 sm:px-5
+                      py-2
+                      shadow-glow
+                      flex items-center justify-center
+                      min-w-[110px]
+                    "
+                  >
+                    <Play className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 mr-2 fill-current" />
+                    Watch Now
+                  </Button>
 
-      {/* Navigation Arrows - Only show if multiple videos */}
-      {videoList.length > 1 && (
-        <>
-          <Button
-            onClick={handlePrevious}
-            disabled={!imageLoaded}
-            variant="ghost"
-            size="sm"
-            className="
-              absolute
-              left-2 xs:left-4 sm:left-6 md:left-10
-              top-1/2
-              transform -translate-y-1/2
-              z-30
-              p-2 xs:p-2.5 sm:p-3
-              rounded-full
-              bg-white/10
-              backdrop-blur-sm
-              border border-white/20
-              hover:bg-white/20
-              flex items-center justify-center
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-          >
-            <ChevronLeft className="h-5 w-5 xs:h-6 xs:w-6 sm:h-7 sm:w-7 text-white" />
-          </Button>
-          <Button
-            onClick={handleNext}
-            disabled={!imageLoaded}
-            variant="ghost"
-            size="sm"
-            className="
-              absolute
-              right-2 xs:right-4 sm:right-6 md:right-10
-              top-1/2
-              transform -translate-y-1/2
-              z-30
-              p-2 xs:p-2.5 sm:p-3
-              rounded-full
-              bg-white/10
-              backdrop-blur-sm
-              border border-white/20
-              hover:bg-white/20
-              flex items-center justify-center
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
-          >
-            <ChevronRight className="h-5 w-5 xs:h-6 xs:w-6 sm:h-7 sm:w-7 text-white" />
-          </Button>
+                  <Button
+                    onClick={() => onMoreInfo?.(videoItem.id)}
+                    className="
+                      btn-glimz-secondary
+                      text-xs xs:text-sm sm:text-base
+                      px-3 xs:px-4 sm:px-5
+                      py-2
+                      flex items-center justify-center
+                      min-w-[110px]
+                    "
+                  >
+                    <Info className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 mr-2" />
+                    More Info
+                  </Button>
+                </div>
 
-          {/* Video Indicators */}
-          <div className="
-            absolute
-            bottom-4 xs:bottom-6 sm:bottom-8
-            left-1/2
-            transform -translate-x-1/2
-            z-30
-            flex gap-2
-          ">
-            {videoList.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => {
-                  if (imageLoaded) setCurrentIndex(index);
-                }}
-                disabled={!imageLoaded}
-                className={`
-                  w-2 h-2 xs:w-2.5 xs:h-2.5 sm:w-3 sm:h-3
-                  rounded-full
-                  transition-all duration-300
-                  ${index === currentIndex
-                    ? 'bg-white w-6 xs:w-8 sm:w-10'
-                    : 'bg-white/40 hover:bg-white/60'
-                  }
-                  ${!imageLoaded ? 'cursor-not-allowed opacity-50' : ''}
-                `}
-                aria-label={`Go to video ${index + 1}`}
-              />
-            ))}
-          </div>
-        </>
-      )}
+                {/* Audio Control */}
+                <div className="flex items-center gap-2 xs:gap-3 sm:gap-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMuted(!isMuted)}
+                    className="
+                      p-2 xs:p-2.5 sm:p-3
+                      rounded-full
+                      bg-white/10
+                      backdrop-blur-sm
+                      border border-white/20
+                      hover:bg-white/20
+                      flex items-center justify-center
+                    "
+                  >
+                    {isMuted ? (
+                      <VolumeX className="h-4 w-4 xs:h-5 xs:w-5 text-white" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 xs:h-5 xs:w-5 text-white" />
+                    )}
+                  </Button>
+                  <span className="text-white/60 text-xs xs:text-sm">
+                    {isMuted ? 'Unmute' : 'Mute'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
 
-      {/* Scroll Indicator - Only show if single video */}
-      {videoList.length === 1 && (
-        <div className="
-          absolute
-          bottom-2 xs:bottom-4 sm:bottom-8
-          left-1/2
-          transform -translate-x-1/2
-          animate-bounce
-          z-20
-        ">
-          <div className="w-4 h-7 xs:w-5 xs:h-8 sm:w-6 sm:h-10 border-2 border-white/40 rounded-full flex justify-center">
-            <div className="w-0.5 xs:w-1 h-2 xs:h-2.5 sm:h-3 bg-white/60 rounded-full mt-1 xs:mt-1.5 sm:mt-2 animate-pulse" />
-          </div>
-        </div>
-      )}
+      {/* Custom Swiper Styles */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        /* Swiper Base Styles */
+        .swiper {
+          margin-left: auto;
+          margin-right: auto;
+          position: relative;
+          overflow: hidden;
+          list-style: none;
+          padding: 0;
+          z-index: 1;
+        }
+
+        .swiper-wrapper {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          z-index: 1;
+          display: flex;
+          transition-property: transform;
+          box-sizing: content-box;
+        }
+
+        .swiper-slide {
+          flex-shrink: 0;
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transition-property: transform;
+        }
+
+        .swiper-fade .swiper-slide {
+          pointer-events: none;
+          transition-property: opacity;
+        }
+
+        .swiper-fade .swiper-slide-active {
+          pointer-events: auto;
+        }
+
+        /* Hero Swiper Specific */
+        .hero-swiper {
+          width: 100%;
+          height: 100%;
+        }
+
+        .hero-swiper .swiper-pagination {
+          bottom: 2rem !important;
+        }
+
+        .hero-swiper .swiper-pagination-bullet {
+          width: 12px;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.4);
+          opacity: 1;
+          transition: all 0.3s ease;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .hero-swiper .swiper-pagination-bullet-active {
+          width: 40px;
+          border-radius: 6px;
+          background: rgba(255, 255, 255, 0.95);
+          border-color: rgba(255, 255, 255, 0.6);
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .hero-swiper .swiper-button-next,
+        .hero-swiper .swiper-button-prev {
+          width: 50px;
+          height: 50px;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border-radius: 50%;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          transition: all 0.3s ease;
+        }
+
+        .hero-swiper .swiper-button-next:hover,
+        .hero-swiper .swiper-button-prev:hover {
+          background: rgba(255, 255, 255, 0.25);
+          border-color: rgba(255, 255, 255, 0.4);
+          transform: scale(1.1);
+        }
+
+        .hero-swiper .swiper-button-next::after,
+        .hero-swiper .swiper-button-prev::after {
+          font-size: 20px;
+          color: white;
+          font-weight: bold;
+        }
+
+        @media (max-width: 640px) {
+          .hero-swiper .swiper-button-next,
+          .hero-swiper .swiper-button-prev {
+            width: 40px;
+            height: 40px;
+          }
+
+          .hero-swiper .swiper-button-next::after,
+          .hero-swiper .swiper-button-prev::after {
+            font-size: 16px;
+          }
+
+          .hero-swiper .swiper-pagination {
+            bottom: 1rem !important;
+          }
+
+          .hero-swiper .swiper-pagination-bullet {
+            width: 8px;
+            height: 8px;
+          }
+
+          .hero-swiper .swiper-pagination-bullet-active {
+            width: 24px;
+          }
+        }
+      `}} />
     </section>
   );
 };
