@@ -1,68 +1,75 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Header } from '@/components/Header';
-import { HeroBanner } from '@/components/HeroBanner';
-import { HeroBannerSkeleton } from '@/components/HeroBannerSkeleton';
-import { VideoCarousel } from '@/components/VideoCarousel';
-import { VideoCarouselSkeleton } from '@/components/VideoCarouselSkeleton';
-import { VideoDetails } from '../pages/VideoDetails';
-import { Search } from '../pages/Search';
-import { useAppStore } from '../store/appStore';
-import videosData from '@/data/videos.json'
-import { getVideoWithPlaceholders } from '../utils/updateVideoData';
-import { useIsMobile } from '../hooks/use-Mobile';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Header } from "@/components/Header";
+import { HeroBanner } from "@/components/HeroBanner";
+import { HeroBannerSkeleton } from "@/components/HeroBannerSkeleton";
+import { VideoCarousel } from "@/components/VideoCarousel";
+import { VideoCarouselSkeleton } from "@/components/VideoCarouselSkeleton";
+import { VideoDetails } from "../pages/VideoDetails";
+import { Search } from "../pages/Search";
+import { useAppStore } from "../store/appStore";
+import videosData from "@/data/videos.json";
+import { getVideoWithPlaceholders } from "../utils/updateVideoData";
+import { useIsMobile } from "../hooks/use-Mobile";
 
 const HomePage = () => {
   const router = useRouter();
-  const { 
-    currentPage, 
-    watchlist, 
-    addToWatchlist, 
-    removeFromWatchlist, 
-    setCurrentPage 
+  const {
+    currentPage,
+    watchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    setCurrentPage,
   } = useAppStore();
-  
+
   const [currentVideoId, setCurrentVideoId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [continueWatching, setContinueWatching] = useState([]);
-  const [isLoadingContinueWatching, setIsLoadingContinueWatching] = useState(true);
+  const [isLoadingContinueWatching, setIsLoadingContinueWatching] =
+    useState(true);
   const [purchasedContent, setPurchasedContent] = useState([]);
-  const [isLoadingPurchasedContent, setIsLoadingPurchasedContent] = useState(true);
+  const [isLoadingPurchasedContent, setIsLoadingPurchasedContent] =
+    useState(true);
   const [trendingContent, setTrendingContent] = useState([]);
   const [isLoadingTrending, setIsLoadingTrending] = useState(true);
   const [trendingBannerVideos, setTrendingBannerVideos] = useState([]);
   const [isLoadingBannerVideos, setIsLoadingBannerVideos] = useState(true);
-  const isMobile =  useIsMobile();
+  const isMobile = useIsMobile();
   // Get videos with consistent placeholder images
   const videos = getVideoWithPlaceholders();
-  
+
   // Get featured video for hero banner (fallback)
-  const featuredVideo = videos.find(v => v.featured) || videos[0];
+  const featuredVideo = videos.find((v) => v.featured) || videos[0];
 
   // Fetch continue watching data
   useEffect(() => {
     const fetchContinueWatching = async () => {
       try {
         setIsLoadingContinueWatching(true);
-        const response = await fetch('/api/user/continue-watching', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/user/continue-watching`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
         const data = await response.json();
         if (data.status && data.result && Array.isArray(data.result)) {
           // Transform API response to match VideoCard format
           const transformedVideos = data.result.map((item) => {
             // Handle nested content properties (they come as "content.title", "content.thumbnail", etc.)
-            const contentTitle = item['content.title'] || item.title;
-            const contentThumbnail = item['content.thumbnail'];
-            const thumbnailUrl = contentThumbnail?.url || contentThumbnail || '';
-            const contentVideo = item['content.video'];
-            const contentTeaser = item['content.teaser'];
-            const contentCreatedAt = item['content.created_at'] || item.created_at;
-            
+            const contentTitle = item["content.title"] || item.title;
+            const contentThumbnail = item["content.thumbnail"];
+            const thumbnailUrl =
+              contentThumbnail?.url || contentThumbnail || "";
+            const contentVideo = item["content.video"];
+            const contentTeaser = item["content.teaser"];
+            const contentCreatedAt =
+              item["content.created_at"] || item.created_at;
+
             return {
               id: item.content_id,
               title: contentTitle,
@@ -79,9 +86,13 @@ const HomePage = () => {
               is_paid: item.is_paid,
               price: item.price,
               // Add default values for VideoCard
-              description: `Continue watching from ${Math.round(item.percentage_watched || 0)}%`,
+              description: `Continue watching from ${Math.round(
+                item.percentage_watched || 0
+              )}%`,
               genre: [],
-              releaseYear: contentCreatedAt ? new Date(contentCreatedAt).getFullYear() : new Date().getFullYear(),
+              releaseYear: contentCreatedAt
+                ? new Date(contentCreatedAt).getFullYear()
+                : new Date().getFullYear(),
               rating: null,
               views: null,
               likes: null,
@@ -89,13 +100,13 @@ const HomePage = () => {
               isContinueWatching: true, // Flag to identify continue watching items
             };
           });
-          
+
           setContinueWatching(transformedVideos);
         } else {
           setContinueWatching([]);
         }
       } catch (error) {
-        console.error('Error fetching continue watching:', error);
+        console.error("Error fetching continue watching:", error);
         setContinueWatching([]);
       } finally {
         setIsLoadingContinueWatching(false);
@@ -110,52 +121,59 @@ const HomePage = () => {
     const fetchPurchasedContent = async () => {
       try {
         setIsLoadingPurchasedContent(true);
-        const response = await fetch('/api/user/purchased-content', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/user/purchased-content`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
         const data = await response.json();
-        
+
         if (data.status && data.data && Array.isArray(data.data)) {
           // Flatten subscriptions from all data items
           const allSubscriptions = [];
-          
+
           data.data.forEach((item) => {
             if (item.subscriptions && Array.isArray(item.subscriptions)) {
               allSubscriptions.push(...item.subscriptions);
             }
           });
-          
+
           if (allSubscriptions.length > 0) {
             // Transform API response to match VideoCard format
             const transformedVideos = allSubscriptions.map((subscription) => {
-              const thumbnailUrl = subscription.thumbnail?.url || subscription.thumbnail || '';
-              
+              const thumbnailUrl =
+                subscription.thumbnail?.url || subscription.thumbnail || "";
+
               return {
                 id: subscription.content_id,
-                title: subscription.title || 'Purchased Content',
+                title: subscription.title || "Purchased Content",
                 thumbnail: thumbnailUrl,
                 video: subscription.video,
                 teaser: subscription.teaser,
-                description: subscription.description || 'Your purchased content',
+                description:
+                  subscription.description || "Your purchased content",
                 playlist_id: subscription.playlist_id,
                 subscription_id: subscription.subscription_id,
                 subscription_on: subscription.subscription_on,
                 subscription_till: subscription.subscription_till,
                 // Add default values for VideoCard
                 genre: [],
-                releaseYear: subscription.subscription_on ? new Date(subscription.subscription_on).getFullYear() : new Date().getFullYear(),
+                releaseYear: subscription.subscription_on
+                  ? new Date(subscription.subscription_on).getFullYear()
+                  : new Date().getFullYear(),
                 rating: null,
                 views: null,
                 likes: null,
                 isLive: false,
                 is_paid: true,
                 isPurchased: true, // Flag to identify purchased content
-                duration: 'N/A', // Duration not provided in subscription data
+                duration: "N/A", // Duration not provided in subscription data
               };
             });
-            
+
             setPurchasedContent(transformedVideos);
           } else {
             setPurchasedContent([]);
@@ -164,7 +182,7 @@ const HomePage = () => {
           setPurchasedContent([]);
         }
       } catch (error) {
-        console.error('Error fetching purchased content:', error);
+        console.error("Error fetching purchased content:", error);
         setPurchasedContent([]);
       } finally {
         setIsLoadingPurchasedContent(false);
@@ -179,26 +197,29 @@ const HomePage = () => {
     const fetchTrendingBannerContent = async () => {
       try {
         setIsLoadingBannerVideos(true);
-        const response = await fetch('/api/content?page=1&limit=5', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/content?page=1&limit=5`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
         const data = await response.json();
-        
+
         if (data.status && data.data && Array.isArray(data.data)) {
           // Transform API response to match HeroBanner format
           const transformedVideos = data.data.slice(0, 5).map((item) => {
-            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || '';
-            
+            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || "";
+
             return {
               id: item.content_id,
-              title: item.title || 'Untitled',
+              title: item.title || "Untitled",
               thumbnail: thumbnailUrl,
               heroImage: thumbnailUrl, // Use thumbnail as hero image
               video: item.video,
               teaser: item.teaser,
-              description: item.description || '',
+              description: item.description || "",
               creator_id: item.creator_id,
               creator_name: item.creator_name,
               username: item.username,
@@ -211,21 +232,23 @@ const HomePage = () => {
               created_at: item.created_at,
               // Add default values for HeroBanner
               genre: [],
-              releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
+              releaseYear: item.created_at
+                ? new Date(item.created_at).getFullYear()
+                : new Date().getFullYear(),
               rating: null,
               views: item.views_count ? `${item.views_count} views` : null,
               likes: item.likes_count ? `${item.likes_count} likes` : null,
               isLive: false,
-              duration: 'N/A', // Duration not provided in API response
+              duration: "N/A", // Duration not provided in API response
             };
           });
-          
+
           setTrendingBannerVideos(transformedVideos);
         } else {
           setTrendingBannerVideos([]);
         }
       } catch (error) {
-        console.error('Error fetching trending banner content:', error);
+        console.error("Error fetching trending banner content:", error);
         setTrendingBannerVideos([]);
       } finally {
         setIsLoadingBannerVideos(false);
@@ -240,25 +263,28 @@ const HomePage = () => {
     const fetchTrendingContent = async () => {
       try {
         setIsLoadingTrending(true);
-        const response = await fetch('/api/content?page=1&limit=20', {
-          method: 'GET',
-          credentials: 'include',
-        });
-        
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/content?page=1&limit=20`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
+
         const data = await response.json();
-        
+
         if (data.status && data.data && Array.isArray(data.data)) {
           // Transform API response to match VideoCard format
           const transformedVideos = data.data.map((item) => {
-            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || '';
-            
+            const thumbnailUrl = item.thumbnail?.url || item.thumbnail || "";
+
             return {
               id: item.content_id,
-              title: item.title || 'Untitled',
+              title: item.title || "Untitled",
               thumbnail: thumbnailUrl,
               video: item.video,
               teaser: item.teaser,
-              description: item.description || '',
+              description: item.description || "",
               creator_id: item.creator_id,
               creator_name: item.creator_name,
               username: item.username,
@@ -271,21 +297,23 @@ const HomePage = () => {
               created_at: item.created_at,
               // Add default values for VideoCard
               genre: [],
-              releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
+              releaseYear: item.created_at
+                ? new Date(item.created_at).getFullYear()
+                : new Date().getFullYear(),
               rating: null,
               views: item.views_count ? `${item.views_count} views` : null,
               likes: item.likes_count ? `${item.likes_count} likes` : null,
               isLive: false,
-              duration: 'N/A', // Duration not provided in API response
+              duration: "N/A", // Duration not provided in API response
             };
           });
-          
+
           setTrendingContent(transformedVideos);
         } else {
           setTrendingContent([]);
         }
       } catch (error) {
-        console.error('Error fetching trending content:', error);
+        console.error("Error fetching trending content:", error);
         setTrendingContent([]);
       } finally {
         setIsLoadingTrending(false);
@@ -297,15 +325,17 @@ const HomePage = () => {
 
   // Helper function to format duration
   const formatDuration = (seconds) => {
-    if (!seconds) return 'N/A';
+    if (!seconds) return "N/A";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
+        .toString()
+        .padStart(2, "0")}`;
     }
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    return `${minutes}:${secs.toString().padStart(2, "0")}`;
   };
 
   const handleNavigation = (page) => {
@@ -315,14 +345,14 @@ const HomePage = () => {
 
   const handleSearch = (query) => {
     setSearchQuery(query);
-    setCurrentPage('/search');
+    setCurrentPage("/search");
   };
 
   const handlePlayVideo = (videoId) => {
     // In a real app, this would open a video player
     // For now, just navigate to video details
     setCurrentVideoId(videoId);
-    setCurrentPage('/video');
+    setCurrentPage("/video");
   };
 
   const handleViewDetails = (videoId) => {
@@ -339,22 +369,20 @@ const HomePage = () => {
   };
 
   // Render different pages based on current route
-  if (currentPage === '/video' && currentVideoId) {
+  if (currentPage === "/video" && currentVideoId) {
     return (
       <VideoDetails
         videoId={currentVideoId}
-        onBack={() => setCurrentPage('/')}
+        onBack={() => setCurrentPage("/")}
         onPlay={handlePlayVideo}
       />
     );
   }
 
- 
-
-  if (currentPage === '/search') {
+  if (currentPage === "/search") {
     return (
       <Search
-        onBack={() => setCurrentPage('/')}
+        onBack={() => setCurrentPage("/")}
         onPlay={handlePlayVideo}
         onViewDetails={handleViewDetails}
         initialQuery={searchQuery}
@@ -363,15 +391,12 @@ const HomePage = () => {
   }
 
   // Mobile: Show explore page as home, Desktop/Tablet: Show normal home page
- 
 
   // Desktop/Tablet: Normal home page
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <Header 
-        onSearch={handleSearch}
-      />
+      <Header onSearch={handleSearch} />
 
       {/* Hero Banner */}
       {isLoadingBannerVideos ? (
@@ -394,59 +419,65 @@ const HomePage = () => {
       <div className="relative z-10 ">
         {/* Trending Now Section */}
         {isLoadingTrending ? (
-          <VideoCarouselSkeleton 
+          <VideoCarouselSkeleton
             title="Trending Now"
             size={isMobile ? "medium" : "large"}
           />
-        ) : trendingContent.length > 0 && (
-          <VideoCarousel
-            key="Trending Now"
-            title="Trending Now"
-            videos={trendingContent}
-            onPlay={handlePlayVideo}
-            onAddToList={handleWatchlistToggle}
-            onViewDetails={handleViewDetails}
-            watchlist={watchlist}
-            size={isMobile ? "medium" : "large"}
-          />
+        ) : (
+          trendingContent.length > 0 && (
+            <VideoCarousel
+              key="Trending Now"
+              title="Trending Now"
+              videos={trendingContent}
+              onPlay={handlePlayVideo}
+              onAddToList={handleWatchlistToggle}
+              onViewDetails={handleViewDetails}
+              watchlist={watchlist}
+              size={isMobile ? "medium" : "large"}
+            />
+          )
         )}
 
         {/* Continue Watching Section */}
         {isLoadingContinueWatching ? (
-          <VideoCarouselSkeleton 
+          <VideoCarouselSkeleton
             title="Continue Watching"
             size={isMobile ? "medium" : "large"}
           />
-        ) : continueWatching.length > 0 && (
-          <VideoCarousel
-            key="Continue Watching"
-            title="Continue Watching"
-            videos={continueWatching}
-            onPlay={handlePlayVideo}
-            onAddToList={handleWatchlistToggle}
-            onViewDetails={handleViewDetails}
-            watchlist={watchlist}
-            size={isMobile ? "medium" : "large"}
-          />
+        ) : (
+          continueWatching.length > 0 && (
+            <VideoCarousel
+              key="Continue Watching"
+              title="Continue Watching"
+              videos={continueWatching}
+              onPlay={handlePlayVideo}
+              onAddToList={handleWatchlistToggle}
+              onViewDetails={handleViewDetails}
+              watchlist={watchlist}
+              size={isMobile ? "medium" : "large"}
+            />
+          )
         )}
 
         {/* Purchased Content Section */}
         {isLoadingPurchasedContent ? (
-          <VideoCarouselSkeleton 
+          <VideoCarouselSkeleton
             title="Purchased Content"
             size={isMobile ? "medium" : "large"}
           />
-        ) : purchasedContent.length > 0 && (
-          <VideoCarousel
-            key="Purchased Content"
-            title="Purchased Content"
-            videos={purchasedContent}
-            onPlay={handlePlayVideo}
-            onAddToList={handleWatchlistToggle}
-            onViewDetails={handleViewDetails}
-            watchlist={watchlist}
-            size={isMobile ? "medium" : "large"}
-          />
+        ) : (
+          purchasedContent.length > 0 && (
+            <VideoCarousel
+              key="Purchased Content"
+              title="Purchased Content"
+              videos={purchasedContent}
+              onPlay={handlePlayVideo}
+              onAddToList={handleWatchlistToggle}
+              onViewDetails={handleViewDetails}
+              watchlist={watchlist}
+              size={isMobile ? "medium" : "large"}
+            />
+          )
         )}
       </div>
 

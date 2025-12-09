@@ -15,7 +15,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {
@@ -48,7 +48,8 @@
     "app/pages/ExplorePage.jsx",
     "components/VideoCard.jsx",
     "app/pages/MobilePage.jsx",
-    "app/auth/page.jsx"
+    "app/auth/page.jsx",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
