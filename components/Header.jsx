@@ -83,8 +83,8 @@ export const Header = () => {
         if (sessionData.isIncompleteSession) {
           // Show toast first
           toast({
-            title: "Session Incomplete",
-            description: "Your session is incomplete. Please login again.",
+            title: "Session Expired",
+            description: "You have been logged out of your account",
             variant: "destructive",
           });
 

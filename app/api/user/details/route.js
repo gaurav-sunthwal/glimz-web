@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://api.glimznow.com/api";
 
 // Helper function to try both endpoints as fallback
 async function tryBothEndpoints(uuid, auth_token) {
@@ -15,8 +16,8 @@ async function tryBothEndpoints(uuid, auth_token) {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "uuid": uuid,
-        "auth_token": auth_token,
+        uuid: uuid,
+        auth_token: auth_token,
       },
     });
 
@@ -41,17 +42,22 @@ async function tryBothEndpoints(uuid, auth_token) {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "uuid": uuid,
-        "auth_token": auth_token,
+        uuid: uuid,
+        auth_token: auth_token,
       },
     });
 
     if (response.ok) {
       data = await response.json();
-      if (data && data.status && (data.creatorDetail || data.CreatorDetail || data.ViewerDetail)) {
+      if (
+        data &&
+        data.status &&
+        (data.creatorDetail || data.CreatorDetail || data.ViewerDetail)
+      ) {
         return NextResponse.json({
           status: true,
-          ViewerDetail: data.creatorDetail || data.CreatorDetail || data.ViewerDetail,
+          ViewerDetail:
+            data.creatorDetail || data.CreatorDetail || data.ViewerDetail,
           isCreator: true,
         });
       }
@@ -75,7 +81,7 @@ async function tryBothEndpoints(uuid, auth_token) {
 export async function GET() {
   try {
     // Get UUID, auth token, and is_creator status from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
     const is_creator_cookie = cookieStore.get("is_creator")?.value;
@@ -110,11 +116,16 @@ export async function GET() {
     }
 
     // Determine which endpoint to use based on is_creator status
-    const isCreator = is_creator_cookie === '1';
-    const isUser = is_creator_cookie === '0';
-    const isNull = is_creator_cookie === 'null' || !is_creator_cookie;
+    const isCreator = is_creator_cookie === "1";
+    const isUser = is_creator_cookie === "0";
+    const isNull = is_creator_cookie === "null" || !is_creator_cookie;
 
-    console.log("User type determination:", { isCreator, isUser, isNull, is_creator_cookie });
+    console.log("User type determination:", {
+      isCreator,
+      isUser,
+      isNull,
+      is_creator_cookie,
+    });
 
     let response;
     let data;
@@ -125,16 +136,18 @@ export async function GET() {
     if (isCreator) {
       // User is a creator, fetch from creator endpoint
       apiEndpoint = `${API_BASE_URL}/creator/getDetail`;
-      userType = 'creator';
+      userType = "creator";
       console.log("✅ User is CREATOR - will fetch from creator endpoint");
     } else if (isUser) {
       // User is a regular user, fetch from viewer endpoint
       apiEndpoint = `${API_BASE_URL}/viewer/getDetail`;
-      userType = 'user';
+      userType = "user";
       console.log("✅ User is REGULAR USER - will fetch from viewer endpoint");
     } else if (isNull) {
       // User hasn't completed signup, needs profile setup
-      console.log("❌ User needs to complete profile setup - is_creator is null");
+      console.log(
+        "❌ User needs to complete profile setup - is_creator is null"
+      );
       return NextResponse.json(
         {
           status: false,
@@ -161,8 +174,8 @@ export async function GET() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "uuid": uuid,
-          "auth_token": auth_token,
+          uuid: uuid,
+          auth_token: auth_token,
         },
       });
 
@@ -170,7 +183,8 @@ export async function GET() {
         data = await response.json();
 
         // Check if we got valid user details
-        const userDetail = data?.creatorDetail || data?.CreatorDetail || data?.ViewerDetail;
+        const userDetail =
+          data?.creatorDetail || data?.CreatorDetail || data?.ViewerDetail;
         if (data && data.status && userDetail) {
           return NextResponse.json({
             status: true,
@@ -181,12 +195,19 @@ export async function GET() {
 
         // If API says not registered, user needs to complete profile
         const messageText = (data?.message || "").toLowerCase();
-        if (data?.status && !userDetail && messageText.includes('not registered')) {
-          return NextResponse.json({
-            status: false,
-            needsProfileSetup: true,
-            preferredType: userType,
-          }, { status: 404 });
+        if (
+          data?.status &&
+          !userDetail &&
+          messageText.includes("not registered")
+        ) {
+          return NextResponse.json(
+            {
+              status: false,
+              needsProfileSetup: true,
+              preferredType: userType,
+            },
+            { status: 404 }
+          );
         }
       }
     } catch (error) {
@@ -196,7 +217,6 @@ export async function GET() {
     // If the determined endpoint failed, try the fallback approach
     console.log(`${userType} endpoint failed, trying fallback approach`);
     return await tryBothEndpoints(uuid, auth_token);
-
   } catch (error) {
     // Log the actual error for debugging
     console.error("Error in GET /api/user/details:", error);
