@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimzno
 
 export async function POST(request) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
     const is_creator = cookieStore.get("is_creator")?.value;

@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimzno
 export async function GET() {
   try {
     // Get UUID and auth token from cookies
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 

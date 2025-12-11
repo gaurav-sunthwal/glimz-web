@@ -1,36 +1,7 @@
 "use client";
 import Image from "next/image";
 import React from "react";
-
-// Placeholder SVGs for social and store icons
-const FacebookIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-    className="text-zinc-400 hover:text-white transition-colors"
-  >
-    <path
-      d="M17 2.05A10 10 0 1 0 12 22V14.89h-2.13V12h2.13v-2.2c0-2.1 1.26-3.26 3.18-3.26.92 0 1.88.16 1.88.16v2.07h-1.06c-1.05 0-1.38.65-1.38 1.32V12h2.35l-.38 2.89h-1.97V22A10 10 0 0 0 17 2.05Z"
-      fill="currentColor"
-    />
-  </svg>
-);
-const XIcon = () => (
-  <svg
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-    className="text-zinc-400 hover:text-white transition-colors"
-  >
-    <path
-      d="M17.53 3H21l-7.19 8.19L22 21h-6.56l-5.19-6.19L3.47 21H0l7.81-8.89L2 3h6.56l4.81 5.74L17.53 3Zm-1.13 15.5h1.81l-5.19-6.19-1.81-2.16-5.19 6.19h1.81l3.38-4.03 3.38 4.03Z"
-      fill="currentColor"
-    />
-  </svg>
-);
+import { Facebook, Twitter, Check } from "lucide-react";
 const GooglePlayIcon = () => (
   <Image
     src="/img/googleplay.png"
@@ -63,13 +34,8 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Company</h3>
             <ul className="space-y-2 text-zinc-400 text-base">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  About Us
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Careers
+                <a href="/TnC/privacy-policy" className="hover:text-white transition-colors">
+                  Privacy Policy
                 </a>
               </li>
             </ul>
@@ -78,7 +44,7 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-4">View Website in</h3>
             <div className="flex items-center gap-2 text-zinc-400 text-base">
-              <span className="text-xl">✔</span>
+              <Check className="h-5 w-5 text-green-500" />
               <span>English</span>
             </div>
           </div>
@@ -87,13 +53,28 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Need Help?</h3>
             <ul className="space-y-2 text-zinc-400 text-base">
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Visit Help Center
+                <a href="/TnC/content-creator-agreement" className="hover:text-white transition-colors">
+                  Content Creator Agreement
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-white transition-colors">
-                  Share Feedback
+                <a href="/TnC/content-creator-privacy-policy" className="hover:text-white transition-colors">
+                  Creator Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a href="/TnC/content-creator-terms" className="hover:text-white transition-colors">
+                  Creator Terms
+                </a>
+              </li>
+              <li>
+                <a href="/TnC/content-guidelines" className="hover:text-white transition-colors">
+                  Content Guidelines
+                </a>
+              </li>
+              <li>
+                <a href="/TnC/user-agreement" className="hover:text-white transition-colors">
+                  User Agreement
                 </a>
               </li>
             </ul>
@@ -103,10 +84,10 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-4">Connect with Us</h3>
             <div className="flex items-center gap-6 mb-4">
               <a href="#" aria-label="Facebook">
-                <FacebookIcon />
+                <Facebook className="h-6 w-6 text-zinc-400 hover:text-white transition-colors" />
               </a>
               <a href="#" aria-label="X">
-                <XIcon />
+                <Twitter className="h-6 w-6 text-zinc-400 hover:text-white transition-colors" />
               </a>
             </div>
             <div className="flex items-center gap-4">
@@ -123,14 +104,14 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-6 gap-4">
           <div className="flex flex-wrap items-center gap-4 text-zinc-400 text-sm">
             <span>© {year} STAR. All Rights Reserved.</span>
-            <a href="#" className="hover:text-white transition-colors">
-              Terms Of Use
+            <a href="/TnC/content-takedown-policy" className="hover:text-white transition-colors">
+              Takedown Policy
             </a>
-            <a href="#" className="hover:text-white transition-colors">
-              Privacy Policy
+            <a href="/TnC/complaint-policy-and-procedure" className="hover:text-white transition-colors">
+              Complaint Policy
             </a>
-            <a href="#" className="hover:text-white transition-colors">
-              FAQ
+            <a href="/TnC/cookie-policy" className="hover:text-white transition-colors">
+              Cookie Policy
             </a>
           </div>
         </div>

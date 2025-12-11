@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatDuration } from "@/app/utils/formatDuration";
 
 
 export default function WatchHistoryPage() {
@@ -49,7 +50,7 @@ export default function WatchHistoryPage() {
 
       const data = await response.json();
       console.log("📺 Fetched watch history:", data);
-      
+
       if (data.status && data.result) {
         setWatchHistory(data.result || []);
       } else {
@@ -130,11 +131,7 @@ export default function WatchHistoryPage() {
     }
   }, [itemToDelete, toast]);
 
-  const formatDuration = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -215,9 +212,9 @@ export default function WatchHistoryPage() {
                   <img
                     src={item.thumbnail?.url || "/placeholder.svg"}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
-                  
+
                   {/* Progress Bar */}
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/50">
                     <div

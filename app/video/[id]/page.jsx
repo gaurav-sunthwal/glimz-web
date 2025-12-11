@@ -12,12 +12,13 @@ export default function VideoDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const videoId = params.id;
-  
+
   const { watchlist, addToWatchlist, removeFromWatchlist } = useAppStore();
   const [video, setVideo] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWishlistDialog, setShowWishlistDialog] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   useEffect(() => {
     const fetchVideoDetails = async () => {
@@ -27,12 +28,12 @@ export default function VideoDetailsPage() {
           method: 'GET',
           credentials: 'include',
         });
-        
+
         const data = await response.json();
-        
+
         if (data.status && data.data?.data) {
           const contentData = data.data.data;
-          
+
           // Transform API response to match component expectations
           const transformedVideo = {
             id: contentData.content_id,
@@ -61,15 +62,15 @@ export default function VideoDetailsPage() {
             likes: contentData.likes_count ? `${contentData.likes_count} likes` : '0 likes',
             isLive: false,
           };
-          
+
           setVideo(transformedVideo);
-          
+
           // Fetch recommended videos (trending content)
           const recommendedResponse = await fetch('/api/content?page=1&limit=12', {
             method: 'GET',
             credentials: 'include',
           });
-          
+
           const recommendedData = await recommendedResponse.json();
           if (recommendedData.status && recommendedData.data && Array.isArray(recommendedData.data)) {
             const recommended = recommendedData.data
@@ -88,7 +89,7 @@ export default function VideoDetailsPage() {
                 duration: 'N/A',
                 isLive: false,
               }));
-            
+
             setRecommendedVideos(recommended);
           }
         }
@@ -182,7 +183,7 @@ export default function VideoDetailsPage() {
           <img
             src={video.heroImage}
             alt={video.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain "
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
         </div>
@@ -193,7 +194,7 @@ export default function VideoDetailsPage() {
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
               {video.title}
             </h1>
-            
+
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 text-white/80">
               <div className="flex items-center gap-1">
                 <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -215,9 +216,28 @@ export default function VideoDetailsPage() {
               </div>
             </div>
 
-            <p className="text-base sm:text-lg md:text-xl text-white/90 leading-relaxed">
-              {video.description}
-            </p>
+            {/* Description with Read More/Less */}
+            <div className="space-y-2">
+              <p className="text-base sm:text-lg md:text-xl text-white/90 leading-relaxed">
+                {video.description && video.description.length > 150 ? (
+                  <>
+                    {isDescriptionExpanded
+                      ? video.description
+                      : `${video.description.substring(0, 150)}...`}
+                  </>
+                ) : (
+                  video.description
+                )}
+              </p>
+              {video.description && video.description.length > 150 && (
+                <button
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  className="text-sm sm:text-base text-glimz-primary hover:text-glimz-primary/80 font-medium transition-colors"
+                >
+                  {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                </button>
+              )}
+            </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
@@ -228,7 +248,7 @@ export default function VideoDetailsPage() {
                 <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2 fill-current" />
                 Watch Now
               </Button>
-              
+
               <Button
                 onClick={handleWatchlistToggle}
                 variant="ghost"

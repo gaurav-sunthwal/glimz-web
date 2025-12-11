@@ -13,6 +13,7 @@ import { useAppStore } from "../store/appStore";
 import videosData from "@/data/videos.json";
 import { getVideoWithPlaceholders } from "../utils/updateVideoData";
 import { useIsMobile } from "../hooks/use-Mobile";
+import { formatDuration } from "../utils/formatDuration";
 
 const HomePage = () => {
   const router = useRouter();
@@ -80,6 +81,7 @@ const HomePage = () => {
               duration_watched: item.duration_watched,
               total_duration: item.total_duration,
               progress_percentage: item.percentage_watched,
+              watchedPercentage: item.percentage_watched, // For progress bar display
               last_watched_at: item.last_watched_at,
               is_completed: item.is_completed,
               is_paid: item.is_paid,
@@ -312,21 +314,6 @@ const HomePage = () => {
 
     fetchTrendingContent();
   }, []);
-
-  // Helper function to format duration
-  const formatDuration = (seconds) => {
-    if (!seconds) return "N/A";
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, "0")}:${secs
-        .toString()
-        .padStart(2, "0")}`;
-    }
-    return `${minutes}:${secs.toString().padStart(2, "0")}`;
-  };
 
   const handleNavigation = (page) => {
     setCurrentPage(page);
