@@ -5,7 +5,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimzno
 
 export async function PUT(request, { params }) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
@@ -68,7 +68,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
     const auth_token = cookieStore.get("auth_token")?.value;
 
@@ -109,7 +109,9 @@ export async function DELETE(request, { params }) {
         error: error.message,
       },
       { status: 500 }
+
     );
+
   }
 }
 

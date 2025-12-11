@@ -23,6 +23,7 @@ import {
   User,
   Video,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -84,7 +85,7 @@ export default function AuthPage() {
           credentials: 'include',
         });
         const data = await response.json();
-        
+
         // Check if auth_token and uuid exist but is_creator cookie is missing
         if (data.isIncompleteSession) {
           // Show toast first
@@ -93,7 +94,7 @@ export default function AuthPage() {
             description: "Your session is incomplete. Please login again.",
             variant: "destructive",
           });
-          
+
           // Clear all cookies via API (including HttpOnly cookies)
           try {
             await fetch('/api/auth/logout', {
@@ -103,14 +104,14 @@ export default function AuthPage() {
           } catch (error) {
             console.error("Error clearing session:", error);
           }
-          
+
           // Also clear client-side cookies as fallback
           clearAllCookies();
-          
+
           // Stay on auth page to allow user to login
           return;
         }
-        
+
         // Check if user is authenticated (has both auth_token and uuid)
         if (data.hasAuthToken && data.hasUuid && data.hasIsCreator) {
           // User is authenticated, redirect to home or redirect URL
@@ -129,7 +130,7 @@ export default function AuthPage() {
         }
       }
     };
-    
+
     checkSession();
   }, [router, searchParams]);
 
@@ -671,65 +672,59 @@ export default function AuthPage() {
 
   // Step 1: Mobile Entry
   const renderMobileStep = () => (
-    <div className="flex flex-col items-center space-y-8 w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col items-center space-y-2">
-        <div className="p-4 rounded-full bg-primary/10 mb-2">
-          <Phone className="h-8 w-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold text-center">Get Started</h2>
-        <p className="text-center text-muted-foreground text-sm">
-          Enter your phone number to continue
+    <div className="flex flex-col items-center space-y-8 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col items-center space-y-6">
+        <h2 className="text-3xl font-bold text-white text-center">
+          Welcome Back to <br/> <span className="bg-clip-text text-transparent whitespace-nowrap" style={{ backgroundImage: "linear-gradient(90deg, #201067, #B3073A)" }}>Glimz Now</span> 👋
+        </h2>
+        <p className="text-center text-white/80 text-base">
+          Let&apos;s get you back to learning amazing things at Glimz.
         </p>
       </div>
 
-      <div className="w-full space-y-4">
-        <div className="flex w-full rounded-xl border-2 border-input bg-background overflow-hidden shadow-sm hover:border-primary/50 transition-colors">
-          <div className="px-5 py-4 border-r border-input flex items-center bg-muted/50">
-            <span className="text-lg font-semibold text-foreground">+91</span>
-          </div>
-          <Input
-            type="tel"
-            value={mobileNumber}
-            onChange={(e) =>
-              setMobileNumber(e.target.value.replace(/\D/g, "").slice(0, 10))
-            }
-            placeholder="Enter Mobile Number"
-            className="border-0 rounded-none focus-visible:ring-0 text-lg h-14"
-            maxLength={10}
-          />
-        </div>
+      <div className="w-full space-y-5">
+        <Input
+          type="tel"
+          value={mobileNumber}
+          onChange={(e) =>
+            setMobileNumber(e.target.value.replace(/\D/g, "").slice(0, 10))
+          }
+          placeholder="Enter your phone number"
+          className="w-full h-14 px-5 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-full focus:bg-white/15 focus:border-white/30 transition-all"
+          maxLength={10}
+        />
 
         <Button
           onClick={handleMobileSubmit}
           disabled={mobileNumber.length < 10 || authLoading}
-          className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+          className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white border-0 backdrop-blur-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           {authLoading ? (
             <span className="flex items-center gap-2">
-              <span className="animate-spin">⏳</span>
+              <Loader2 className="h-4 w-4 animate-spin" />
               Sending...
             </span>
           ) : (
-            "Continue"
+            "Send OTP"
           )}
         </Button>
       </div>
 
-      <div className="text-center space-y-3 pt-4">
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Shield className="h-4 w-4" />
-          <span>Your personal details are safe with us</span>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          By continuing, you agree to our{" "}
+      <div className="text-center space-y-3 pt-2">
+        <p className="text-sm text-white/60">
+          We&apos;ll never share your number with anyone else*.
+        </p>
+        <p className="text-xs text-white/50">
+          By continuing, you agree to Glimz&apos;s{" "}
           <Link
             href="https://www.glimznow.com/TnC/privacy-policy"
             target="_blank"
-            className="text-primary underline hover:text-primary/80 transition-colors"
+            className="text-white/80 underline hover:text-white transition-colors"
           >
-            Privacy Policy
+            Terms & Privacy Policy
           </Link>
+          .
         </p>
       </div>
     </div>
@@ -738,22 +733,21 @@ export default function AuthPage() {
   // Step 2: OTP Verification
   const renderOtpStep = () => (
     <div className="flex flex-col items-center space-y-8 w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col items-center space-y-2">
-        <div className="p-4 rounded-full bg-primary/10 mb-2">
-          <Phone className="h-8 w-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold text-center">Verify Your Number</h2>
-        <p className="text-center text-muted-foreground text-sm">
+      <div className="flex flex-col items-center space-y-4">
+        <h2 className="text-3xl font-bold text-white text-center">
+          Verify Your Number
+        </h2>
+        <p className="text-center text-white/80 text-base">
           We&apos;ve sent a 4-digit code to
         </p>
-        <p className="text-center font-semibold text-lg">+91 {mobileNumber}</p>
+        <p className="text-center font-semibold text-xl text-white">+91 {mobileNumber}</p>
         <Button
           variant="ghost"
           onClick={() => {
             setStep("mobile");
             setCountdown(0);
           }}
-          className="text-sm text-primary hover:text-primary/80"
+          className="text-sm text-white/80 hover:text-white hover:bg-white/10"
         >
           Change number
         </Button>
@@ -771,21 +765,21 @@ export default function AuthPage() {
               value={otp[index]}
               onChange={(e) => handleOtpChange(e.target.value, index)}
               onKeyDown={(e) => handleOtpKeyDown(e, index)}
-              className="w-16 h-16 text-center text-3xl font-bold border-2 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-16 h-16 text-center text-2xl font-bold bg-white/10 backdrop-blur-sm border-white/20 text-white focus:bg-white/15 focus:border-white/30 rounded-xl transition-all"
               autoFocus={index === 0}
             />
           ))}
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-white/60">
             Didn&apos;t receive the code?
           </p>
           <Button
             variant="ghost"
             onClick={handleResendOtp}
             disabled={authLoading || countdown > 0}
-            className="text-primary hover:text-primary/80 hover:bg-primary/10 disabled:opacity-50"
+            className="text-white/80 hover:text-white hover:bg-white/10 disabled:opacity-50"
           >
             {authLoading ? (
               <span className="flex items-center gap-2">
@@ -806,9 +800,9 @@ export default function AuthPage() {
   // Step 3: Role Selection
   const renderRoleSelectionStep = () => (
     <div className="flex flex-col items-center space-y-8 w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col items-center space-y-2">
-        <h2 className="text-2xl font-bold text-center">Choose Your Role</h2>
-        <p className="text-center text-muted-foreground text-sm">
+      <div className="flex flex-col items-center space-y-4">
+        <h2 className="text-3xl font-bold text-white text-center">Choose Your Role</h2>
+        <p className="text-center text-white/80 text-base">
           Select how you want to experience Glimz
         </p>
       </div>
@@ -816,70 +810,62 @@ export default function AuthPage() {
       <div className="grid grid-cols-2 gap-4 w-full">
         <button
           onClick={() => setUserType("creator")}
-          className={`relative flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 ${
-            userType === "creator"
-              ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
-              : "border-input hover:border-primary/50 bg-background"
-          }`}
+          className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 ${userType === "creator"
+            ? "border-white/40 bg-white/15 shadow-lg shadow-white/10"
+            : "border-white/20 hover:border-white/30 bg-white/5"
+            }`}
         >
           {userType === "creator" && (
-            <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
+            <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-white" />
           )}
           <div
-            className={`p-3 rounded-full mb-3 ${
-              userType === "creator" ? "bg-primary/20" : "bg-muted"
-            }`}
+            className={`p-3 rounded-full mb-3 ${userType === "creator" ? "bg-white/20" : "bg-white/10"
+              }`}
           >
             <Video
-              className={`h-6 w-6 ${
-                userType === "creator"
-                  ? "text-primary"
-                  : "text-muted-foreground"
-              }`}
+              className={`h-6 w-6 ${userType === "creator"
+                ? "text-white"
+                : "text-white/60"
+                }`}
             />
           </div>
           <span
-            className={`text-lg font-semibold ${
-              userType === "creator" ? "text-primary" : "text-foreground"
-            }`}
+            className={`text-lg font-semibold ${userType === "creator" ? "text-white" : "text-white/80"
+              }`}
           >
             Creator
           </span>
-          <span className="text-xs text-muted-foreground mt-1 text-center">
+          <span className="text-xs text-white/60 mt-1 text-center">
             Upload & Share
           </span>
         </button>
 
         <button
           onClick={() => setUserType("user")}
-          className={`relative flex flex-col items-center justify-center p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 ${
-            userType === "user"
-              ? "border-primary bg-primary/10 shadow-lg shadow-primary/20"
-              : "border-input hover:border-primary/50 bg-background"
-          }`}
+          className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300 hover:scale-105 ${userType === "user"
+            ? "border-white/40 bg-white/15 shadow-lg shadow-white/10"
+            : "border-white/20 hover:border-white/30 bg-white/5"
+            }`}
         >
           {userType === "user" && (
-            <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-primary" />
+            <CheckCircle2 className="absolute top-2 right-2 h-5 w-5 text-white" />
           )}
           <div
-            className={`p-3 rounded-full mb-3 ${
-              userType === "user" ? "bg-primary/20" : "bg-muted"
-            }`}
+            className={`p-3 rounded-full mb-3 ${userType === "user" ? "bg-white/20" : "bg-white/10"
+              }`}
           >
             <User
-              className={`h-6 w-6 ${
-                userType === "user" ? "text-primary" : "text-muted-foreground"
-              }`}
+              className={`h-6 w-6 ${userType === "user" ? "text-white" : "text-white/60"
+                }`}
             />
           </div>
           <span
-            className={`text-lg font-semibold ${
-              userType === "user" ? "text-primary" : "text-foreground"
-            }`}
+            className={`text-lg font-semibold ${userType === "user" ? "text-white" : "text-white/80"
+              }`}
           >
             Viewer
           </span>
-          <span className="text-xs text-muted-foreground mt-1 text-center">
+          <span className="text-xs text-white/60 mt-1 text-center">
             Watch & Enjoy
           </span>
         </button>
@@ -890,7 +876,7 @@ export default function AuthPage() {
           setDetailStep(0);
           setStep("userDetails");
         }}
-        className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+        className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white border-0 backdrop-blur-sm transition-all"
         size="lg"
       >
         Continue
@@ -909,22 +895,22 @@ export default function AuthPage() {
           {/* Progress Bar */}
           <div className="w-full">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-white">
                 Step {detailStep + 1} of {totalSteps}
               </span>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-white/70">
                 {Math.round(((detailStep + 1) / totalSteps) * 100)}%
               </span>
             </div>
-            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary transition-all duration-500 ease-out"
+                className="h-full bg-white/40 transition-all duration-500 ease-out"
                 style={{ width: `${((detailStep + 1) / totalSteps) * 100}%` }}
               />
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-center">
+          <h2 className="text-2xl font-bold text-white text-center">
             {userType === "creator" ? "Creator Profile" : "User Profile"}
           </h2>
         </div>
@@ -933,7 +919,7 @@ export default function AuthPage() {
           {detailStep === 0 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-sm font-semibold">
+                <Label htmlFor="firstName" className="text-sm font-semibold text-white">
                   First Name *
                 </Label>
                 <Input
@@ -946,11 +932,11 @@ export default function AuthPage() {
                     })
                   }
                   placeholder="Enter your first name"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-sm font-semibold">
+                <Label htmlFor="lastName" className="text-sm font-semibold text-white">
                   Last Name *
                 </Label>
                 <Input
@@ -960,7 +946,7 @@ export default function AuthPage() {
                     setUserDetails({ ...userDetails, lastName: e.target.value })
                   }
                   placeholder="Enter your last name"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
             </div>
@@ -969,7 +955,7 @@ export default function AuthPage() {
           {detailStep === 1 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-semibold">
+                <Label htmlFor="username" className="text-sm font-semibold text-white">
                   Username *
                 </Label>
                 <Input
@@ -980,11 +966,11 @@ export default function AuthPage() {
                   }
                   placeholder="Enter username"
                   autoCapitalize="none"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-semibold">
+                <Label htmlFor="email" className="text-sm font-semibold text-white">
                   Email *
                 </Label>
                 <Input
@@ -996,14 +982,14 @@ export default function AuthPage() {
                   }
                   placeholder="Enter your email address"
                   autoCapitalize="none"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
             </div>
           )}
 
           {userType === "user" && detailStep === 2 && (
-            <div className="space-y-4 p-4 rounded-lg border border-input bg-muted/30">
+            <div className="space-y-4 p-4 rounded-xl border border-white/20 bg-white/5">
               <div className="flex items-start space-x-3">
                 <Checkbox
                   id="userAgreement"
@@ -1014,17 +1000,17 @@ export default function AuthPage() {
                       userAgreement: checked,
                     })
                   }
-                  className="mt-1"
+                  className="mt-1 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-600"
                 />
                 <Label
                   htmlFor="userAgreement"
-                  className="text-sm leading-relaxed cursor-pointer"
+                  className="text-sm leading-relaxed cursor-pointer text-white"
                 >
                   I agree to the{" "}
                   <Link
                     href="https://www.glimznow.com/TnC/user-agreement"
                     target="_blank"
-                    className="text-primary underline hover:text-primary/80 transition-colors"
+                    className="text-white/90 underline hover:text-white transition-colors"
                   >
                     User Agreement
                   </Link>
@@ -1040,17 +1026,17 @@ export default function AuthPage() {
                       privacyPolicy: checked,
                     })
                   }
-                  className="mt-1"
+                  className="mt-1 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-600"
                 />
                 <Label
                   htmlFor="privacyPolicy"
-                  className="text-sm leading-relaxed cursor-pointer"
+                  className="text-sm leading-relaxed cursor-pointer text-white"
                 >
                   I agree to the{" "}
                   <Link
                     href="https://www.glimznow.com/TnC/privacy-policy"
                     target="_blank"
-                    className="text-primary underline hover:text-primary/80 transition-colors"
+                    className="text-white/90 underline hover:text-white transition-colors"
                   >
                     Privacy Policy
                   </Link>
@@ -1062,7 +1048,7 @@ export default function AuthPage() {
           {userType === "creator" && detailStep === 2 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="channelName" className="text-sm font-semibold">
+                <Label htmlFor="channelName" className="text-sm font-semibold text-white">
                   YouTube Channel Name *
                 </Label>
                 <Input
@@ -1075,11 +1061,11 @@ export default function AuthPage() {
                     })
                   }
                   placeholder="Your channel name"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="channelLink" className="text-sm font-semibold">
+                <Label htmlFor="channelLink" className="text-sm font-semibold text-white">
                   YouTube Channel Link *
                 </Label>
                 <Input
@@ -1093,7 +1079,7 @@ export default function AuthPage() {
                   }
                   placeholder="https://youtube.com/@yourchannel"
                   autoCapitalize="none"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
             </div>
@@ -1102,7 +1088,7 @@ export default function AuthPage() {
           {userType === "creator" && detailStep === 3 && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="subscribers" className="text-sm font-semibold">
+                <Label htmlFor="subscribers" className="text-sm font-semibold text-white">
                   Number of Subscribers *
                 </Label>
                 <Input
@@ -1116,13 +1102,13 @@ export default function AuthPage() {
                     })
                   }
                   placeholder="e.g., 10000"
-                  className="h-12 text-base"
+                  className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white placeholder:text-white/50 rounded-xl focus:bg-white/15 focus:border-white/30"
                 />
               </div>
               <div className="space-y-2">
                 <Label
                   htmlFor="contentLength"
-                  className="text-sm font-semibold"
+                  className="text-sm font-semibold text-white"
                 >
                   Content Length *
                 </Label>
@@ -1135,7 +1121,7 @@ export default function AuthPage() {
                     })
                   }
                 >
-                  <SelectTrigger id="contentLength" className="h-12 text-base">
+                  <SelectTrigger id="contentLength" className="h-12 text-base bg-white/10 backdrop-blur-sm border-white/20 text-white rounded-xl">
                     <SelectValue placeholder="Select content length" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1154,24 +1140,24 @@ export default function AuthPage() {
           )}
 
           {userType === "creator" && detailStep === 4 && (
-            <div className="flex items-start space-x-3 p-4 rounded-lg border border-input bg-muted/30">
+            <div className="flex items-start space-x-3 p-4 rounded-xl border border-white/20 bg-white/5">
               <Checkbox
                 id="creatorAgreement"
                 checked={creatorAgreementAccepted}
                 onCheckedChange={(checked) =>
                   setCreatorAgreementAccepted(checked)
                 }
-                className="mt-1"
+                className="mt-1 border-white/40 data-[state=checked]:bg-white data-[state=checked]:text-purple-600"
               />
               <Label
                 htmlFor="creatorAgreement"
-                className="text-sm leading-relaxed cursor-pointer"
+                className="text-sm leading-relaxed cursor-pointer text-white"
               >
                 I agree to the{" "}
                 <Link
                   href="https://www.glimznow.com/TnC/content-creator-agreement"
                   target="_blank"
-                  className="text-primary underline hover:text-primary/80 transition-colors"
+                  className="text-white/90 underline hover:text-white transition-colors"
                 >
                   Content Creator Agreement
                 </Link>
@@ -1184,12 +1170,12 @@ export default function AuthPage() {
           <Button
             onClick={handleNextStep}
             disabled={authLoading || !validateCurrentStep(detailStep)}
-            className="w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full h-14 text-base font-semibold rounded-full bg-blue-500 text-white border-0 backdrop-blur-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             {authLoading ? (
               <span className="flex items-center gap-2">
-                <span className="animate-spin">⏳</span>
+                <span className="animate-spin"><Loader2 className="h-4 w-4" /></span>
                 Creating...
               </span>
             ) : isLastStep ? (
@@ -1202,7 +1188,7 @@ export default function AuthPage() {
             <Button
               onClick={handlePrevStep}
               variant="ghost"
-              className="w-full h-11 text-base hover:bg-muted"
+              className="w-full h-11 text-base text-white hover:bg-white/10"
             >
               Back
             </Button>
@@ -1247,11 +1233,11 @@ export default function AuthPage() {
   const canGoBack = step !== "mobile";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden  bg-gradient-to-b from-[#100c1c] via-[#1b0f33] to-[#2a0c46]" >
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
       </div>
 
       <div className="w-full max-w-md relative z-10">
@@ -1260,46 +1246,27 @@ export default function AuthPage() {
             variant="ghost"
             size="icon"
             onClick={handleBackPress}
-            className="absolute -top-12 left-0 z-10 hover:bg-muted rounded-full"
+            className="absolute -top-12 left-0 z-10 hover:bg-white/10 rounded-full text-white"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
 
         <div className="flex flex-col items-center space-y-8">
-          <div className="flex flex-col items-center space-y-4 animate-in fade-in duration-700">
+          <div className="flex flex-col items-center space-y-6 animate-in fade-in duration-700">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl" />
+              <div className="absolute inset-0 bg-white/10 rounded-full blur-xl" />
               <Image
                 src="/logo.png"
                 alt="Glimz Logo"
-                width={100}
-                height={100}
+                width={80}
+                height={80}
                 className="object-contain relative z-10 drop-shadow-lg"
               />
             </div>
-            {step !== "userDetails" && (
-              <div className="text-center space-y-2">
-                <h1 className="text-4xl font-bold text-center">
-                  Welcome to{" "}
-                  <span
-                    className="bg-clip-text text-transparent"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(90deg, #201067, #B3073A)",
-                    }}
-                  >
-                    Glimz Now
-                  </span>
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Your gateway to amazing content
-                </p>
-              </div>
-            )}
           </div>
 
-          <div className="w-full bg-card/80 backdrop-blur-sm rounded-2xl border border-border shadow-2xl p-6 md:p-8">
+          <div className="w-full">
             {renderCurrentStep()}
           </div>
         </div>

@@ -51,7 +51,7 @@ export async function POST(request) {
     let authToken = null;
     let uuid = null;
     try {
-      const cookieStore = cookies();
+      const cookieStore = await cookies();
       const authTokenCookie = cookieStore.get("auth_token");
       const uuidCookie = cookieStore.get("uuid");
       authToken = authTokenCookie ? authTokenCookie.value : null;

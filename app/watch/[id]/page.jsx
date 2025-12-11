@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import VideoPlayer from '@/components/VideoPlayer';
+import { WishlistDialog } from '@/components/WishlistDialog';
 
 export default function WatchPage() {
     const params = useParams();
@@ -18,6 +19,7 @@ export default function WatchPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showSecurityInfo, setShowSecurityInfo] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [showWishlistDialog, setShowWishlistDialog] = useState(false);
 
     useEffect(() => {
         const fetchVideoDetails = async () => {
@@ -27,22 +29,22 @@ export default function WatchPage() {
                     method: 'GET',
                     credentials: 'include',
                 });
-                
+
                 const data = await response.json();
                 // console.log('Watch page video data:', data);
-                
+
                 if (data.status && data.data?.data) {
                     const contentData = data.data.data;
-                    
+
                     // Get video URL from variants (prefer auto, fallback to 720p, then 480p)
                     let videoUrl = '';
                     if (contentData.video?.variants) {
-                        videoUrl = contentData.video.variants.auto || 
-                                  contentData.video.variants['720p'] || 
-                                  contentData.video.variants['480p'] || 
-                                  Object.values(contentData.video.variants)[0] || '';
+                        videoUrl = contentData.video.variants.auto ||
+                            contentData.video.variants['720p'] ||
+                            contentData.video.variants['480p'] ||
+                            Object.values(contentData.video.variants)[0] || '';
                     }
-                    
+
                     // Transform API response to match VideoPlayer expectations
                     const transformedVideo = {
                         id: contentData.content_id,
@@ -71,16 +73,16 @@ export default function WatchPage() {
                         likes: contentData.likes_count || '0',
                         isLive: false,
                     };
-                    
+
                     setVideo(transformedVideo);
-                    
+
                     // Fetch related videos (trending content)
                     try {
                         const relatedResponse = await fetch('/api/content?page=1&limit=12', {
                             method: 'GET',
                             credentials: 'include',
                         });
-                        
+
                         const relatedData = await relatedResponse.json();
                         if (relatedData.status && relatedData.data && Array.isArray(relatedData.data)) {
                             const related = relatedData.data
@@ -93,7 +95,7 @@ export default function WatchPage() {
                                     description: item.description || '',
                                     duration: 'N/A',
                                 }));
-                            
+
                             setRelatedVideos(related);
                         }
                     } catch (relatedError) {
@@ -123,6 +125,21 @@ export default function WatchPage() {
 
     const handleClose = () => {
         router.back();
+    };
+
+    const handleAddToWishlist = () => {
+        setShowWishlistDialog(true);
+    };
+
+    const formatViews = (count) => {
+        if (!count) return '0';
+        if (count >= 1000000) {
+            return (count / 1000000).toFixed(1) + 'M';
+        }
+        if (count >= 1000) {
+            return (count / 1000).toFixed(1) + 'K';
+        }
+        return count.toString();
     };
 
     if (isLoading) {
@@ -247,7 +264,11 @@ export default function WatchPage() {
                                             <Play className="h-5 w-5 mr-2" />
                                             Watch Again
                                         </Button>
-                                        <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                                        <Button
+                                            variant="outline"
+                                            className="border-white/30 text-white hover:bg-white/10"
+                                            onClick={handleAddToWishlist}
+                                        >
                                             <Heart className="h-5 w-5 mr-2" />
                                             Add to Watchlist
                                         </Button>
@@ -264,7 +285,7 @@ export default function WatchPage() {
                                             <div className="text-sm text-gray-400">Likes</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-2xl font-bold text-white">{video.views || '1.2M'}</div>
+                                            <div className="text-2xl font-bold text-white">{formatViews(video.views_count)}</div>
                                             <div className="text-sm text-gray-400">Views</div>
                                         </div>
                                         <div className="text-center">
@@ -272,7 +293,9 @@ export default function WatchPage() {
                                             <div className="text-sm text-gray-400">Quality</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-2xl font-bold text-white">${video.isPaid}</div>
+                                            <div className="text-2xl font-bold text-white">
+                                                {video.is_paid ? `$${video.price}` : 'Free'}
+                                            </div>
                                             <div className="text-sm text-gray-400">Price</div>
                                         </div>
                                     </div>
@@ -335,8 +358,8 @@ export default function WatchPage() {
                                             <h3 className="text-lg font-semibold mb-4">More Like This</h3>
                                             <div className="space-y-3">
                                                 {relatedVideos.map((relatedVideo) => (
-                                                    <div 
-                                                        key={relatedVideo.id} 
+                                                    <div
+                                                        key={relatedVideo.id}
                                                         className="flex gap-3 cursor-pointer hover:bg-white/10 p-2 rounded transition-colors"
                                                         onClick={() => router.push(`/video/${relatedVideo.id}`)}
                                                     >
@@ -361,6 +384,15 @@ export default function WatchPage() {
                 </div>
             )}
 
+            {/* Wishlist Dialog */}
+            <WishlistDialog
+                open={showWishlistDialog}
+                onOpenChange={setShowWishlistDialog}
+                contentId={video?.id}
+                onSuccess={() => {
+                    // Optional: Refresh video data or show success state
+                }}
+            />
         </div>
     );
 }

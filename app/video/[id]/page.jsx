@@ -2,22 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Play, Heart, Share, Plus, Clock, Calendar, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { VideoCarousel } from '@/components/VideoCarousel';
 import { useAppStore } from '../../store/appStore';
-import { WishlistDialog } from '@/components/WishlistDialog';
+import { Header } from '@/components/Header';
+import Image from 'next/image';
 
 export default function VideoDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const videoId = params.id;
-  
-  const { watchlist, addToWatchlist, removeFromWatchlist } = useAppStore();
+
   const [video, setVideo] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [currentTeaserIndex, setCurrentTeaserIndex] = useState(0);
 
   useEffect(() => {
     const fetchVideoDetails = async () => {
@@ -27,21 +27,90 @@ export default function VideoDetailsPage() {
           method: 'GET',
           credentials: 'include',
         });
-        
+
         const data = await response.json();
-        
+        console.log('Video API Response:', data);
+
         if (data.status && data.data?.data) {
           const contentData = data.data.data;
-          
+          console.log('Content Data:', contentData);
+          console.log('Teaser from API:', contentData.teaser);
+          console.log('Video from API:', contentData.video);
+
           // Transform API response to match component expectations
+          // Extract URLs properly - they might be objects with .url property or direct strings
+          const getThumbnailUrl = (thumb) => {
+            if (!thumb) return '';
+            if (typeof thumb === 'string') return thumb;
+            return thumb.url || '';
+          };
+
+          const getVideoUrl = (vid) => {
+            if (!vid) return '';
+
+            // If it's a string, return it directly
+            if (typeof vid === 'string') return vid;
+
+            // If it has variants (auto, 720p, 480p), prefer auto
+            if (vid.variants) {
+              return vid.variants.auto ||
+                vid.variants['720p'] ||
+                vid.variants['480p'] ||
+                Object.values(vid.variants)[0] || '';
+            }
+
+            // Fallback to url property
+            return vid.url || '';
+          };
+
+          // Handle teaser - it might be a single video or an array
+          const getTeaserUrls = (teaser) => {
+            if (!teaser) return [];
+
+            // If it's an array, extract URLs from each item
+            if (Array.isArray(teaser)) {
+              return teaser.map(t => {
+                if (typeof t === 'string') return t;
+
+                // Handle variants
+                if (t.variants) {
+                  return t.variants.auto ||
+                    t.variants['720p'] ||
+                    t.variants['480p'] ||
+                    Object.values(t.variants)[0] || '';
+                }
+
+                return t.url || '';
+              }).filter(url => url !== '');
+            }
+
+            // If it's a single item
+            if (typeof teaser === 'string') return [teaser];
+
+            // Handle variants for single teaser
+            if (teaser.variants) {
+              const url = teaser.variants.auto ||
+                teaser.variants['720p'] ||
+                teaser.variants['480p'] ||
+                Object.values(teaser.variants)[0] || '';
+              return url ? [url] : [];
+            }
+
+            if (teaser.url) return [teaser.url];
+
+            return [];
+          };
+
+          const teaserUrls = getTeaserUrls(contentData.teaser);
+
+
           const transformedVideo = {
             id: contentData.content_id,
             title: contentData.title,
             description: contentData.description,
-            thumbnail: contentData.thumbnail?.url || contentData.thumbnail || '',
-            heroImage: contentData.thumbnail?.url || contentData.thumbnail || '',
-            video: contentData.video,
-            teaser: contentData.teaser,
+            thumbnail: getThumbnailUrl(contentData.thumbnail),
+            teaser: teaserUrls.length > 0 ? teaserUrls[0] : '', // Default to first teaser
+            teasers: teaserUrls, // Store all teasers for slider
             creator_id: contentData.creator_id,
             creator_name: contentData.creator_name || 'Unknown Creator',
             is_paid: contentData.is_paid,
@@ -53,42 +122,35 @@ export default function VideoDetailsPage() {
             genre: contentData.genre || [],
             age_restriction: contentData.age_restriction,
             created_at: contentData.created_at,
-            // Add default values
             releaseYear: contentData.created_at ? new Date(contentData.created_at).getFullYear() : new Date().getFullYear(),
             duration: 'N/A',
             rating: contentData.age_restriction || null,
-            views: contentData.views_count ? `${contentData.views_count} views` : '0 views',
-            likes: contentData.likes_count ? `${contentData.likes_count} likes` : '0 likes',
-            isLive: false,
           };
-          
+
+
           setVideo(transformedVideo);
-          
+
           // Fetch recommended videos (trending content)
-          const recommendedResponse = await fetch('/api/content?page=1&limit=12', {
+          const recommendedResponse = await fetch('/api/content?page=1&limit=8', {
             method: 'GET',
             credentials: 'include',
           });
-          
+
           const recommendedData = await recommendedResponse.json();
           if (recommendedData.status && recommendedData.data && Array.isArray(recommendedData.data)) {
             const recommended = recommendedData.data
               .filter(v => v.content_id !== contentData.content_id)
-              .slice(0, 12)
+              .slice(0, 8)
               .map((item) => ({
                 id: item.content_id,
                 title: item.title,
                 thumbnail: item.thumbnail?.url || item.thumbnail || '',
                 description: item.description || '',
-                genre: [],
-                releaseYear: item.created_at ? new Date(item.created_at).getFullYear() : new Date().getFullYear(),
-                rating: null,
-                views: item.views_count ? `${item.views_count} views` : null,
-                likes: item.likes_count ? `${item.likes_count} likes` : null,
-                duration: 'N/A',
-                isLive: false,
+                views_count: item.views_count || 0,
+                duration: item.duration || 'N/A',
+                rating: item.rating || 0,
               }));
-            
+
             setRecommendedVideos(recommended);
           }
         }
@@ -104,34 +166,80 @@ export default function VideoDetailsPage() {
     }
   }, [videoId]);
 
-  // Handler functions - defined before early returns
+  // Security measures to prevent downloads and screen recording
+  useEffect(() => {
+    // Disable right-click
+    const handleContextMenu = (e) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Disable keyboard shortcuts
+    const handleKeyDown = (e) => {
+      // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
+        (e.ctrlKey && e.key === 'S') ||
+        (e.metaKey && e.key === 'S')
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    // Disable text selection
+    const handleSelectStart = (e) => {
+      e.preventDefault();
+      return false;
+    };
+
+    // Detect screen recording (basic detection)
+    const detectScreenRecording = () => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        console.warn('Screen recording capability detected');
+      }
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('selectstart', handleSelectStart);
+    detectScreenRecording();
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('selectstart', handleSelectStart);
+    };
+  }, []);
+
   const handleBack = () => {
     router.push('/');
   };
 
-  const handlePlayVideo = (videoId) => {
-    // Navigate to the streaming page
-    router.push(`/watch/${videoId || video?.id}`);
-  };
-
-  const handleViewDetails = (videoId) => {
+  const handleVideoClick = (videoId) => {
     router.push(`/video/${videoId}`);
   };
 
-  const handleAddToList = (videoId) => {
-    if (watchlist.includes(videoId)) {
-      removeFromWatchlist(videoId);
-    } else {
-      addToWatchlist(videoId);
+  const formatViews = (views) => {
+    if (views >= 1000000000) {
+      return `${(views / 1000000000).toFixed(1)} Billion Views`;
+    } else if (views >= 1000000) {
+      return `${(views / 1000000).toFixed(1)} Million Views`;
+    } else if (views >= 1000) {
+      return `${(views / 1000).toFixed(1)}K Views`;
     }
+    return `${views} Views`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-glimz-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-foreground-muted text-sm sm:text-base">Loading video details...</p>
+          <Loader2 className="w-16 h-16 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-white/60">Loading video details...</p>
         </div>
       </div>
     );
@@ -139,11 +247,11 @@ export default function VideoDetailsPage() {
 
   if (!video) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Video Not Found</h2>
-          <p className="text-foreground-muted mb-6">The video you're looking for doesn't exist.</p>
-          <Button onClick={handleBack} className="btn-glimz-primary">
+          <h2 className="text-2xl font-bold text-white mb-4">Video Not Found</h2>
+          <p className="text-white/60 mb-6">The video you're looking for doesn't exist.</p>
+          <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
           </Button>
@@ -152,129 +260,266 @@ export default function VideoDetailsPage() {
     );
   }
 
-  const isInWatchlist = video ? watchlist.includes(video.id) : false;
-
-  const handleWatchlistToggle = () => {
-    if (!video) return;
-    if (isInWatchlist) {
-      removeFromWatchlist(video.id);
-    } else {
-      // Show wishlist dialog
-      setShowWishlistDialog(true);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background text-white">
-      {/* Video Player Section */}
-      <section className="relative h-screen">
+    <>
+      <Header />
+      <div className="min-h-screen bg-black text-white select-none">
+
         {/* Back Button */}
-        <Button
+        {/*  <Button
           onClick={handleBack}
           variant="ghost"
-          className="absolute top-16 sm:top-20 left-3 sm:left-4 z-50 p-2 sm:p-3 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 hover:bg-black/70"
+          className="fixed top-20 left-4 z-50 p-3 rounded-full bg-black/50 backdrop-blur-sm border border-white/20 hover:bg-black/70"
         >
-          <ArrowLeft className="h-5 w-5 sm:h-6 sm:w-6" />
-        </Button>
+          <ArrowLeft className="h-6 w-6" />
+        </Button> */}
 
-        {/* Video Background */}
-        <div className="absolute inset-0">
-          <img
-            src={video.heroImage}
-            alt={video.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40" />
-        </div>
+        {/* Main Content - 50-50 Split Layout */}
+        <div className="flex h-screen pt-1">
+          {/* Left Column - Fixed Video Player (50%) */}
+          <div className="w-1/2 h-full flex items-center justify-center bg-black p-6 sticky top-0">
+            <div className="w-full h-full flex items-center justify-center relative">
+              {/* Video Player */}
+              <video
+                key={currentTeaserIndex} // Force re-render when teaser changes
+                src={video.teasers && video.teasers.length > 0 ? video.teasers[currentTeaserIndex] : (video.teaser || video.video)}
+                controls
+                autoPlay
+                loop
+                controlsList="nodownload noremoteplayback"
+                disablePictureInPicture
+                className="w-full h-auto max-h-full object-contain rounded-lg"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+                onError={(e) => {
+                  console.error('Video failed to load:', e);
+                  console.error('Attempted video URL:', video.teasers?.[currentTeaserIndex] || video.teaser || video.video);
+                  console.error('All teaser URLs:', video.teasers);
+                }}
+                onLoadedData={() => {
+                  console.log('Video loaded successfully!');
+                  console.log('Playing teaser:', video.teasers?.[currentTeaserIndex] || video.teaser);
+                }}
+                onKeyDown={(e) => {
+                  // Prevent common download shortcuts
+                  if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+                    e.preventDefault();
+                    return false;
+                  }
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
 
-        {/* Video Info Overlay */}
-        <div className="relative z-10 container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 h-full flex items-end pb-16 sm:pb-20">
-          <div className="max-w-2xl lg:max-w-3xl space-y-4 sm:space-y-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
-              {video.title}
-            </h1>
-            
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4 text-white/80">
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-sm sm:text-base">{video.releaseYear}</span>
+              {/* Security Overlay - Invisible but prevents interactions */}
+              <div
+                className="absolute inset-0 pointer-events-none select-none"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              />
+
+              {/* Navigation Controls - Only show if multiple teasers */}
+              {video.teasers && video.teasers.length > 1 && (
+                <>
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => setCurrentTeaserIndex((prev) => (prev === 0 ? video.teasers.length - 1 : prev - 1))}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
+                  >
+                    <ArrowLeft className="h-6 w-6" />
+                  </button>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setCurrentTeaserIndex((prev) => (prev === video.teasers.length - 1 ? 0 : prev + 1))}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
+                  >
+                    <ArrowLeft className="h-6 w-6 rotate-180" />
+                  </button>
+
+                  {/* Dot Indicators */}
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                    {video.teasers.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentTeaserIndex(index)}
+                        className={`w-2.5 h-2.5 rounded-full transition-all ${index === currentTeaserIndex
+                          ? 'bg-purple-500 w-8'
+                          : 'bg-white/50 hover:bg-white/80'
+                          }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Counter */}
+                  <div className="absolute top-6 right-6 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm text-white border border-white/20">
+                    {currentTeaserIndex + 1} / {video.teasers.length}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Scrollable Content (50%) */}
+          <div className="w-1/2 h-full overflow-y-auto">
+            <div className="p-8 space-y-6">
+              {/* Title */}
+              <h1 className="text-4xl font-bold leading-tight">
+                {video.title}
+              </h1>
+
+              {/* Creator Info */}
+              <div className="flex items-center gap-3">
+                <span className="text-white/80">By</span>
+                <span className="text-purple-400 font-semibold">{video.creator_name}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="text-sm sm:text-base">{video.duration}</span>
+
+              {/* Stats Row */}
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">Views:</span>
+                  <span className="text-white font-semibold">{formatViews(video.views_count)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">Likes:</span>
+                  <span className="text-white font-semibold">{video.likes_count || 0}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white/60">Comments:</span>
+                  <span className="text-white font-semibold">{video.comment_count || 0}</span>
+                </div>
               </div>
-              <span className="px-2 py-1 bg-white/20 rounded text-xs sm:text-sm font-medium">
-                {video.rating}
-              </span>
-              <div className="flex gap-1 sm:gap-2">
-                {video.genre.map((genre) => (
-                  <span key={genre} className="genre-tag text-xs sm:text-sm">
-                    {genre}
+
+              {/* Price & Status */}
+              {/*<div className="flex items-center gap-3">
+                {video.is_paid ? (
+                  <div className="flex items-center gap-2">
+                    <span className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-bold rounded-lg">
+                      ₹{video.price}
+                    </span>
+                    <span className="text-white/60 text-sm">Premium Content</span>
+                  </div>
+                ) : (
+                  <span className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg">
+                    Free
                   </span>
-                ))}
+                )}
+              </div>*/}
+
+              {/* Genre Tags */}
+              {video.genre && video.genre.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {video.genre.map((genre, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-white/10 text-white text-sm rounded-full border border-white/20"
+                    >
+                      {genre}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Age Restriction */}
+              {video.age_restriction && (
+                <div className="inline-block">
+                  <span className="px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded">
+                    {video.age_restriction}+
+                  </span>
+                </div>
+              )}
+
+              {/* Description */}
+              <div className="space-y-2 pt-4 border-t border-white/10">
+                <h3 className="text-lg font-semibold">Description</h3>
+                <p className="text-white/80 leading-relaxed">
+                  {video.description && video.description.length > 200 ? (
+                    <>
+                      {isDescriptionExpanded
+                        ? video.description
+                        : `${video.description.substring(0, 200)}...`}
+                    </>
+                  ) : (
+                    video.description || 'No description available.'
+                  )}
+                  {video.description && video.description.length > 200 && (
+                    <button
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="text-blue-400 hover:text-blue-300 ml-1 font-medium"
+                    >
+                      {isDescriptionExpanded ? 'Show Less' : 'Read More'}
+                    </button>
+                  )}
+                </p>
               </div>
-            </div>
 
-            <p className="text-base sm:text-lg md:text-xl text-white/90 leading-relaxed">
-              {video.description}
-            </p>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <Button
-                onClick={() => handlePlayVideo(video.id)}
-                className="btn-glimz-primary text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 shadow-glow w-full sm:w-auto"
-              >
-                <Play className="h-5 w-5 sm:h-6 sm:w-6 mr-2 fill-current" />
-                Watch Now
-              </Button>
-              
-              <Button
-                onClick={handleWatchlistToggle}
-                variant="ghost"
-                className="p-3 sm:p-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 w-full sm:w-auto"
-              >
-                <Heart className={`h-5 w-5 sm:h-6 sm:w-6 ${isInWatchlist ? 'fill-current text-red-400' : ''}`} />
+              {/* Download Button */}
+              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-6 text-lg font-semibold rounded-lg shadow-lg">
+                <Download className="h-5 w-5 mr-2" />
+                Download Glimz Now
               </Button>
 
-              <Button
-                variant="ghost"
-                className="p-3 sm:p-4 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 w-full sm:w-auto"
-              >
-                <Share className="h-5 w-5 sm:h-6 sm:w-6" />
-              </Button>
+              {/* Recommended Section */}
+              <div className="mt-12 pt-8 border-t border-white/10">
+                <h2 className="text-2xl font-bold mb-6">RECOMMENDED</h2>
+
+                {/* Grid of Recommended Videos */}
+                <div className="grid grid-cols-2 gap-4 ">
+                  {recommendedVideos.map((recVideo) => (
+                    <div
+                      key={recVideo.id}
+                      onClick={() => handleVideoClick(recVideo.id)}
+                      className="cursor-pointer group border-1 border-white"
+                    >
+                      {/* Thumbnail */}
+                      <div className="relative aspect-video rounded-lg overflow-hidden mb-3 border-1 border-white">
+                        <Image
+                          src={recVideo.thumbnail}
+                          alt={recVideo.title}
+                          width={500}
+                          height={500}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        />
+
+                        {/* Views Badge */}
+                        <div className="absolute top-2 right-2">
+                          <span className="px-2 py-1 bg-black/70 text-white text-xs font-semibold rounded">
+                            {recVideo.views_count >= 1000
+                              ? `${(recVideo.views_count / 1000).toFixed(0)}K VIEWS`
+                              : `${recVideo.views_count} VIEWS`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-sm font-semibold line-clamp-2 group-hover:text-purple-400 transition-colors">
+                        {recVideo.title}
+                      </h3>
+
+                      {/* Meta Info */}
+                      <div className="flex items-center gap-2 mt-1">
+                        {recVideo.rating > 0 && (
+                          <>
+                            <span className="text-xs text-white/60">•</span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-400 text-xs">★</span>
+                              <span className="text-xs text-white/60">{recVideo.rating}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-
-      {/* Recommended Videos */}
-      {recommendedVideos.length > 0 && (
-        <section className="py-8 sm:py-12 md:py-16">
-          <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">More Like This</h2>
-            <VideoCarousel
-              title=""
-              videos={recommendedVideos}
-              onPlay={handlePlayVideo}
-              onAddToList={handleAddToList}
-              onViewDetails={handleViewDetails}
-              watchlist={watchlist}
-              size="large"
-            />
-          </div>
-        </section>
-      )}
-
-      {/* Wishlist Dialog */}
-      <WishlistDialog
-        open={showWishlistDialog}
-        onOpenChange={setShowWishlistDialog}
-        contentId={video.id}
-        onSuccess={() => {
-          // Optionally update UI
-        }}
-      />
-    </div>
+      </div>
+    </>
   );
 }

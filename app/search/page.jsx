@@ -187,7 +187,7 @@ function SearchComponent() {
   const creatorResults = searchResults.filter(r => r.type === 'creator');
 
   return (
-    <div className="min-h-screen bg-background text-white pt-16 sm:pt-20">
+    <div className="min-h-screen bg-background text-white pt-6 sm:pt-0">
       <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">

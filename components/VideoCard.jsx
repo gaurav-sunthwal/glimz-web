@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { WishlistDialog } from "./WishlistDialog";
 import Image from "next/image";
+import { formatDuration } from "@/app/utils/formatDuration";
 
 export const VideoCard = ({
   video,
@@ -48,28 +49,6 @@ export const VideoCard = ({
     return number.toString();
   };
 
-  // Format duration - convert seconds to MM:SS or use provided duration
-  const formatDuration = (duration) => {
-    if (!duration) return "";
-    
-    // If already in MM:SS format, return as is
-    if (typeof duration === "string" && duration.includes(":")) {
-      return duration;
-    }
-    
-    // If it's a number (seconds), convert to MM:SS
-    if (typeof duration === "number" || (typeof duration === "string" && !isNaN(duration))) {
-      const totalSeconds = typeof duration === "string" ? parseInt(duration) : duration;
-      if (isNaN(totalSeconds) || totalSeconds <= 0) return "";
-      
-      const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-    }
-    
-    return duration;
-  };
-
   return (
     <div
       className={`video-card group relative ${sizeClasses[size]} flex-shrink-0 cursor-pointer transition-transform duration-300 hover:scale-105 hover:z-20`}
@@ -102,19 +81,24 @@ export const VideoCard = ({
         />
 
         {/* Dark Overlay */}
+
+        {/* Progress Bar at Bottom - For Continue Watching */}
+        {video.watchedPercentage && video.watchedPercentage > 0 && (
+          <div className="absolute bottom-1 left-0 right-0 h-1 bg-gray-700">
+            <div
+              className="h-full bg-white"
+              style={{
+                width: `${Math.min(video.watchedPercentage, 100)}%`,
+                transition: 'width 0.3s ease'
+              }}
+            />
+          </div>
+        )}
+
         <div
           className={`absolute inset-0 transition-all duration-300 ${isHovered ? "bg-black/60" : "bg-black/30"
             }`}
         />
-
-        {/* Progress Bar at Bottom - For Continue Watching */}
-        {video.watchedPercentage && video.watchedPercentage > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-red-500" style={{
-            width: `${Math.min(video.watchedPercentage, 100)}%`,
-            transition: 'width 0.3s ease'
-          }} />
-        )}
-
         {/* Duration Badge - Only show if duration is available */}
         {video.duration && video.duration !== "N/A" && formatDuration(video.duration) && (
           <div className="absolute top-3 right-3 bg-black/80 text-white text-sm px-3 py-1 rounded-md font-medium backdrop-blur-sm flex items-center gap-2">

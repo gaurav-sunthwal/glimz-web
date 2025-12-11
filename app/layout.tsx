@@ -1,10 +1,10 @@
 // app/layout.tsx  (Server Component ✅)
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Lexend } from "next/font/google";
 import "./globals.css";
 import ClientWrapper from "./ClientWrapper";
 
-const inter = Inter({ subsets: ["latin"] });
+const lexend = Lexend({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Glimz - AI-Powered Streaming Platform",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     "Discover and watch amazing content powered by AI recommendations",
   keywords: "streaming, movies, shows, AI, entertainment",
   authors: [{ name: "Glimz Team" }],
-  
+
 };
 
 export const viewport: Viewport = {
@@ -27,8 +27,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-     
-      <body className={inter.className}>
+
+      <body className={lexend.className}>
         <ClientWrapper>{children}</ClientWrapper>
       </body>
     </html>
