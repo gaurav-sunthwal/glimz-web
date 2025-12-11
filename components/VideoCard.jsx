@@ -81,10 +81,6 @@ export const VideoCard = ({
         />
 
         {/* Dark Overlay */}
-        <div
-          className={`absolute inset-0 transition-all duration-300 ${isHovered ? "bg-black/60" : "bg-black/30"
-            }`}
-        />
 
         {/* Progress Bar at Bottom - For Continue Watching */}
         {video.watchedPercentage && video.watchedPercentage > 0 && (
@@ -99,6 +95,10 @@ export const VideoCard = ({
           </div>
         )}
 
+        <div
+          className={`absolute inset-0 transition-all duration-300 ${isHovered ? "bg-black/60" : "bg-black/30"
+            }`}
+        />
         {/* Duration Badge - Only show if duration is available */}
         {video.duration && video.duration !== "N/A" && formatDuration(video.duration) && (
           <div className="absolute top-3 right-3 bg-black/80 text-white text-sm px-3 py-1 rounded-md font-medium backdrop-blur-sm flex items-center gap-2">
