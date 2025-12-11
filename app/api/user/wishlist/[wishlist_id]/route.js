@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
 
-export async function PUT(request, { params }) {
+export async function PUT(request, context) {
   try {
     const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
@@ -20,6 +20,7 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const params = await context.params;
     const { wishlist_id } = params;
     const body = await request.json();
     const { wishlist_name } = body;
@@ -66,7 +67,7 @@ export async function PUT(request, { params }) {
   }
 }
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, context) {
   try {
     const cookieStore = await cookies();
     const uuid = cookieStore.get("uuid")?.value;
@@ -83,6 +84,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    const params = await context.params;
     const { wishlist_id } = params;
 
     const response = await fetch(

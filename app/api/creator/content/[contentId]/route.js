@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimznow.com/api';
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
     // Get UUID and auth token from cookies
     const cookieStore = await cookies();
@@ -38,9 +38,12 @@ export async function GET(request, { params }) {
       );
     }
 
+    // Await params for Next.js 15
+    const params = await context.params;
     const { contentId } = params;
 
     if (!contentId) {
+      console.error("Content ID is missing from params");
       return NextResponse.json(
         {
           status: false,
@@ -51,6 +54,8 @@ export async function GET(request, { params }) {
         { status: 400 }
       );
     }
+
+    console.log("Fetching content for ID:", contentId);
 
     // Call external API
     let response;

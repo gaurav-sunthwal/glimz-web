@@ -30,7 +30,7 @@ export default function MobilePage() {
       {/* Main content overlay */}
       <div className="relative z-10 flex flex-col items-center justify-end min-h-screen p-8 pb-12">
         {/* Star icon */}
-        <Logo/>
+        <Logo />
 
         {/* Welcome text */}
         <div className="text-center max-w-sm mb-12">
