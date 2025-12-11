@@ -6,6 +6,7 @@ import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '../../store/appStore';
 import { Header } from '@/components/Header';
+import Image from 'next/image';
 
 export default function VideoDetailsPage() {
   const params = useParams();
@@ -467,19 +468,21 @@ export default function VideoDetailsPage() {
                 <h2 className="text-2xl font-bold mb-6">RECOMMENDED</h2>
 
                 {/* Grid of Recommended Videos */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 ">
                   {recommendedVideos.map((recVideo) => (
                     <div
                       key={recVideo.id}
                       onClick={() => handleVideoClick(recVideo.id)}
-                      className="cursor-pointer group"
+                      className="cursor-pointer group border-1 border-white"
                     >
                       {/* Thumbnail */}
-                      <div className="relative aspect-video rounded-lg overflow-hidden mb-3 bg-gradient-to-br from-purple-900 to-purple-700">
-                        <img
+                      <div className="relative aspect-video rounded-lg overflow-hidden mb-3 border-1 border-white">
+                        <Image
                           src={recVideo.thumbnail}
                           alt={recVideo.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          width={500}
+                          height={500}
+                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                         />
 
                         {/* Views Badge */}
