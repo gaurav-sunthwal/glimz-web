@@ -9,20 +9,36 @@ import { Header } from '@/components/Header';
 import Image from 'next/image';
 
 export default function VideoDetailsPage() {
-  const params = useParams();
   const router = useRouter();
-  const videoId = params.id;
+  const params = useParams();
 
+  const [videoId, setVideoId] = useState(null);
   const [video, setVideo] = useState(null);
   const [recommendedVideos, setRecommendedVideos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [currentTeaserIndex, setCurrentTeaserIndex] = useState(0);
 
+  // Handle params properly for Next.js 15
+  useEffect(() => {
+    const getParams = async () => {
+      const resolvedParams = await params;
+      setVideoId(resolvedParams.id);
+    };
+    getParams();
+  }, [params]);
+
   useEffect(() => {
     const fetchVideoDetails = async () => {
+      if (!videoId) return;
+
       try {
         setLoading(true);
+        setError(null);
+
+        console.log('Fetching video details for ID:', videoId);
+
         const response = await fetch(`/api/creator/content/${videoId}`, {
           method: 'GET',
           credentials: 'include',
@@ -30,6 +46,10 @@ export default function VideoDetailsPage() {
 
         const data = await response.json();
         console.log('Video API Response:', data);
+
+        if (!response.ok) {
+          throw new Error(data.message || `API error: ${response.status}`);
+        }
 
         if (data.status && data.data?.data) {
           const contentData = data.data.data;
@@ -153,17 +173,18 @@ export default function VideoDetailsPage() {
 
             setRecommendedVideos(recommended);
           }
+        } else {
+          throw new Error(data.message || 'Invalid response format');
         }
       } catch (error) {
         console.error('Error fetching video details:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (videoId) {
-      fetchVideoDetails();
-    }
+    fetchVideoDetails();
   }, [videoId]);
 
   // Security measures to prevent downloads and screen recording
@@ -249,8 +270,12 @@ export default function VideoDetailsPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-4">Video Not Found</h2>
-          <p className="text-white/60 mb-6">The video you're looking for doesn't exist.</p>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            {error ? 'Error Loading Video' : 'Video Not Found'}
+          </h2>
+          <p className="text-white/60 mb-6">
+            {error || "The video you're looking for doesn't exist."}
+          </p>
           <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
