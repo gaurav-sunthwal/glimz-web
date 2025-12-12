@@ -541,13 +541,13 @@ export default function VideoDetailsPage() {
               )}
 
               {/* Age Restriction */}
-              {video.age_restriction && (
+              {/* {video.age_restriction && (
                 <div className="inline-block">
                   <span className="px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded">
                     {video.age_restriction}+
                   </span>
                 </div>
-              )}
+              )} */}
 
               {/* Description */}
               <div className="space-y-2 pt-4 border-t border-white/10">
