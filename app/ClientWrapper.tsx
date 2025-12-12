@@ -16,13 +16,14 @@ export default function ClientWrapper({
   const isMobile = useIsMobile();
   const pathname = usePathname();
 
-  useEffect(() => {}, []);
+  useEffect(() => { }, []);
 
-  // Allow terms pages to be accessible on mobile
+  // Allow specific pages to be accessible on mobile
   const isTermsPage = pathname?.startsWith("/TnC");
   const isDeleteAccountPage = pathname?.startsWith("/delete-account");
+  const isOrderPage = pathname?.startsWith("/order");
 
-  if (isMobile && !isTermsPage && !isDeleteAccountPage) {
+  if (isMobile && !isTermsPage && !isDeleteAccountPage && !isOrderPage) {
     return (
       <div className="block sm:hidden">
         <MobilePage />

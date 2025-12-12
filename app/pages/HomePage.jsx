@@ -264,7 +264,8 @@ const HomePage = () => {
         });
 
         const data = await response.json();
-
+        console.log('=== Trending Content API Response ===');
+        console.log(data);
         if (data.status && data.data && Array.isArray(data.data)) {
           // Transform API response to match VideoCard format
           const transformedVideos = data.data.map((item) => {
