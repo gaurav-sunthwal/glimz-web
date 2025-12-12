@@ -31,8 +31,19 @@ export const VideoCard = ({
     setImageLoaded(true);
   };
   const router = useRouter();
-  const handleViewDetails = (videoId) => {
-    router.push(`/video/${videoId}`);
+
+  const createSlug = (title) => {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handleViewDetails = (videoId, videoTitle) => {
+    const titleSlug = createSlug(videoTitle);
+    const path = titleSlug ? `/${titleSlug}?c=${videoId}` : `/?c=${videoId}`;
+    router.push(path);
   };
 
   // Format numbers with K/M suffixes
@@ -57,7 +68,7 @@ export const VideoCard = ({
       onClick={(e) => {
         // Only navigate if clicking on the card itself, not on interactive elements
         if (e.target === e.currentTarget || !e.target.closest('button')) {
-          handleViewDetails(video.id);
+          handleViewDetails(video.id, video.title);
         }
       }}
     >

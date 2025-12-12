@@ -217,7 +217,18 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
                 {/* Action Buttons */}
                 <div className="flex flex-row items-center gap-2 xs:gap-3 sm:gap-4 w-full">
                   <Button
-                    onClick={() => router.push(`/video/${videoItem.id}`)}
+                    onClick={() => {
+                      const createSlug = (title) => {
+                        if (!title) return '';
+                        return title
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/^-+|-+$/g, '');
+                      };
+                      const titleSlug = createSlug(videoItem.title);
+                      const path = titleSlug ? `/${titleSlug}?c=${videoItem.id}` : `/?c=${videoItem.id}`;
+                      router.push(path);
+                    }}
                     className="
                       btn-glimz-primary
                       text-xs xs:text-sm sm:text-base

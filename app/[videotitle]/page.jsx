@@ -1,16 +1,17 @@
 "use client"
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAppStore } from '../../store/appStore';
+import { useAppStore } from '../store/appStore';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 
 export default function VideoDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
 
   const [videoId, setVideoId] = useState(null);
   const [video, setVideo] = useState(null);
@@ -21,13 +22,31 @@ export default function VideoDetailsPage() {
   const [currentTeaserIndex, setCurrentTeaserIndex] = useState(0);
 
   // Handle params properly for Next.js 15
+  // Extract content ID from query parameter 'c'
   useEffect(() => {
     const getParams = async () => {
       const resolvedParams = await params;
-      setVideoId(resolvedParams.id);
+
+      // Get content_id from query parameter 'c'
+      const contentId = searchParams.get('c');
+      if (contentId) {
+        setVideoId(contentId);
+      } else {
+        console.error('Content ID not found in query parameters');
+        setError('Invalid video URL format - missing content ID');
+      }
+
+      // Read teaser index from URL query parameter
+      const teaserParam = searchParams.get('t');
+      if (teaserParam !== null) {
+        const index = parseInt(teaserParam, 10);
+        if (!isNaN(index) && index >= 0) {
+          setCurrentTeaserIndex(index);
+        }
+      }
     };
     getParams();
-  }, [params]);
+  }, [params, searchParams]);
 
   useEffect(() => {
     const fetchVideoDetails = async () => {
@@ -84,45 +103,69 @@ export default function VideoDetailsPage() {
           };
 
           // Handle teaser - it might be a single video or an array
+          // Extract teaser index from filename (e.g., _0_auto, _1_auto)
           const getTeaserUrls = (teaser) => {
             if (!teaser) return [];
 
+            const extractTeaserUrl = (t) => {
+              if (typeof t === 'string') return t;
+
+              // Handle variants
+              if (t.variants) {
+                return t.variants.auto ||
+                  t.variants['720p'] ||
+                  t.variants['480p'] ||
+                  Object.values(t.variants)[0] || '';
+              }
+
+              return t.url || '';
+            };
+
+            const extractTeaserIndex = (url) => {
+              // Extract index from filename pattern: _0_auto, _1_auto, _2_auto, etc.
+              const match = url.match(/_(\d+)_auto/);
+              return match ? parseInt(match[1], 10) : 0;
+            };
+
+            let teaserList = [];
+
             // If it's an array, extract URLs from each item
             if (Array.isArray(teaser)) {
-              return teaser.map(t => {
-                if (typeof t === 'string') return t;
-
-                // Handle variants
-                if (t.variants) {
-                  return t.variants.auto ||
-                    t.variants['720p'] ||
-                    t.variants['480p'] ||
-                    Object.values(t.variants)[0] || '';
-                }
-
-                return t.url || '';
-              }).filter(url => url !== '');
-            }
-
-            // If it's a single item
-            if (typeof teaser === 'string') return [teaser];
-
-            // Handle variants for single teaser
-            if (teaser.variants) {
+              teaserList = teaser.map(extractTeaserUrl).filter(url => url !== '');
+            } else if (typeof teaser === 'string') {
+              teaserList = [teaser];
+            } else if (teaser.variants) {
+              // Handle variants for single teaser
               const url = teaser.variants.auto ||
                 teaser.variants['720p'] ||
                 teaser.variants['480p'] ||
                 Object.values(teaser.variants)[0] || '';
-              return url ? [url] : [];
+              teaserList = url ? [url] : [];
+            } else if (teaser.url) {
+              teaserList = [teaser.url];
             }
 
-            if (teaser.url) return [teaser.url];
+            // Sort teasers by their index from the filename
+            const teasersWithIndex = teaserList.map(url => ({
+              url,
+              index: extractTeaserIndex(url)
+            }));
 
-            return [];
+            // Sort by index
+            teasersWithIndex.sort((a, b) => a.index - b.index);
+
+            // Return just the URLs in sorted order
+            return teasersWithIndex.map(t => t.url);
           };
 
           const teaserUrls = getTeaserUrls(contentData.teaser);
 
+          // Log teaser URLs with their indices for debugging
+          console.log('Teaser URLs sorted by index:', teaserUrls.map((url, idx) => ({
+            position: idx,
+            extractedIndex: url.match(/_(\d+)_auto/)?.[1] || 'N/A',
+            url: url
+          })));
 
           const transformedVideo = {
             id: contentData.content_id,
@@ -187,6 +230,27 @@ export default function VideoDetailsPage() {
     fetchVideoDetails();
   }, [videoId]);
 
+  // Update URL with video title when video loads
+  useEffect(() => {
+    if (video && videoId) {
+      const titleSlug = video.title
+        ? video.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+        : '';
+
+      const teaserIndex = currentTeaserIndex.toString();
+
+      // New format: /{title-slug}?t={index}&c={content_id}
+      const newPath = titleSlug
+        ? `/${titleSlug}?t=${teaserIndex}&c=${videoId}`
+        : `/?t=${teaserIndex}&c=${videoId}`;
+
+      // Only update if the path is different
+      if (window.location.pathname + window.location.search !== newPath) {
+        window.history.replaceState({}, '', newPath);
+      }
+    }
+  }, [video, videoId, currentTeaserIndex]);
+
   // Security measures to prevent downloads and screen recording
   useEffect(() => {
     // Disable right-click
@@ -240,8 +304,32 @@ export default function VideoDetailsPage() {
     router.push('/');
   };
 
-  const handleVideoClick = (videoId) => {
-    router.push(`/video/${videoId}`);
+  const handleVideoClick = (videoId, videoTitle) => {
+    const titleSlug = createSlug(videoTitle);
+    const path = titleSlug ? `/${titleSlug}?c=${videoId}` : `/?c=${videoId}`;
+    router.push(path);
+  };
+
+  // Helper function to create URL-safe slug from title
+  const createSlug = (title) => {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-') // Replace non-alphanumeric chars with hyphens
+      .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+  };
+
+  const updateTeaserIndex = (newIndex) => {
+    setCurrentTeaserIndex(newIndex);
+    // Update URL with video title and teaser index
+    if (videoId && video) {
+      const titleSlug = createSlug(video.title);
+      // New format: /{title-slug}?t={index}&c={content_id}
+      const newPath = titleSlug
+        ? `/${titleSlug}?t=${newIndex}&c=${videoId}`
+        : `/?t=${newIndex}&c=${videoId}`;
+      window.history.pushState({}, '', newPath);
+    }
   };
 
   const formatViews = (views) => {
@@ -276,10 +364,13 @@ export default function VideoDetailsPage() {
           <p className="text-white/60 mb-6">
             {error || "The video you're looking for doesn't exist."}
           </p>
-          <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
+          {error === "Authentication required" ? <Button onClick={() => router.push('/auth')} className="bg-purple-600 hover:bg-purple-700">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Login
+          </Button> : <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
-          </Button>
+          </Button>}
         </div>
       </div>
     );
@@ -352,7 +443,7 @@ export default function VideoDetailsPage() {
                 <>
                   {/* Previous Button */}
                   <button
-                    onClick={() => setCurrentTeaserIndex((prev) => (prev === 0 ? video.teasers.length - 1 : prev - 1))}
+                    onClick={() => updateTeaserIndex(currentTeaserIndex === 0 ? video.teasers.length - 1 : currentTeaserIndex - 1)}
                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
                   >
                     <ArrowLeft className="h-6 w-6" />
@@ -360,7 +451,7 @@ export default function VideoDetailsPage() {
 
                   {/* Next Button */}
                   <button
-                    onClick={() => setCurrentTeaserIndex((prev) => (prev === video.teasers.length - 1 ? 0 : prev + 1))}
+                    onClick={() => updateTeaserIndex(currentTeaserIndex === video.teasers.length - 1 ? 0 : currentTeaserIndex + 1)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
                   >
                     <ArrowLeft className="h-6 w-6 rotate-180" />
@@ -371,7 +462,7 @@ export default function VideoDetailsPage() {
                     {video.teasers.map((_, index) => (
                       <button
                         key={index}
-                        onClick={() => setCurrentTeaserIndex(index)}
+                        onClick={() => updateTeaserIndex(index)}
                         className={`w-2.5 h-2.5 rounded-full transition-all ${index === currentTeaserIndex
                           ? 'bg-purple-500 w-8'
                           : 'bg-white/50 hover:bg-white/80'
@@ -497,7 +588,7 @@ export default function VideoDetailsPage() {
                   {recommendedVideos.map((recVideo) => (
                     <div
                       key={recVideo.id}
-                      onClick={() => handleVideoClick(recVideo.id)}
+                      onClick={() => handleVideoClick(recVideo.id, recVideo.title)}
                       className="cursor-pointer group border-1 border-white"
                     >
                       {/* Thumbnail */}
