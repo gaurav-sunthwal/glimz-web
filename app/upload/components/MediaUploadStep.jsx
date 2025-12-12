@@ -96,7 +96,8 @@ const VideoPreviewCard = ({
         } else {
           toast({
             title: "Invalid file",
-            description: "Invalid video file. Please select a valid video file.",
+            description:
+              "Invalid video file. Please select a valid video file.",
             variant: "destructive",
           });
         }
@@ -109,10 +110,10 @@ const VideoPreviewCard = ({
         tempVideo.preload = "metadata";
         tempVideo.onloadedmetadata = () => {
           const duration = tempVideo.duration;
-          if (type === "teaser" && duration > 30) {
+          if (type === "teaser" && duration > 90) {
             toast({
               title: "Invalid duration",
-              description: "Teaser video must be 30 seconds or less",
+              description: "Teaser video must be 90 seconds or less",
               variant: "destructive",
             });
             return;
@@ -172,7 +173,8 @@ const VideoPreviewCard = ({
         } else {
           toast({
             title: "Invalid file",
-            description: "Invalid image file. Please select a valid image file.",
+            description:
+              "Invalid image file. Please select a valid image file.",
             variant: "destructive",
           });
         }
@@ -244,12 +246,13 @@ const VideoPreviewCard = ({
 
       <div
         {...getVideoRootProps()}
-        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${isVideoDragActive
-          ? "border-glimz-primary bg-glimz-primary/10 scale-[1.02]"
-          : video
+        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${
+          isVideoDragActive
+            ? "border-glimz-primary bg-glimz-primary/10 scale-[1.02]"
+            : video
             ? "border-gray-700 bg-gray-900"
             : "border-gray-600 bg-gray-800/50 hover:border-glimz-primary/50 hover:bg-gray-800 cursor-pointer"
-          }`}
+        }`}
       >
         <input {...getVideoInputProps()} />
         {video ? (
@@ -433,12 +436,13 @@ const ThumbnailUploadCard = ({
 
       <div
         {...getThumbnailRootProps()}
-        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${isThumbnailDragActive
-          ? "border-pink-500 bg-pink-500/10 scale-[1.02]"
-          : thumbnail
+        className={`relative aspect-[4/5] w-full h-[260px] rounded-lg overflow-hidden border border-dashed transition-all duration-300 ${
+          isThumbnailDragActive
+            ? "border-pink-500 bg-pink-500/10 scale-[1.02]"
+            : thumbnail
             ? "border-gray-700 bg-gray-900"
             : "border-gray-600 bg-gray-800/50 hover:border-pink-500/50 hover:bg-gray-800 cursor-pointer"
-          }`}
+        }`}
       >
         <input {...getThumbnailInputProps()} />
         {thumbnail ? (
@@ -530,12 +534,18 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
       teaserThumbnail: !!data.teaserThumbnail,
       contentVideo: !!data.contentVideo,
     });
-  }, [data.teaserThumbnail, data.teaserVideo, data.teaserVideos, data.contentVideo]);
+  }, [
+    data.teaserThumbnail,
+    data.teaserVideo,
+    data.teaserVideos,
+    data.contentVideo,
+  ]);
 
   const handleVideoUpload = useCallback(
     (type, videoData, index) => {
       if (type === "teaser") {
-        const existing = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+        const existing =
+          data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
 
         // Enforce max 5 teasers
         if (existing.length >= 5 && typeof index !== "number") {
@@ -570,7 +580,8 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
 
   const handleVideoRemove = (type, index) => {
     if (type === "teaser") {
-      const existing = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+      const existing =
+        data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
       if (typeof index === "number") {
         const arr = [...existing];
         arr.splice(index, 1);
@@ -597,7 +608,8 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
 
   const handleVideoPreview = (type, index) => {
     if (type === "teaser") {
-      const teasers = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+      const teasers =
+        data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
       if (teasers.length > 0) {
         setPreviewModal({
           visible: true,
@@ -632,7 +644,8 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
   };
 
   const handleAddTeaserSlot = () => {
-    const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+    const teaserVideos =
+      data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
     if (teaserVideos.length >= 5) {
       toast({
         title: "Maximum limit reached",
@@ -645,9 +658,14 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
     setCurrentTeaserIndex(teaserVideos.length);
   };
 
-  const teaserVideos = data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
+  const teaserVideos =
+    data.teaserVideos ?? (data.teaserVideo ? [data.teaserVideo] : []);
   const teaserUploaded = (teaserVideos && teaserVideos.length > 0) || false;
-  const uploadedCount = [teaserUploaded, data.teaserThumbnail, data.contentVideo].filter(Boolean).length;
+  const uploadedCount = [
+    teaserUploaded,
+    data.teaserThumbnail,
+    data.contentVideo,
+  ].filter(Boolean).length;
 
   return (
     <div className="space-y-6">
@@ -739,7 +757,11 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setCurrentTeaserIndex(Math.max(0, currentTeaserIndex - 1))}
+                      onClick={() =>
+                        setCurrentTeaserIndex(
+                          Math.max(0, currentTeaserIndex - 1)
+                        )
+                      }
                       disabled={currentTeaserIndex === 0}
                       className="text-white hover:bg-white/10"
                     >
@@ -752,10 +774,11 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                         <button
                           key={idx}
                           onClick={() => setCurrentTeaserIndex(idx)}
-                          className={`h-2 rounded-full transition-all ${idx === currentTeaserIndex
-                            ? "w-8 bg-glimz-primary"
-                            : "w-2 bg-gray-600 hover:bg-gray-500"
-                            }`}
+                          className={`h-2 rounded-full transition-all ${
+                            idx === currentTeaserIndex
+                              ? "w-8 bg-glimz-primary"
+                              : "w-2 bg-gray-600 hover:bg-gray-500"
+                          }`}
                         />
                       ))}
                     </div>
@@ -763,7 +786,14 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setCurrentTeaserIndex(Math.min(teaserVideos.length - 1, currentTeaserIndex + 1))}
+                      onClick={() =>
+                        setCurrentTeaserIndex(
+                          Math.min(
+                            teaserVideos.length - 1,
+                            currentTeaserIndex + 1
+                          )
+                        )
+                      }
                       disabled={currentTeaserIndex === teaserVideos.length - 1}
                       className="text-white hover:bg-white/10"
                     >
@@ -856,7 +886,12 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
         <div
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() =>
-            setPreviewModal({ visible: false, type: null, url: null, currentIndex: 0 })
+            setPreviewModal({
+              visible: false,
+              type: null,
+              url: null,
+              currentIndex: 0,
+            })
           }
         >
           <div className="relative max-w-6xl w-full">
@@ -865,7 +900,12 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
               size="icon"
               className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white z-10 backdrop-blur-sm"
               onClick={() =>
-                setPreviewModal({ visible: false, type: null, url: null, currentIndex: 0 })
+                setPreviewModal({
+                  visible: false,
+                  type: null,
+                  url: null,
+                  currentIndex: 0,
+                })
               }
             >
               <X className="h-5 w-5" />
@@ -879,7 +919,10 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                   return currentTeaser ? (
                     <>
                       <video
-                        src={currentTeaser.url || URL.createObjectURL(currentTeaser.file)}
+                        src={
+                          currentTeaser.url ||
+                          URL.createObjectURL(currentTeaser.file)
+                        }
                         controls
                         autoPlay
                         className="w-full h-auto max-h-[90vh] rounded-lg shadow-2xl bg-black object-contain"
@@ -896,9 +939,12 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                             className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white backdrop-blur-sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setPreviewModal(prev => ({
+                              setPreviewModal((prev) => ({
                                 ...prev,
-                                currentIndex: Math.max(0, prev.currentIndex - 1)
+                                currentIndex: Math.max(
+                                  0,
+                                  prev.currentIndex - 1
+                                ),
                               }));
                             }}
                             disabled={previewModal.currentIndex === 0}
@@ -913,12 +959,18 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                             className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white backdrop-blur-sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setPreviewModal(prev => ({
+                              setPreviewModal((prev) => ({
                                 ...prev,
-                                currentIndex: Math.min(teaserVideos.length - 1, prev.currentIndex + 1)
+                                currentIndex: Math.min(
+                                  teaserVideos.length - 1,
+                                  prev.currentIndex + 1
+                                ),
                               }));
                             }}
-                            disabled={previewModal.currentIndex === teaserVideos.length - 1}
+                            disabled={
+                              previewModal.currentIndex ===
+                              teaserVideos.length - 1
+                            }
                           >
                             <ChevronRight className="h-6 w-6" />
                           </Button>
@@ -930,19 +982,24 @@ export const MediaUploadStep = ({ data, onDataChange }) => {
                                 key={idx}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setPreviewModal(prev => ({ ...prev, currentIndex: idx }));
+                                  setPreviewModal((prev) => ({
+                                    ...prev,
+                                    currentIndex: idx,
+                                  }));
                                 }}
-                                className={`h-2 rounded-full transition-all ${idx === previewModal.currentIndex
+                                className={`h-2 rounded-full transition-all ${
+                                  idx === previewModal.currentIndex
                                     ? "w-8 bg-glimz-primary"
                                     : "w-2 bg-gray-400 hover:bg-gray-300"
-                                  }`}
+                                }`}
                               />
                             ))}
                           </div>
 
                           {/* Counter */}
                           <div className="absolute top-4 left-4 bg-black/70 px-3 py-1 rounded-full backdrop-blur-sm text-white text-sm">
-                            {previewModal.currentIndex + 1} / {teaserVideos.length}
+                            {previewModal.currentIndex + 1} /{" "}
+                            {teaserVideos.length}
                           </div>
                         </>
                       )}
