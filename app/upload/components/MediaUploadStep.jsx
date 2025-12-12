@@ -83,14 +83,14 @@ const VideoPreviewCard = ({
       "video/*": [".mp4", ".mov", ".avi", ".wmv", ".webm"],
     },
     maxFiles: 1,
-    maxSize: 500 * 1024 * 1024, // 500MB
+    maxSize: 15 * 1024 * 1024 * 1024, // 500MB
     onDrop: (acceptedFiles, rejectedFiles) => {
       if (rejectedFiles.length > 0) {
         const rejection = rejectedFiles[0];
         if (rejection.errors[0]?.code === "file-too-large") {
           toast({
             title: "File too large",
-            description: "Video file size must be less than 500MB",
+            description: "Video file size must be less than 15GB",
             variant: "destructive",
           });
         } else {
