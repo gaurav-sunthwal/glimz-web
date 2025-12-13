@@ -70,6 +70,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
   return (
     <section
       className="relative w-full overflow-hidden h-[60vh] xs:h-[65vh] sm:h-[70vh] md:h-[75vh] lg:h-[80vh] xl:h-[85vh] min-h-[340px] sm:min-h-[400px] md:min-h-[480px] lg:min-h-[520px]"
+      style={{ isolation: 'isolate' }}
     >
       <Swiper
         ref={swiperRef}
@@ -90,13 +91,19 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
           enabled: true,
         }}
         loop={videoList.length > 1}
+        loopAdditionalSlides={2}
+        watchSlidesProgress={true}
         onSlideChange={(swiper) => setCurrentSlide(swiper.realIndex)}
         className="hero-swiper h-full w-full"
       >
         {videoList.map((videoItem, index) => (
-          <SwiperSlide key={videoItem.id || index}>
+          <SwiperSlide
+            key={videoItem.id || index}
+            className="overflow-hidden"
+            style={{ width: '100%', height: '100%', backgroundColor: '#000' }}
+          >
             {/* Background Image with Parallax */}
-            <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden" style={{ isolation: 'isolate' }}>
               {!imageLoaded[index] && (
                 <div className="absolute inset-0 bg-background-secondary animate-pulse" />
               )}
@@ -226,7 +233,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
                           .replace(/^-+|-+$/g, '');
                       };
                       const titleSlug = createSlug(videoItem.title);
-                      const path = titleSlug ? `/${titleSlug}?c=${videoItem.id}` : `/?c=${videoItem.id}`;
+                      const path = titleSlug ? `/video/${titleSlug}?c=${videoItem.id}` : `/video/?c=${videoItem.id}`;
                       router.push(path);
                     }}
                     className="
@@ -307,7 +314,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               left-4 sm:left-6 md:left-8 lg:left-3
               top-1/2
               -translate-y-1/2
-              z-20
+              z-50
               p-2 sm:p-3 md:p-4
               rounded-full
               bg-white/10
@@ -319,6 +326,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               group
               flex items-center justify-center
               cursor-pointer
+              pointer-events-auto
             "
             aria-label="Previous slide"
             type="button"
@@ -339,7 +347,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               right-4 sm:right-6 md:right-8 lg:right-3
               top-1/2
               -translate-y-1/2
-              z-20
+              z-50
               p-2 sm:p-3 md:p-4
               rounded-full
               bg-white/10
@@ -351,6 +359,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
               group
               flex items-center justify-center
               cursor-pointer
+              pointer-events-auto
             "
             aria-label="Next slide"
             type="button"
@@ -382,6 +391,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
           display: flex;
           transition-property: transform;
           box-sizing: content-box;
+          overflow: hidden;
         }
 
         .swiper-slide {
@@ -395,10 +405,25 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
         .swiper-fade .swiper-slide {
           pointer-events: none;
           transition-property: opacity;
+          opacity: 0;
+          position: absolute;
+          top: 0;
+          left: 0;
         }
 
-        .swiper-fade .swiper-slide-active {
+        .swiper-fade .swiper-slide-active,
+        .swiper-fade .swiper-slide-duplicate-active {
           pointer-events: auto;
+          opacity: 1;
+          z-index: 1;
+        }
+
+        .swiper-fade .swiper-slide-prev,
+        .swiper-fade .swiper-slide-next,
+        .swiper-fade .swiper-slide-duplicate-prev,
+        .swiper-fade .swiper-slide-duplicate-next {
+          opacity: 0;
+          z-index: 0;
         }
 
         /* Hero Swiper Specific */

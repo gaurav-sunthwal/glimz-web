@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   const isAuthenticated = !!authToken;
 
   // Protected routes that require authentication
-  const protectedRoutes = ['/video', '/watch'];
+  const protectedRoutes = ['/watch', '/my-list'];
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   // Auth page route
