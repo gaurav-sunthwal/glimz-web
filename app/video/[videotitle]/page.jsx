@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAppStore } from '../store/appStore';
+import { useAppStore } from '../../store/appStore';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 
@@ -175,7 +175,8 @@ export default function VideoDetailsPage() {
             teaser: teaserUrls.length > 0 ? teaserUrls[0] : '', // Default to first teaser
             teasers: teaserUrls, // Store all teasers for slider
             creator_id: contentData.creator_id,
-            creator_name: contentData.creator_name || 'Unknown Creator',
+            creator_name: contentData.creator_name || contentData.username || 'Unknown Creator',
+            username: contentData.username,
             is_paid: contentData.is_paid,
             price: contentData.price,
             views_count: contentData.views_count,
@@ -188,6 +189,7 @@ export default function VideoDetailsPage() {
             releaseYear: contentData.created_at ? new Date(contentData.created_at).getFullYear() : new Date().getFullYear(),
             duration: 'N/A',
             rating: contentData.age_restriction || null,
+
           };
 
 
@@ -239,10 +241,10 @@ export default function VideoDetailsPage() {
 
       const teaserIndex = currentTeaserIndex.toString();
 
-      // New format: /{title-slug}?t={index}&c={content_id}
+      // Format: /video/{title-slug}?t={index}&c={content_id}
       const newPath = titleSlug
-        ? `/${titleSlug}?t=${teaserIndex}&c=${videoId}`
-        : `/?t=${teaserIndex}&c=${videoId}`;
+        ? `/video/${titleSlug}?t=${teaserIndex}&c=${videoId}`
+        : `/video/?t=${teaserIndex}&c=${videoId}`;
 
       // Only update if the path is different
       if (window.location.pathname + window.location.search !== newPath) {
@@ -306,7 +308,7 @@ export default function VideoDetailsPage() {
 
   const handleVideoClick = (videoId, videoTitle) => {
     const titleSlug = createSlug(videoTitle);
-    const path = titleSlug ? `/${titleSlug}?c=${videoId}` : `/?c=${videoId}`;
+    const path = titleSlug ? `/video/${titleSlug}?c=${videoId}` : `/video/?c=${videoId}`;
     router.push(path);
   };
 
@@ -324,10 +326,10 @@ export default function VideoDetailsPage() {
     // Update URL with video title and teaser index
     if (videoId && video) {
       const titleSlug = createSlug(video.title);
-      // New format: /{title-slug}?t={index}&c={content_id}
+      // Format: /video/{title-slug}?t={index}&c={content_id}
       const newPath = titleSlug
-        ? `/${titleSlug}?t=${newIndex}&c=${videoId}`
-        : `/?t=${newIndex}&c=${videoId}`;
+        ? `/video/${titleSlug}?t=${newIndex}&c=${videoId}`
+        : `/video/?t=${newIndex}&c=${videoId}`;
       window.history.pushState({}, '', newPath);
     }
   };
@@ -364,13 +366,10 @@ export default function VideoDetailsPage() {
           <p className="text-white/60 mb-6">
             {error || "The video you're looking for doesn't exist."}
           </p>
-          {error === "Authentication required" ? <Button onClick={() => router.push('/auth')} className="bg-purple-600 hover:bg-purple-700">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Login
-          </Button> : <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
+          <Button onClick={handleBack} className="bg-purple-600 hover:bg-purple-700">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go Back
-          </Button>}
+          </Button>
         </div>
       </div>
     );

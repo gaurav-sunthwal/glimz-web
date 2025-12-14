@@ -42,7 +42,7 @@ export const VideoCard = ({
 
   const handleViewDetails = (videoId, videoTitle) => {
     const titleSlug = createSlug(videoTitle);
-    const path = titleSlug ? `/${titleSlug}?c=${videoId}` : `/?c=${videoId}`;
+    const path = titleSlug ? `/video/${titleSlug}?c=${videoId}` : `/video/?c=${videoId}`;
     router.push(path);
   };
 
