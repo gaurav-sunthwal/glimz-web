@@ -20,6 +20,7 @@ export default function VideoDetailsPage() {
   const [error, setError] = useState(null);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [currentTeaserIndex, setCurrentTeaserIndex] = useState(0);
+  const [showCompletionOverlay, setShowCompletionOverlay] = useState(false);
 
   // Handle params properly for Next.js 15
   // Extract content ID from query parameter 'c'
@@ -389,10 +390,10 @@ export default function VideoDetailsPage() {
           <ArrowLeft className="h-6 w-6" />
         </Button> */}
 
-        {/* Main Content - 50-50 Split Layout */}
-        <div className="flex h-screen pt-1">
-          {/* Left Column - Fixed Video Player (50%) */}
-          <div className="w-1/2 h-full flex items-center justify-center bg-black p-6 sticky top-0">
+        {/* Main Content - Responsive Layout */}
+        <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen pt-1">
+          {/* Left Column - Video Player */}
+          <div className="w-full lg:w-1/2 h-[50vh] sm:h-[60vh] lg:h-full flex items-center justify-center bg-black p-3 sm:p-4 lg:p-6 lg:sticky lg:top-0">
             <div className="w-full h-full flex items-center justify-center relative">
               {/* Video Player */}
               <video
@@ -400,7 +401,6 @@ export default function VideoDetailsPage() {
                 src={video.teasers && video.teasers.length > 0 ? video.teasers[currentTeaserIndex] : (video.teaser || video.video)}
                 controls
                 autoPlay
-                loop
                 controlsList="nodownload noremoteplayback"
                 disablePictureInPicture
                 className="w-full h-auto max-h-full object-contain rounded-lg"
@@ -416,6 +416,13 @@ export default function VideoDetailsPage() {
                 onLoadedData={() => {
                   console.log('Video loaded successfully!');
                   console.log('Playing teaser:', video.teasers?.[currentTeaserIndex] || video.teaser);
+                  setShowCompletionOverlay(false); // Hide overlay when new video loads
+                }}
+                onEnded={() => {
+                  setShowCompletionOverlay(true); // Show overlay when video ends
+                }}
+                onPlay={() => {
+                  setShowCompletionOverlay(false); // Hide overlay when user plays video
                 }}
                 onKeyDown={(e) => {
                   // Prevent common download shortcuts
@@ -427,6 +434,44 @@ export default function VideoDetailsPage() {
               >
                 Your browser does not support the video tag.
               </video>
+
+              {/* Video Completion Overlay */}
+              {showCompletionOverlay && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-20 rounded-lg px-4">
+                  {/* Viral Reel Image/Icon */}
+                  <div className="mb-4 sm:mb-6">
+                    <div className="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-2xl">
+                      <div className="text-center text-white">
+                        <div className="text-4xl sm:text-5xl lg:text-6xl mb-1 sm:mb-2">📱</div>
+                        <div className="text-base sm:text-lg lg:text-xl font-bold">VIRAL REEL</div>
+                        <div className="text-xs sm:text-sm">SECRET SETTING</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Download Button */}
+                  <button
+                    onClick={() => {
+                      // Add your download app link here
+                      window.open('https://your-app-download-link.com', '_blank');
+                    }}
+                    className="w-full max-w-sm sm:max-w-md lg:max-w-96 bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 hover:from-blue-600 hover:via-purple-600 hover:to-orange-600 text-white py-3 sm:py-4 px-6 sm:px-8 rounded-xl text-base sm:text-lg lg:text-xl font-bold shadow-lg transition-all transform hover:scale-105 mb-3 sm:mb-4"
+                  >
+                    Download the app to watch
+                  </button>
+
+                  {/* Explore More Button */}
+                  <button
+                    onClick={() => {
+                      setShowCompletionOverlay(false);
+                      router.push('/');
+                    }}
+                    className="text-white text-lg font-semibold hover:text-purple-400 transition-colors"
+                  >
+                    Explore more
+                  </button>
+                </div>
+              )}
 
               {/* Security Overlay - Invisible but prevents interactions */}
               <div
@@ -442,28 +487,40 @@ export default function VideoDetailsPage() {
                 <>
                   {/* Previous Button */}
                   <button
-                    onClick={() => updateTeaserIndex(currentTeaserIndex === 0 ? video.teasers.length - 1 : currentTeaserIndex - 1)}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const newIndex = currentTeaserIndex === 0 ? video.teasers.length - 1 : currentTeaserIndex - 1;
+                      updateTeaserIndex(newIndex);
+                    }}
+                    className="absolute left-2 sm:left-3 lg:left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-2 sm:p-2.5 lg:p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-30 cursor-pointer"
+                    type="button"
                   >
-                    <ArrowLeft className="h-6 w-6" />
+                    <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                   </button>
 
                   {/* Next Button */}
                   <button
-                    onClick={() => updateTeaserIndex(currentTeaserIndex === video.teasers.length - 1 ? 0 : currentTeaserIndex + 1)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-10"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const newIndex = currentTeaserIndex === video.teasers.length - 1 ? 0 : currentTeaserIndex + 1;
+                      updateTeaserIndex(newIndex);
+                    }}
+                    className="absolute right-2 sm:right-3 lg:right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black/90 text-white p-2 sm:p-2.5 lg:p-3 rounded-full backdrop-blur-sm border border-white/20 transition-all z-30 cursor-pointer"
+                    type="button"
                   >
-                    <ArrowLeft className="h-6 w-6 rotate-180" />
+                    <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 rotate-180" />
                   </button>
 
                   {/* Dot Indicators */}
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                  <div className="absolute bottom-3 sm:bottom-4 lg:bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 sm:gap-2 z-10">
                     {video.teasers.map((_, index) => (
                       <button
                         key={index}
                         onClick={() => updateTeaserIndex(index)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${index === currentTeaserIndex
-                          ? 'bg-purple-500 w-8'
+                        className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all ${index === currentTeaserIndex
+                          ? 'bg-purple-500 w-6 sm:w-8'
                           : 'bg-white/50 hover:bg-white/80'
                           }`}
                       />
@@ -471,7 +528,7 @@ export default function VideoDetailsPage() {
                   </div>
 
                   {/* Counter */}
-                  <div className="absolute top-6 right-6 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full text-sm text-white border border-white/20">
+                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 lg:top-6 lg:right-6 bg-black/70 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-xs sm:text-sm text-white border border-white/20">
                     {currentTeaserIndex + 1} / {video.teasers.length}
                   </div>
                 </>
@@ -479,11 +536,11 @@ export default function VideoDetailsPage() {
             </div>
           </div>
 
-          {/* Right Column - Scrollable Content (50%) */}
-          <div className="w-1/2 h-full overflow-y-auto">
-            <div className="p-8 space-y-6">
+          {/* Right Column - Scrollable Content */}
+          <div className="w-full lg:w-1/2 h-auto lg:h-full overflow-y-auto">
+            <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 lg:space-y-6">
               {/* Title */}
-              <h1 className="text-4xl font-bold leading-tight">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
                 {video.title}
               </h1>
 
@@ -494,16 +551,16 @@ export default function VideoDetailsPage() {
               </div>
 
               {/* Stats Row */}
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-white/60">Views:</span>
                   <span className="text-white font-semibold">{formatViews(video.views_count)}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-white/60">Likes:</span>
                   <span className="text-white font-semibold">{video.likes_count || 0}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-white/60">Comments:</span>
                   <span className="text-white font-semibold">{video.comment_count || 0}</span>
                 </div>
@@ -527,11 +584,11 @@ export default function VideoDetailsPage() {
 
               {/* Genre Tags */}
               {video.genre && video.genre.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {video.genre.map((genre, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-white/10 text-white text-sm rounded-full border border-white/20"
+                      className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/10 text-white text-xs sm:text-sm rounded-full border border-white/20"
                     >
                       {genre}
                     </span>
@@ -549,9 +606,9 @@ export default function VideoDetailsPage() {
               )} */}
 
               {/* Description */}
-              <div className="space-y-2 pt-4 border-t border-white/10">
-                <h3 className="text-lg font-semibold">Description</h3>
-                <p className="text-white/80 leading-relaxed">
+              <div className="space-y-2 pt-3 sm:pt-4 border-t border-white/10">
+                <h3 className="text-base sm:text-lg font-semibold">Description</h3>
+                <p className="text-sm sm:text-base text-white/80 leading-relaxed">
                   {video.description && video.description.length > 200 ? (
                     <>
                       {isDescriptionExpanded
@@ -564,7 +621,7 @@ export default function VideoDetailsPage() {
                   {video.description && video.description.length > 200 && (
                     <button
                       onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                      className="text-blue-400 hover:text-blue-300 ml-1 font-medium"
+                      className="text-blue-400 hover:text-blue-300 ml-1 font-medium text-sm sm:text-base"
                     >
                       {isDescriptionExpanded ? 'Show Less' : 'Read More'}
                     </button>
@@ -573,25 +630,25 @@ export default function VideoDetailsPage() {
               </div>
 
               {/* Download Button */}
-              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-6 text-lg font-semibold rounded-lg shadow-lg">
-                <Download className="h-5 w-5 mr-2" />
+              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-4 sm:py-5 lg:py-6 text-base sm:text-lg font-semibold rounded-lg shadow-lg">
+                <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 Download Glimz Now
               </Button>
 
               {/* Recommended Section */}
-              <div className="mt-12 pt-8 border-t border-white/10">
-                <h2 className="text-2xl font-bold mb-6">RECOMMENDED</h2>
+              <div className="mt-8 sm:mt-10 lg:mt-12 pt-6 sm:pt-7 lg:pt-8 border-t border-white/10">
+                <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5 lg:mb-6">RECOMMENDED</h2>
 
                 {/* Grid of Recommended Videos */}
-                <div className="grid grid-cols-2 gap-4 ">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {recommendedVideos.map((recVideo) => (
                     <div
                       key={recVideo.id}
                       onClick={() => handleVideoClick(recVideo.id, recVideo.title)}
-                      className="cursor-pointer group border-1 border-white"
+                      className="cursor-pointer group"
                     >
                       {/* Thumbnail */}
-                      <div className="relative aspect-video rounded-lg overflow-hidden mb-3 border-1 border-white">
+                      <div className="relative aspect-video rounded-lg overflow-hidden mb-2 sm:mb-3">
                         <Image
                           src={recVideo.thumbnail}
                           alt={recVideo.title}
@@ -601,8 +658,8 @@ export default function VideoDetailsPage() {
                         />
 
                         {/* Views Badge */}
-                        <div className="absolute top-2 right-2">
-                          <span className="px-2 py-1 bg-black/70 text-white text-xs font-semibold rounded">
+                        <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+                          <span className="px-1.5 py-0.5 sm:px-2 sm:py-1 bg-black/70 text-white text-[10px] sm:text-xs font-semibold rounded">
                             {recVideo.views_count >= 1000
                               ? `${(recVideo.views_count / 1000).toFixed(0)}K VIEWS`
                               : `${recVideo.views_count} VIEWS`}
@@ -611,7 +668,7 @@ export default function VideoDetailsPage() {
                       </div>
 
                       {/* Title */}
-                      <h3 className="text-sm font-semibold line-clamp-2 group-hover:text-purple-400 transition-colors">
+                      <h3 className="text-xs sm:text-sm font-semibold line-clamp-2 group-hover:text-purple-400 transition-colors">
                         {recVideo.title}
                       </h3>
 
