@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Play, Info, Volume2, VolumeX, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -15,8 +15,8 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
   const [scrollY, setScrollY] = useState(0);
   const [cachedVideos, setCachedVideos] = useState([]);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [swiperInstance, setSwiperInstance] = useState(null);
   const router = useRouter();
-  const swiperRef = useRef(null);
 
   // Session Storage & Data Management
   useEffect(() => {
@@ -73,7 +73,6 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
       style={{ isolation: 'isolate' }}
     >
       <Swiper
-        ref={swiperRef}
         modules={[Autoplay, Pagination, Navigation, EffectFade, Keyboard]}
         effect="fade"
         speed={800}
@@ -93,6 +92,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
         loop={videoList.length > 1}
         loopAdditionalSlides={2}
         watchSlidesProgress={true}
+        onSwiper={setSwiperInstance}
         onSlideChange={(swiper) => setCurrentSlide(swiper.realIndex)}
         className="hero-swiper h-full w-full"
       >
@@ -195,25 +195,29 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
 
                 {/* Description */}
                 <div className="max-w-full sm:max-w-xl md:max-w-2xl">
-                  <p
-                    className={`
-                      text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
-                      text-white/90 leading-relaxed
-                      break-words
-                    `}
-                    style={{ wordBreak: 'break-word' }}
+                  <div
+                    className={`${descExpanded ? 'max-h-[200px] overflow-scroll' : 'max-h-[10px] sm:max-h-[140px] md:max-h-[160px] overflow-y-scroll'} pr-2 custom-scrollbar`}
                   >
-                    {(() => {
-                      const full = videoItem.description || '';
-                      const short = videoItem.shortDescription || (full.length > 120 ? full.slice(0, 120) + '...' : full);
-                      return descExpanded ? full : short;
-                    })()}
-                  </p>
+                    <p
+                      className={`
+                        text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl
+                        text-white/90 leading-relaxed
+                        break-words
+                      `}
+                      style={{ wordBreak: 'break-word' }}
+                    >
+                      {(() => {
+                        const full = videoItem.description || '';
+                        const short = videoItem.shortDescription || (full.length > 120 ? full.slice(0, 120) + '...' : full);
+                        return descExpanded ? full : short;
+                      })()}
+                    </p>
+                  </div>
 
-                  {(videoItem.description && (videoItem.shortDescription || videoItem.description.length > 220)) && (
+                  {(videoItem.description && (videoItem.shortDescription || videoItem.description.length > 120)) && (
                     <button
                       onClick={() => setDescExpanded((s) => !s)}
-                      className="mt-2 text-sm text-white/80 underline underline-offset-2"
+                      className="mt-2 text-sm text-white/80 underline underline-offset-2 hover:text-white transition-colors"
                       aria-expanded={descExpanded}
                     >
                       {descExpanded ? 'Show less' : 'Read more'}
@@ -250,7 +254,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
                     Watch Now
                   </Button>
 
-                  <Button
+                  {/* <Button
                     onClick={() => onMoreInfo?.(videoItem.id)}
                     className="
                       btn-glimz-secondary
@@ -263,7 +267,7 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
                   >
                     <Info className="h-4 w-4 xs:h-5 xs:w-5 sm:h-6 sm:w-6 mr-2" />
                     More Info
-                  </Button>
+                  </Button> */}
                 </div>
 
                 {/* Audio Control */}
@@ -305,8 +309,8 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (swiperRef.current && swiperRef.current.swiper) {
-                swiperRef.current.swiper.slidePrev();
+              if (swiperInstance) {
+                swiperInstance.slidePrev();
               }
             }}
             className="
@@ -338,8 +342,8 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (swiperRef.current && swiperRef.current.swiper) {
-                swiperRef.current.swiper.slideNext();
+              if (swiperInstance) {
+                swiperInstance.slideNext();
               }
             }}
             className="
@@ -372,6 +376,31 @@ export const HeroBanner = ({ video, videos, onPlay, onMoreInfo }) => {
       {/* Custom Swiper Styles */}
       <style dangerouslySetInnerHTML={{
         __html: `
+        /* Custom Scrollbar for Description */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Firefox */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+        }
+
         /* Swiper Base Styles */
         .swiper {
           margin-left: auto;
