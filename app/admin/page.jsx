@@ -52,7 +52,6 @@ export default function AdminPage() {
   const router = useRouter();
   const API_PREFIX = process.env.NEXT_PUBLIC_API_BASE ? process.env.NEXT_PUBLIC_API_BASE.replace(/\/$/, '') : '/api';
   const isMobile = useIsMobile();
-  const [guardChecking, setGuardChecking] = useState(true);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -81,6 +80,13 @@ export default function AdminPage() {
   const [viewLoading, setViewLoading] = useState(false);
   const [viewItem, setViewItem] = useState(null);
   const [viewError, setViewError] = useState("");
+
+  function handleLogout() {
+    // Clear admin session
+    localStorage.removeItem("admin");
+    // Redirect to auth page
+    router.push("/admin/auth");
+  }
 
   const kpis = [
     { key: "customers", label: "Customers", value: 3782, delta: "+11.01%", positive: true },
@@ -117,16 +123,6 @@ export default function AdminPage() {
     { name: "Nov", uv: 220, pv: 140 },
     { name: "Dec", uv: 215, pv: 135 },
   ];
-
-  useEffect(() => {
-    // Auth removed - admin check disabled
-    setGuardChecking(false);
-  }, [router]);
-
-  function handleLogout() {
-    // Auth removed - logout disabled
-    router.push("/");
-  }
 
   useEffect(() => {
     setCalendarMonth(scheduleDate || new Date());
@@ -328,14 +324,6 @@ export default function AdminPage() {
     return matchesStatus && matchesQuery;
   });
 
-  if (guardChecking) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-foreground" />
-      </div>
-    );
-  }
-
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -442,7 +430,7 @@ export default function AdminPage() {
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis dataKey="name" tickLine={false} axisLine={false} />
                         <ChartTooltip cursor={{ fill: "hsl(var(--muted))" }} content={<ChartTooltipContent hideLabel />} />
-                        <Bar dataKey="value" fill="var(--color-value)" radius={[6,6,0,0]} />
+                        <Bar dataKey="value" fill="var(--color-value)" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ChartContainer>
                   </CardContent>
@@ -639,7 +627,7 @@ export default function AdminPage() {
                                     onSelect={(d) => { setScheduleDate(d); if (isMobile) setDateOpen(false); }}
                                     showOutsideDays
                                     initialFocus
-                                    disabled={{ before: new Date(new Date().setHours(0,0,0,0)) }}
+                                    disabled={{ before: new Date(new Date().setHours(0, 0, 0, 0)) }}
                                     captionLayout="dropdown-buttons"
                                     className="p-2"
                                     classNames={{
@@ -772,7 +760,7 @@ export default function AdminPage() {
                       <div className="text-sm"><span className="font-medium">Scheduled At:</span> {viewItem.scheduledAt ? new Date(viewItem.scheduledAt).toLocaleString() : "-"}</div>
                       <div className="flex gap-2 items-center text-sm">
                         <Badge variant="outline" className="capitalize">{(viewItem.channel || viewItem.channelType || channel || "push")}</Badge>
-                        <Badge className="capitalize" variant={ (viewItem.priority || priority) === "high" ? "destructive" : (viewItem.priority || priority) === "normal" ? "secondary" : "outline" }>{viewItem.priority || priority || "normal"}</Badge>
+                        <Badge className="capitalize" variant={(viewItem.priority || priority) === "high" ? "destructive" : (viewItem.priority || priority) === "normal" ? "secondary" : "outline"}>{viewItem.priority || priority || "normal"}</Badge>
                         <Badge variant="secondary" className="capitalize">{viewItem.audience || audience || "all"}</Badge>
                         <Badge variant={viewItem.status === "canceled" ? "destructive" : "secondary"} className="capitalize">{viewItem.status || "scheduled"}</Badge>
                       </div>
