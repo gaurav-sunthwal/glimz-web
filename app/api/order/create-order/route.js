@@ -5,9 +5,23 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://api.glimzno
 
 export async function POST(request) {
     try {
+        // Try to get credentials from headers first (for iOS app redirects)
+        const headerUuid = request.headers.get("uuid");
+        const headerAuthToken = request.headers.get("auth_token");
+
+        // Get credentials from cookies as fallback
         const cookieStore = await cookies();
-        const authToken = cookieStore.get('auth_token')?.value;
-        const uuid = cookieStore.get('uuid')?.value;
+        const cookieAuthToken = cookieStore.get('auth_token')?.value;
+        const cookieUuid = cookieStore.get('uuid')?.value;
+
+        // Use header values if available, otherwise fall back to cookies
+        const authToken = headerAuthToken || cookieAuthToken;
+        const uuid = headerUuid || cookieUuid;
+
+        console.log('Order creation auth source:', {
+            fromHeaders: !!headerUuid && !!headerAuthToken,
+            fromCookies: !!cookieUuid && !!cookieAuthToken,
+        });
 
         if (!authToken || !uuid) {
             return NextResponse.json(

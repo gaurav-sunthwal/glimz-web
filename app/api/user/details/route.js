@@ -78,20 +78,33 @@ async function tryBothEndpoints(uuid, auth_token) {
   );
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
-    // Get UUID, auth token, and is_creator status from cookies
+    // Try to get credentials from headers first (for iOS app redirects)
+    const headerUuid = request.headers.get("uuid");
+    const headerAuthToken = request.headers.get("auth_token");
+
+    // Get UUID, auth token, and is_creator status from cookies as fallback
     const cookieStore = await cookies();
-    const uuid = cookieStore.get("uuid")?.value;
-    const auth_token = cookieStore.get("auth_token")?.value;
+    const cookieUuid = cookieStore.get("uuid")?.value;
+    const cookieAuthToken = cookieStore.get("auth_token")?.value;
     const is_creator_cookie = cookieStore.get("is_creator")?.value;
 
-    // Debug: Log cookies for troubleshooting
-    console.log("Fetched cookies:", { uuid, auth_token, is_creator_cookie });
+    // Use header values if available, otherwise fall back to cookies
+    const uuid = headerUuid || cookieUuid;
+    const auth_token = headerAuthToken || cookieAuthToken;
+
+    // Debug: Log authentication source
+    console.log("Authentication source:", {
+      fromHeaders: !!headerUuid && !!headerAuthToken,
+      fromCookies: !!cookieUuid && !!cookieAuthToken,
+      uuid: uuid,
+      is_creator_cookie: is_creator_cookie
+    });
 
     // Check if UUID exists
     if (!uuid) {
-      console.warn("No UUID found in cookies");
+      console.warn("No UUID found in headers or cookies");
       return NextResponse.json(
         {
           status: false,
@@ -104,7 +117,7 @@ export async function GET() {
 
     // Check if auth token exists
     if (!auth_token) {
-      console.warn("No authentication token found in cookies");
+      console.warn("No authentication token found in headers or cookies");
       return NextResponse.json(
         {
           status: false,

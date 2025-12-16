@@ -83,15 +83,31 @@ export default function PaymentPage() {
     const [error, setError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+    const [authToken, setAuthToken] = useState<string | null>(null);
+    const [userUuid, setUserUuid] = useState<string | null>(null);
 
-    // Extract content ID from URL
+    // Extract content ID and auth credentials from URL
     useEffect(() => {
         const id = searchParams.get('c');
+        const token = searchParams.get('auth');
+        const uuid = searchParams.get('id');
+
+        console.log('🔍 URL Parameters:', { contentId: id, hasAuth: !!token, hasId: !!uuid });
+
         if (id) {
             setContentId(id);
         } else {
             setError('Invalid payment link - missing content ID');
             setLoading(false);
+        }
+
+        // Store auth credentials if provided (from iOS app)
+        if (token && uuid) {
+            console.log('✅ Authentication credentials found in URL');
+            setAuthToken(token);
+            setUserUuid(uuid);
+        } else {
+            console.log('ℹ️ No URL auth credentials - will use cookies');
         }
     }, [searchParams]);
 
@@ -99,19 +115,43 @@ export default function PaymentPage() {
     useEffect(() => {
         const fetchUserDetails = async () => {
             try {
-                const response = await fetch('/api/user/profile', {
-                    credentials: 'include',
-                });
-                const data = await response.json();
-                if (data.status && data.data) {
-                    setUserDetails(data.data);
+                // If we have auth credentials from URL, use them
+                if (authToken && userUuid) {
+                    console.log('🔐 Fetching user details with URL credentials');
+                    const response = await fetch('/api/user/details', {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'uuid': userUuid,
+                            'auth_token': authToken,
+                        },
+                    });
+                    const data = await response.json();
+                    console.log('📥 User details response:', data);
+
+                    if (data.status && data.ViewerDetail) {
+                        setUserDetails(data.ViewerDetail);
+                    }
+                } else {
+                    // Fallback to cookie-based authentication
+                    console.log('🍪 Fetching user details with cookies');
+                    const response = await fetch('/api/user/details', {
+                        credentials: 'include',
+                    });
+                    const data = await response.json();
+                    if (data.status && data.ViewerDetail) {
+                        setUserDetails(data.ViewerDetail);
+                    }
                 }
             } catch (error) {
-                console.error('Error fetching user details:', error);
+                console.error('❌ Error fetching user details:', error);
             }
         };
-        fetchUserDetails();
-    }, []);
+
+        // Only fetch if we have either URL credentials or we're ready to use cookies
+        if ((authToken && userUuid) || (!authToken && !userUuid)) {
+            fetchUserDetails();
+        }
+    }, [authToken, userUuid]);
 
     // Fetch video details
     useEffect(() => {
@@ -200,12 +240,24 @@ export default function PaymentPage() {
         setProcessing(true);
 
         try {
+            // Prepare headers for order creation
+            const headers: HeadersInit = {
+                'Content-Type': 'application/json',
+            };
+
+            // Add auth credentials to headers if available from URL
+            if (authToken && userUuid) {
+                headers['uuid'] = userUuid;
+                headers['auth_token'] = authToken;
+                console.log('🔐 Using URL credentials for order creation');
+            } else {
+                console.log('🍪 Using cookie credentials for order creation');
+            }
+
             // Create order - API will fetch price automatically
             const orderResponse = await fetch('/api/order/create-order', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: headers,
                 credentials: 'include',
                 body: JSON.stringify({
                     content_id: parseInt(contentId),
