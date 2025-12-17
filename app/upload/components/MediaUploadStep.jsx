@@ -305,10 +305,10 @@ const VideoPreviewCard = ({
         tempVideo.preload = "metadata";
         tempVideo.onloadedmetadata = () => {
           const duration = tempVideo.duration;
-          if (type === "teaser" && duration > 30) {
+          if (type === "teaser" && duration > 90) {
             toast({
               title: "Invalid duration",
-              description: "Teaser video must be 30 seconds or less",
+              description: "Teaser video must be 90 seconds or less",
               variant: "destructive",
             });
             return;
@@ -412,7 +412,7 @@ const VideoPreviewCard = ({
           </h3>
           <p className="text-sm text-gray-400 mt-1">
             {type === "teaser"
-              ? "Max 30 seconds • Required"
+              ? "Max 90 seconds • Required"
               : "Min 3 minutes • Required"}
           </p>
         </div>
