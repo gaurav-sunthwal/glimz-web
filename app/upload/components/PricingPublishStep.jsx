@@ -473,7 +473,40 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
           reject(new Error("Upload was cancelled or timed out."));
         });
 
-        xhr.open("POST", "/api/creator/content/upload");
+        // Determine upload URL based on environment
+        const isProduction = process.env.NODE_ENV === 'production' || window.location.hostname !== 'localhost';
+        const uploadUrl = isProduction
+          ? 'http://api.glimznow.com/api/creator/content/upload'  // Direct backend API in production
+          : '/api/creator/content/upload';  // Next.js API route in development
+
+        console.log(`📤 [Upload] Using ${isProduction ? 'PRODUCTION (direct backend)' : 'DEVELOPMENT (Next.js proxy)'} upload URL:`, uploadUrl);
+
+        xhr.open("POST", uploadUrl);
+
+        // In production, add auth headers directly since we're bypassing Next.js API
+        if (isProduction) {
+          // Get auth from cookies
+          const getCookie = (name) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+          };
+
+          const uuid = getCookie('uuid');
+          const auth_token = getCookie('auth_token');
+
+          if (uuid && auth_token) {
+            xhr.setRequestHeader('uuid', uuid);
+            xhr.setRequestHeader('auth_token', auth_token);
+            console.log('🔐 [Upload] Added auth headers to direct backend request');
+          } else {
+            console.error('❌ [Upload] Missing auth cookies for production upload!');
+            reject(new Error('Authentication required. Please log in again.'));
+            return;
+          }
+        }
+
         xhr.send(formData);
       });
 
