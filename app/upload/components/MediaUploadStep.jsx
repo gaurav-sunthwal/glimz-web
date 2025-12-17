@@ -607,16 +607,44 @@ const ThumbnailUploadCard = ({
 
   const handleCropComplete = async (croppedBlob) => {
     try {
+      console.log("🖼️ [Crop] Processing cropped image blob:", {
+        size: croppedBlob?.size,
+        type: croppedBlob?.type
+      });
+
+      if (!croppedBlob) {
+        throw new Error("No cropped image data received");
+      }
+
+      // Create a unique filename with timestamp
+      const timestamp = Date.now();
+      const baseFileName = originalFileName ? originalFileName.replace(/\.[^/.]+$/, "") : "thumbnail";
+      const fileName = `${baseFileName}_${timestamp}.jpg`;
+
       // Create a new file from the cropped blob
       const croppedFile = new File(
         [croppedBlob],
-        originalFileName || "thumbnail.jpg",
-        { type: "image/jpeg" }
+        fileName,
+        {
+          type: "image/jpeg",
+          lastModified: timestamp
+        }
       );
+
+      console.log("🖼️ [Crop] Created File object:", {
+        name: croppedFile.name,
+        size: croppedFile.size,
+        type: croppedFile.type
+      });
 
       // Load the cropped image to get dimensions
       const img = new Image();
       img.onload = () => {
+        console.log("🖼️ [Crop] Image loaded successfully:", {
+          width: img.width,
+          height: img.height
+        });
+
         const thumbnailData = {
           file: croppedFile,
           url: URL.createObjectURL(croppedFile),
@@ -625,27 +653,34 @@ const ThumbnailUploadCard = ({
           width: img.width,
           height: img.height,
         };
+
+        console.log("🖼️ [Crop] Thumbnail data prepared:", thumbnailData);
         onThumbnailUpload("teaser", thumbnailData);
         setCropModalOpen(false);
         setImageToCrop(null);
+        setOriginalFileName("");
+
         toast({
           title: "Success",
-          description: "Thumbnail cropped and uploaded successfully!",
+          description: `Thumbnail cropped to ${img.width}×${img.height}px successfully!`,
         });
       };
-      img.onerror = () => {
+
+      img.onerror = (error) => {
+        console.error("🖼️ [Crop] Failed to load cropped image:", error);
         toast({
           title: "Error",
           description: "Failed to process cropped image.",
           variant: "destructive",
         });
       };
+
       img.src = URL.createObjectURL(croppedFile);
     } catch (error) {
-      console.error("Error processing cropped image:", error);
+      console.error("🖼️ [Crop] Error processing cropped image:", error);
       toast({
         title: "Error",
-        description: "Failed to process cropped image.",
+        description: error.message || "Failed to process cropped image.",
         variant: "destructive",
       });
     }
