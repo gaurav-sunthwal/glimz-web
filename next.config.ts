@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-
+// add this for push
 const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
