@@ -280,7 +280,7 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
 
       {/* Thumbnail Preview */}
       {getThumbnailUri() && (
-        <div className="relative aspect-[1/5] max-w-xs mx-auto rounded-lg overflow-hidden">
+        <div className="relative aspect-[16/9] max-w-2xl mx-auto rounded-lg overflow-hidden border border-gray-700 shadow-lg">
           <img
             src={getThumbnailUri()}
             alt="Thumbnail"
@@ -352,11 +352,10 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
                       },
                     })
                   }
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    data.contentData.category === category
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${data.contentData.category === category
                       ? "bg-glimz-primary text-white"
                       : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
-                  }`}
+                    }`}
                 >
                   {category}
                 </button>
@@ -576,8 +575,8 @@ export const ContentDetailsStep = ({ data, onDataChange, onNext, onBack }) => {
                         </div>
                         {data.contentData.playlistId ===
                           playlist.playlist_id && (
-                          <Check className="h-5 w-5 text-glimz-primary" />
-                        )}
+                            <Check className="h-5 w-5 text-glimz-primary" />
+                          )}
                       </button>
                     ))}
                   </div>
