@@ -72,6 +72,21 @@ export async function POST(request) {
       auth_token: auth_token,
     };
 
+    console.log("🔐 [Upload API] Authentication details:", {
+      uuid: uuid ? `${uuid.substring(0, 8)}...` : "MISSING",
+      auth_token: auth_token ? `${auth_token.substring(0, 10)}...` : "MISSING",
+      is_creator: is_creator,
+    });
+
+    console.log("📤 [Upload API] Calling external API:", {
+      url: `${API_BASE_URL}/creator/content/upload`,
+      method: "POST",
+      hasVideo: !!formData.get("video"),
+      hasTeaser: !!formData.get("teaser"),
+      hasThumbnail: !!formData.get("thumbnail"),
+      title: formData.get("title"),
+    });
+
     // Call external API
     let response;
     try {
@@ -80,8 +95,14 @@ export async function POST(request) {
         headers: headers,
         body: formData,
       });
+
+      console.log("📥 [Upload API] External API response:", {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+      });
     } catch (fetchError) {
-      console.error("Error calling upload API:", fetchError);
+      console.error("❌ [Upload API] Error calling upload API:", fetchError);
       return NextResponse.json(
         {
           status: false,
@@ -97,7 +118,7 @@ export async function POST(request) {
     if (!response.ok) {
       let errorText;
       let errorData;
-      
+
       try {
         errorText = await response.text();
         // Try to parse as JSON
