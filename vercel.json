@@ -1,10 +1,4 @@
 {
-  "functions": {
-    "app/api/creator/content/upload/route.js": {
-      "maxDuration": 300,
-      "memory": 3008
-    }
-  },
   "headers": [
     {
       "source": "/api/creator/content/upload",
