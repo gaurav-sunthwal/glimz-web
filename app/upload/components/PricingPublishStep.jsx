@@ -466,59 +466,23 @@ export const PricingPublishStep = ({ data, onDataChange, onBack }) => {
         });
 
         xhr.addEventListener("error", () => {
-          reject(new Error("Network error during upload. Please check your connection."));
+          console.error("❌ [Upload] XHR error event triggered");
+          console.error("❌ [Upload] XHR status:", xhr.status);
+          console.error("❌ [Upload] XHR readyState:", xhr.readyState);
+          reject(new Error("Network error during upload. This may be due to file size limits or network issues."));
         });
 
         xhr.addEventListener("abort", () => {
           reject(new Error("Upload was cancelled or timed out."));
         });
 
-        // Determine if we're in production (Vercel has 4.5MB limit on API routes)
-        const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        // Always use Next.js API route
+        const uploadUrl = '/api/creator/content/upload';
 
-        // In production, upload directly to backend API to bypass Vercel's payload limits
-        // In development, use Next.js API route for proper cookie handling
-        const uploadUrl = isProduction
-          ? 'https://api.glimznow.com/api/creator/content/upload'
-          : '/api/creator/content/upload';
+        console.log('📤 [Upload] Upload URL:', uploadUrl);
 
-        console.log(`📤 [Upload] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
-        console.log(`📤 [Upload] Upload URL: ${uploadUrl}`);
-
-        // For production, we need to get credentials first (since cookies are HttpOnly)
-        const setupRequest = async () => {
-          if (isProduction) {
-            try {
-              // Fetch credentials from our API endpoint
-              const credResponse = await fetch('/api/auth/credentials');
-              if (!credResponse.ok) {
-                throw new Error('Failed to get authentication credentials');
-              }
-
-              const credentials = await credResponse.json();
-              if (!credentials.authenticated) {
-                throw new Error('Authentication required. Please log in again.');
-              }
-
-              console.log('🔐 [Upload] Retrieved authentication credentials');
-
-              xhr.open("POST", uploadUrl);
-              xhr.setRequestHeader('uuid', credentials.uuid);
-              xhr.setRequestHeader('auth_token', credentials.auth_token);
-              console.log('🔐 [Upload] Added authentication headers for production upload');
-              xhr.send(formData);
-            } catch (error) {
-              console.error('❌ [Upload] Failed to setup authenticated request:', error);
-              reject(error);
-            }
-          } else {
-            // Development: use Next.js API route with automatic cookie handling
-            xhr.open("POST", uploadUrl);
-            xhr.send(formData);
-          }
-        };
-
-        setupRequest();
+        xhr.open("POST", uploadUrl);
+        xhr.send(formData);
       });
 
       setUploadStage({
